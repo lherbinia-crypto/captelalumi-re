@@ -1465,16 +1465,6 @@ function afficherResultats(prenom, dominant, pcts, profil, erreur) {
     `).join('');
   }
 
-  // Envoi email
-  try {
-    const profilTexte = document.getElementById("res-profil")?.innerText || "";
-    emailjs.send("service_ri53d3f", "template_r1e2fcm", {
-      nom_prenom: (nomUser ? nomUser + " " : "") + prenom,
-      famille: FAMILLES[dominant].nom,
-      profil: profilTexte
-    });
-  } catch(e) { console.log("Email non envoyé:", e); }
-
   // Profil IA
   const profilEl = document.getElementById("res-profil");
   if (erreur) {
@@ -1493,6 +1483,18 @@ function afficherResultats(prenom, dominant, pcts, profil, erreur) {
   document.getElementById("prog-fill").style.width = "100%";
   document.getElementById("prog-label").textContent = "Profil révélé ✦";
   document.getElementById("prog-count").textContent = "";
+
+  // Envoi email (après affichage)
+  setTimeout(() => {
+    try {
+      const profilTexte = document.getElementById("res-profil")?.innerText || "";
+      emailjs.send("service_ri53d3f", "template_r1e2fcm", {
+        nom_prenom: (nomUser ? nomUser + " " : "") + prenomUser,
+        famille: FAMILLES[dominant].nom,
+        profil: profilTexte
+      });
+    } catch(e) { console.log("Email non envoyé:", e); }
+  }, 1000);
 }
 
 function restart() {
