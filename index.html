@@ -449,6 +449,55 @@
     40% { opacity: 1; }
   }
 
+  /* ===== PALETTE COULEURS ===== */
+  .palette-section {
+    margin-bottom: 30px;
+  }
+  .palette-title {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--or);
+    margin-bottom: 16px;
+  }
+  .palette-swatches {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .swatch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 70px;
+  }
+  .swatch-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    flex-shrink: 0;
+  }
+  .swatch-nom {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--ivoire);
+    text-align: center;
+    line-height: 1.3;
+  }
+  .swatch-sens {
+    font-size: 11px;
+    font-style: italic;
+    color: rgba(247,243,236,0.65);
+    text-align: center;
+    line-height: 1.4;
+  }
+
   /* ===== RÉSULTATS ===== */
   .result-header {
     text-align: center;
@@ -967,6 +1016,11 @@
 
       <div class="scores" id="res-scores"></div>
 
+      <div class="palette-section">
+        <p class="palette-title">🎨 Tes couleurs d'âme</p>
+        <div class="palette-swatches" id="res-palette"></div>
+      </div>
+
       <div class="profil-ia">
         <h3>✦ Ton profil personnalisé</h3>
         <div class="profil-ia-content" id="res-profil"></div>
@@ -999,10 +1053,38 @@
 
 // Données familles
 const FAMILLES = {
-  batisseur:   { nom: "Le Bâtisseur",        emoji: "🌿", couleur: "badge-batisseur",   fill: "batisseur-fill" },
-  artisan:     { nom: "L'Artisan de la Paix", emoji: "🕊️", couleur: "badge-artisan",    fill: "artisan-fill"   },
-  structurant: { nom: "Le Structurant",       emoji: "✨", couleur: "badge-structurant", fill: "structurant-fill"},
-  passeur:     { nom: "Le Passeur",           emoji: "🔥", couleur: "badge-passeur",     fill: "passeur-fill"   }
+  batisseur:   { nom: "Le Bâtisseur",        emoji: "🌿", couleur: "badge-batisseur",   fill: "batisseur-fill",
+    palette: [
+      { hex: "#8B2E1A", nom: "Rouge brique",   sens: "Feu intérieur & action" },
+      { hex: "#C0522E", nom: "Rouille chaude", sens: "Ancrage & vitalité" },
+      { hex: "#8B6914", nom: "Ocre doré",      sens: "Abondance & création" },
+      { hex: "#5C3D1E", nom: "Terre brune",    sens: "Enracinement profond" }
+    ]
+  },
+  artisan:     { nom: "L'Artisan de la Paix", emoji: "🕊️", couleur: "badge-artisan",    fill: "artisan-fill",
+    palette: [
+      { hex: "#2E5E3A", nom: "Vert sauge",     sens: "Harmonie & guérison" },
+      { hex: "#5A9E6A", nom: "Vert menthe",    sens: "Douceur & croissance" },
+      { hex: "#C9A4B0", nom: "Rose poudré",    sens: "Amour inconditionnel" },
+      { hex: "#7AB8C8", nom: "Bleu ciel",      sens: "Fluidité émotionnelle" }
+    ]
+  },
+  structurant: { nom: "Le Structurant",       emoji: "✨", couleur: "badge-structurant", fill: "structurant-fill",
+    palette: [
+      { hex: "#3D4A5C", nom: "Gris ardoise",   sens: "Clarté mentale & profondeur" },
+      { hex: "#6A7A90", nom: "Bleu acier",     sens: "Précision & intuition" },
+      { hex: "#A8B4C0", nom: "Argent doux",    sens: "Intelligence & lumière" },
+      { hex: "#F0F0F0", nom: "Blanc pur",      sens: "Espace & clarté absolue" }
+    ]
+  },
+  passeur:     { nom: "Le Passeur",           emoji: "🔥", couleur: "badge-passeur",     fill: "passeur-fill",
+    palette: [
+      { hex: "#4A1A6E", nom: "Violet profond", sens: "Connexion spirituelle" },
+      { hex: "#8B4FBA", nom: "Pourpre",        sens: "Mystère & transformation" },
+      { hex: "#1A1A2E", nom: "Bleu nuit",      sens: "Entre les mondes" },
+      { hex: "#C9922A", nom: "Or subtil",      sens: "Lumière intérieure" }
+    ]
+  }
 };
 
 // Questions à choix multiples (B=Bâtisseur, A=Artisan, S=Structurant, P=Passeur)
@@ -1361,6 +1443,19 @@ function afficherResultats(prenom, dominant, pcts, profil, erreur) {
       b.style.width = b.dataset.pct + "%";
     });
   });
+
+  // Palette de couleurs
+  const fam2 = FAMILLES[dominant];
+  const paletteContainer = document.getElementById("res-palette");
+  if (paletteContainer && fam2.palette) {
+    paletteContainer.innerHTML = fam2.palette.map(c => `
+      <div class="swatch">
+        <div class="swatch-circle" style="background:${c.hex}"></div>
+        <div class="swatch-nom">${c.nom}</div>
+        <div class="swatch-sens">${c.sens}</div>
+      </div>
+    `).join('');
+  }
 
   // Profil IA
   const profilEl = document.getElementById("res-profil");
