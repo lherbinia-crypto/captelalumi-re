@@ -5,922 +5,139 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Capte ta Lumière — Familles d'Âmes</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&display=swap" rel="stylesheet">
-<style>
-  /* ===== PALETTE PAON ===== */
-  :root {
-    --vert:    #1B4D3E;
-    --teal:    #2A7F6F;
-    --teal-lt: #4AACA0;
-    --bleu:    #1A3A5C;
-    --or:      #C9922A;
-    --or-lt:   #E8C46A;
-    --violet:  #4A2C6E;
-    --ivoire:  #F7F3EC;
-    --ivoire2: #EDE6D6;
-    --texte:   #1C1C1C;
-    --texte2:  #4A4A4A;
-    --blanc:   #FFFFFF;
-    --API_KEY: "COLLE_TA_CLÉ_ICI";
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    background: var(--ivoire);
-    color: var(--texte);
-    min-height: 100vh;
-  }
-
-  /* ===== HERO ===== */
-  .hero {
-    background: linear-gradient(160deg, var(--vert) 0%, var(--bleu) 50%, var(--violet) 100%);
-    color: var(--ivoire);
-    text-align: center;
-    padding: 80px 24px 60px;
-    position: relative;
-    overflow: hidden;
-  }
-  .hero::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23C9922A' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    pointer-events: none;
-  }
-  .hero-eyebrow {
-    font-family: 'Cinzel', serif;
-    font-size: 11px;
-    letter-spacing: 4px;
-    color: var(--or-lt);
-    text-transform: uppercase;
-    margin-bottom: 20px;
-  }
-  .hero h1 {
-    font-family: 'Cinzel', serif;
-    font-size: clamp(38px, 7vw, 72px);
-    font-weight: 700;
-    line-height: 1.1;
-    margin-bottom: 16px;
-    background: linear-gradient(135deg, var(--ivoire) 40%, var(--or-lt) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .hero-sub {
-    font-size: clamp(16px, 2.5vw, 22px);
-    font-style: italic;
-    color: rgba(247,243,236,0.85);
-    max-width: 560px;
-    margin: 0 auto 40px;
-    line-height: 1.6;
-  }
-  .hero-cta {
-    display: inline-block;
-    background: linear-gradient(135deg, var(--or) 0%, var(--or-lt) 100%);
-    color: var(--bleu);
-    font-family: 'Cinzel', serif;
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 2px;
-    padding: 16px 40px;
-    border-radius: 50px;
-    border: none;
-    cursor: pointer;
-    text-decoration: none;
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  .hero-cta:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(201,146,42,0.4);
-  }
-
-  /* ===== FAMILLES PRÉSENTATION ===== */
-  .section {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 70px 24px;
-  }
-  .section-title {
-    font-family: 'Cinzel', serif;
-    font-size: clamp(22px, 4vw, 32px);
-    font-weight: 600;
-    text-align: center;
-    color: var(--bleu);
-    margin-bottom: 12px;
-  }
-  .section-subtitle {
-    text-align: center;
-    font-size: 18px;
-    font-style: italic;
-    color: var(--texte2);
-    margin-bottom: 50px;
-    line-height: 1.6;
-  }
-
-  .familles-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
-  }
-  .famille-card {
-    border-radius: 16px;
-    padding: 32px 24px 28px;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-    transition: transform 0.3s;
-  }
-  .famille-card:hover { transform: translateY(-4px); }
-
-  .famille-card.batisseur  { background: linear-gradient(145deg, #8B2E1A 0%, #C0522E 100%); }
-  .famille-card.artisan    { background: linear-gradient(145deg, #2E5E3A 0%, #5A9E6A 100%); }
-  .famille-card.structurant{ background: linear-gradient(145deg, #3D4A5C 0%, #6A7A90 100%); }
-  .famille-card.passeur    { background: linear-gradient(145deg, #4A1A6E 0%, #8B4FBA 100%); }
-
-  .famille-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  .famille-icon {
-    font-size: 36px;
-    margin-bottom: 16px;
-    display: block;
-    flex-shrink: 0;
-  }
-  .famille-nom {
-    font-family: 'Cinzel', serif;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--ivoire);
-    margin-bottom: 8px;
-    letter-spacing: 1px;
-    min-height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-  }
-  .famille-corps {
-    font-size: 11px;
-    letter-spacing: 2px;
-    color: rgba(247,243,236,0.65);
-    text-transform: uppercase;
-    margin-bottom: 14px;
-    min-height: 38px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-  }
-  .famille-desc {
-    font-size: 14px;
-    font-style: italic;
-    color: rgba(247,243,236,0.88);
-    line-height: 1.6;
-    text-align: center;
-  }
-
-  /* ===== SÉPARATEUR ===== */
-  .sep {
-    text-align: center;
-    padding: 10px 0 60px;
-  }
-  .sep-line {
-    display: inline-flex;
-    align-items: center;
-    gap: 16px;
-    color: var(--or);
-  }
-  .sep-line::before, .sep-line::after {
-    content: '';
-    display: block;
-    width: 60px;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--or));
-  }
-  .sep-line::after { background: linear-gradient(90deg, var(--or), transparent); }
-
-  /* ===== QUESTIONNAIRE ===== */
-  #questionnaire {
-    background: var(--blanc);
-    border-top: 1px solid var(--ivoire2);
-    border-bottom: 1px solid var(--ivoire2);
-  }
-  .quiz-wrap {
-    max-width: 700px;
-    margin: 0 auto;
-    padding: 70px 24px;
-  }
-
-  /* Barre de progression */
-  .prog-container { margin-bottom: 40px; }
-  .prog-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-  }
-  .prog-label {
-    font-family: 'Cinzel', serif;
-    font-size: 12px;
-    letter-spacing: 2px;
-    color: var(--teal);
-    text-transform: uppercase;
-  }
-  .prog-count { font-size: 14px; color: var(--texte2); }
-  .prog-bar {
-    height: 4px;
-    background: var(--ivoire2);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .prog-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--teal), var(--or));
-    border-radius: 2px;
-    transition: width 0.4s ease;
-  }
-
-  /* Écrans */
-  .screen { display: none; }
-  .screen.active { display: block; }
-
-  /* Screen bienvenue */
-  .welcome-title {
-    font-family: 'Cinzel', serif;
-    font-size: clamp(24px, 4vw, 36px);
-    font-weight: 600;
-    color: var(--bleu);
-    margin-bottom: 16px;
-    line-height: 1.2;
-  }
-  .welcome-text {
-    font-size: 18px;
-    color: var(--texte2);
-    line-height: 1.8;
-    margin-bottom: 30px;
-    font-style: italic;
-  }
-
-  /* Champs */
-  .field { margin-bottom: 24px; }
-  .field label {
-    display: block;
-    font-family: 'Cinzel', serif;
-    font-size: 12px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--teal);
-    margin-bottom: 8px;
-  }
-  .field input, .field textarea {
-    width: 100%;
-    padding: 14px 18px;
-    border: 1.5px solid var(--ivoire2);
-    border-radius: 10px;
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 17px;
-    color: var(--texte);
-    background: var(--ivoire);
-    transition: border-color 0.2s;
-    outline: none;
-    resize: none;
-  }
-  .field input:focus, .field textarea:focus {
-    border-color: var(--teal-lt);
-    background: var(--blanc);
-  }
-
-  /* Questions */
-  .question-eyebrow {
-    font-family: 'Cinzel', serif;
-    font-size: 11px;
-    letter-spacing: 3px;
-    color: var(--or);
-    text-transform: uppercase;
-    margin-bottom: 12px;
-  }
-  .question-text {
-    font-size: clamp(20px, 3vw, 26px);
-    color: var(--bleu);
-    line-height: 1.5;
-    margin-bottom: 32px;
-    font-weight: 400;
-  }
-  .question-text em { font-style: italic; color: var(--teal); }
-
-  .choices { display: flex; flex-direction: column; gap: 12px; }
-  .choice-btn {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    padding: 16px 20px;
-    border: 1.5px solid var(--ivoire2);
-    border-radius: 12px;
-    background: var(--ivoire);
-    cursor: pointer;
-    text-align: left;
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 17px;
-    color: var(--texte);
-    transition: all 0.2s;
-    line-height: 1.5;
-  }
-  .choice-btn:hover {
-    border-color: var(--teal-lt);
-    background: var(--blanc);
-    transform: translateX(4px);
-  }
-  .choice-btn.selected {
-    border-color: var(--teal);
-    background: linear-gradient(135deg, rgba(42,127,111,0.08) 0%, rgba(74,172,160,0.05) 100%);
-    color: var(--bleu);
-    font-weight: 600;
-  }
-  .choice-letter {
-    flex-shrink: 0;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: var(--ivoire2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Cinzel', serif;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--texte2);
-    transition: all 0.2s;
-    margin-top: 1px;
-  }
-  .choice-btn.selected .choice-letter {
-    background: var(--teal);
-    color: var(--blanc);
-  }
-
-  /* Questions ouvertes */
-  .open-question .question-text { margin-bottom: 20px; }
-
-  /* Navigation */
-  .nav-btns {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 36px;
-    gap: 16px;
-  }
-  .btn-prev {
-    padding: 12px 28px;
-    border: 1.5px solid var(--ivoire2);
-    border-radius: 50px;
-    background: transparent;
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 16px;
-    color: var(--texte2);
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .btn-prev:hover { border-color: var(--teal-lt); color: var(--teal); }
-  .btn-next {
-    padding: 14px 36px;
-    border: none;
-    border-radius: 50px;
-    background: linear-gradient(135deg, var(--teal) 0%, var(--bleu) 100%);
-    font-family: 'Cinzel', serif;
-    font-size: 13px;
-    letter-spacing: 2px;
-    color: var(--ivoire);
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    flex-shrink: 0;
-  }
-  .btn-next:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(26,58,92,0.3);
-  }
-  .btn-next:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
-
-  /* ===== LOADING IA ===== */
-  .loading-screen {
-    text-align: center;
-    padding: 40px 0;
-  }
-  .loading-orb {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--teal) 0%, var(--violet) 100%);
-    margin: 0 auto 30px;
-    animation: pulse 2s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(42,127,111,0.3); }
-    50% { transform: scale(1.08); box-shadow: 0 0 0 20px rgba(42,127,111,0); }
-  }
-  .loading-title {
-    font-family: 'Cinzel', serif;
-    font-size: 22px;
-    color: var(--bleu);
-    margin-bottom: 12px;
-  }
-  .loading-text {
-    font-size: 17px;
-    font-style: italic;
-    color: var(--texte2);
-    line-height: 1.7;
-  }
-  .loading-dots span {
-    display: inline-block;
-    animation: blink 1.4s infinite both;
-    font-size: 24px;
-    color: var(--or);
-  }
-  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
-  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes blink {
-    0%, 80%, 100% { opacity: 0; }
-    40% { opacity: 1; }
-  }
-
-  /* ===== PALETTE COULEURS ===== */
-  .palette-section {
-    margin-bottom: 30px;
-  }
-  .palette-title {
-    font-family: 'Cinzel', serif;
-    font-size: 11px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--or);
-    margin-bottom: 16px;
-  }
-  .palette-swatches {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .swatch {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-    min-width: 70px;
-  }
-  .swatch-circle {
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.2);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    flex-shrink: 0;
-  }
-  .swatch-nom {
-    font-family: 'Cinzel', serif;
-    font-size: 10px;
-    letter-spacing: 1px;
-    color: var(--ivoire);
-    text-align: center;
-    line-height: 1.3;
-  }
-  .swatch-sens {
-    font-size: 11px;
-    font-style: italic;
-    color: rgba(247,243,236,0.65);
-    text-align: center;
-    line-height: 1.4;
-  }
-
-  /* ===== RÉSULTATS ===== */
-  .result-header {
-    text-align: center;
-    margin-bottom: 40px;
-  }
-  .result-prenom {
-    font-family: 'Cinzel', serif;
-    font-size: 13px;
-    letter-spacing: 3px;
-    color: var(--or);
-    text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-  .result-title {
-    font-size: clamp(28px, 5vw, 42px);
-    color: var(--bleu);
-    line-height: 1.2;
-    margin-bottom: 16px;
-  }
-  .result-famille-badge {
-    display: inline-block;
-    padding: 10px 28px;
-    border-radius: 50px;
-    font-family: 'Cinzel', serif;
-    font-size: 16px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    margin-bottom: 30px;
-  }
-  .badge-batisseur  { background: linear-gradient(135deg, #8B2E1A, #C0522E); color: var(--ivoire); }
-  .badge-artisan    { background: linear-gradient(135deg, #2E5E3A, #5A9E6A); color: var(--ivoire); }
-  .badge-structurant{ background: linear-gradient(135deg, #3D4A5C, #6A7A90); color: var(--ivoire); }
-  .badge-passeur    { background: linear-gradient(135deg, #4A1A6E, #8B4FBA); color: var(--ivoire); }
-
-  /* Scores */
-  .scores {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 12px;
-    margin-bottom: 40px;
-  }
-  .score-card {
-    background: var(--ivoire);
-    border-radius: 12px;
-    padding: 18px 16px;
-    text-align: center;
-    border: 1.5px solid var(--ivoire2);
-  }
-  .score-card.dominant { border-color: var(--teal); background: linear-gradient(145deg, rgba(42,127,111,0.07), rgba(74,172,160,0.04)); }
-  .score-nom {
-    font-family: 'Cinzel', serif;
-    font-size: 11px;
-    letter-spacing: 2px;
-    color: var(--texte2);
-    text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-  .score-bar-bg {
-    height: 6px;
-    background: var(--ivoire2);
-    border-radius: 3px;
-    overflow: hidden;
-    margin-bottom: 8px;
-  }
-  .score-bar-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
-  .batisseur-fill   { background: linear-gradient(90deg, #8B2E1A, #C0522E); }
-  .artisan-fill     { background: linear-gradient(90deg, #2E5E3A, #5A9E6A); }
-  .structurant-fill { background: linear-gradient(90deg, #3D4A5C, #6A7A90); }
-  .passeur-fill     { background: linear-gradient(90deg, #4A1A6E, #8B4FBA); }
-  .score-pct {
-    font-family: 'Cinzel', serif;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--bleu);
-  }
-
-  /* Profil IA */
-  .profil-ia {
-    background: linear-gradient(160deg, var(--vert) 0%, var(--bleu) 60%, var(--violet) 100%);
-    border-radius: 20px;
-    padding: 40px 36px;
-    color: var(--ivoire);
-    margin-bottom: 30px;
-    position: relative;
-    overflow: hidden;
-  }
-  .profil-ia::before {
-    content: '';
-    position: absolute;
-    top: -40px; right: -40px;
-    width: 200px; height: 200px;
-    border-radius: 50%;
-    background: rgba(201,146,42,0.08);
-    pointer-events: none;
-  }
-  .profil-ia h3 {
-    font-family: 'Cinzel', serif;
-    font-size: 14px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: var(--or-lt);
-    margin-bottom: 20px;
-  }
-  .profil-ia-content {
-    font-size: 17px;
-    line-height: 1.9;
-    color: rgba(247,243,236,0.92);
-    white-space: pre-wrap;
-  }
-  .profil-ia-content p { margin-bottom: 16px; }
-  .profil-ia-content h4 {
-    font-family: 'Cinzel', serif;
-    font-size: 14px;
-    letter-spacing: 2px;
-    color: var(--or-lt);
-    text-transform: uppercase;
-    margin: 28px 0 12px;
-  }
-  .profil-ia-content strong { color: var(--or-lt); font-weight: 600; }
-
-  /* Actions finales */
-  .result-actions {
-    display: flex;
-    gap: 14px;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin-top: 36px;
-  }
-  .btn-print {
-    padding: 14px 32px;
-    border-radius: 50px;
-    border: 1.5px solid var(--teal);
-    background: transparent;
-    font-family: 'Cinzel', serif;
-    font-size: 13px;
-    letter-spacing: 2px;
-    color: var(--teal);
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .btn-print:hover { background: var(--teal); color: var(--ivoire); }
-  .btn-restart {
-    padding: 14px 32px;
-    border-radius: 50px;
-    border: none;
-    background: linear-gradient(135deg, var(--or) 0%, var(--or-lt) 100%);
-    font-family: 'Cinzel', serif;
-    font-size: 13px;
-    letter-spacing: 2px;
-    color: var(--bleu);
-    cursor: pointer;
-    font-weight: 600;
-    transition: transform 0.2s;
-  }
-  .btn-restart:hover { transform: translateY(-2px); }
-
-  /* ===== FOOTER ===== */
-  .page-footer {
-    text-align: center;
-    padding: 40px 24px;
-    font-size: 14px;
-    color: var(--texte2);
-    font-style: italic;
-    border-top: 1px solid var(--ivoire2);
-  }
-  .page-footer strong {
-    color: var(--bleu);
-    font-style: normal;
-    font-family: 'Cinzel', serif;
-    font-size: 13px;
-    letter-spacing: 1px;
-  }
-
-  /* ===== ERREUR ===== */
-  .error-box {
-    background: #fff5f5;
-    border: 1.5px solid #f0a0a0;
-    border-radius: 12px;
-    padding: 20px 24px;
-    margin-top: 20px;
-    font-size: 16px;
-    color: #8b2222;
-    line-height: 1.6;
-  }
-
-  /* ===== PRINT ===== */
-  @media print {
-    * { display: none !important; }
-    #print-document { display: block !important; }
-  }
-
-  /* ===== DOCUMENT IMPRIMABLE ===== */
-  #print-document {
-    display: none;
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    color: #1C1C1C;
-    background: white;
-  }
-
-  .print-page {
-    width: 210mm;
-    min-height: 297mm;
-    padding: 18mm 20mm 18mm 20mm;
-    box-sizing: border-box;
-    background: white;
-    page-break-after: always;
-  }
-  .print-page:last-child { page-break-after: avoid; }
-
-  /* En-tête page 1 */
-  .print-header {
-    background: #1B4D3E;
-    color: #F7F3EC;
-    padding: 24px 28px;
-    border-radius: 12px;
-    margin-bottom: 24px;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  .print-header-top {
-    font-family: 'Cinzel', serif;
-    font-size: 9px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: #E8C46A;
-    margin-bottom: 8px;
-  }
-  .print-header h1 {
-    font-family: 'Cinzel', serif;
-    font-size: 28px;
-    font-weight: 700;
-    color: #F7F3EC;
-    margin: 0 0 6px;
-    line-height: 1.1;
-  }
-  .print-header-sub {
-    font-size: 14px;
-    font-style: italic;
-    color: rgba(247,243,236,0.8);
-  }
-
-  /* Badge famille */
-  .print-badge {
-    display: inline-block;
-    padding: 8px 22px;
-    border-radius: 50px;
-    font-family: 'Cinzel', serif;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    margin: 16px 0 20px;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  .print-badge.batisseur   { background: #8B2E1A; color: #F7F3EC; }
-  .print-badge.artisan     { background: #2E5E3A; color: #F7F3EC; }
-  .print-badge.structurant { background: #3D4A5C; color: #F7F3EC; }
-  .print-badge.passeur     { background: #4A1A6E; color: #F7F3EC; }
-
-  /* Scores grille */
-  .print-scores {
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-    margin-bottom: 24px;
-    width: 100%;
-  }
-  .print-score-card {
-    flex: 1;
-    min-width: 0;
-  }
-  .print-score-card {
-    flex: 1;
-    min-width: 0;
-    border: 1px solid #EDE6D6;
-    border-radius: 8px;
-    padding: 12px 10px;
-    text-align: center;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  .print-score-card.dominant { border-color: #2A7F6F; background: #f0faf7; }
-  .print-score-nom {
-    font-family: 'Cinzel', serif;
-    font-size: 8px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: #4A4A4A;
-    margin-bottom: 8px;
-  }
-  .print-score-bar-bg {
-    height: 5px;
-    background: #EDE6D6;
-    border-radius: 3px;
-    overflow: hidden;
-    margin-bottom: 6px;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  .print-score-bar-fill {
-    height: 100%;
-    border-radius: 3px;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  .fill-b { background: #C0522E; }
-  .fill-a { background: #5A9E6A; }
-  .fill-s { background: #6A7A90; }
-  .fill-p { background: #8B4FBA; }
-  .print-score-pct {
-    font-family: 'Cinzel', serif;
-    font-size: 16px;
-    font-weight: 600;
-    color: #1A3A5C;
-  }
-
-  /* Séparateur section */
-  .print-sep {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin: 20px 0 16px;
-  }
-  .print-sep-label {
-    font-family: 'Cinzel', serif;
-    font-size: 9px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: #C9922A;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .print-sep-line {
-    flex: 1;
-    height: 0.5px;
-    background: #EDE6D6;
-  }
-
-  /* Sections profil */
-  .print-section {
-    margin-bottom: 18px;
-    page-break-inside: avoid;
-    break-inside: avoid;
-  }
-  .print-section-title {
-    font-family: 'Cinzel', serif;
-    font-size: 10px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: #2A7F6F;
-    margin-bottom: 8px;
-    padding-bottom: 5px;
-    border-bottom: 1px solid #EDE6D6;
-  }
-  .print-section-body {
-    font-size: 13px;
-    line-height: 1.8;
-    color: #1C1C1C;
-  }
-  .print-section-body strong { color: #1A3A5C; font-weight: 600; }
-
-  /* Mantra */
-  .print-mantra {
-    background: #1B4D3E;
-    color: #F7F3EC;
-    border-radius: 10px;
-    padding: 20px 24px;
-    text-align: center;
-    margin-top: 20px;
-    page-break-inside: avoid;
-    break-inside: avoid;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  .print-mantra-label {
-    font-family: 'Cinzel', serif;
-    font-size: 9px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: #E8C46A;
-    margin-bottom: 10px;
-  }
-  .print-mantra-text {
-    font-size: 17px;
-    font-style: italic;
-    color: #F7F3EC;
-    line-height: 1.5;
-  }
-
-  /* Footer print */
-  .print-footer {
-    margin-top: 28px;
-    padding-top: 14px;
-    border-top: 0.5px solid #EDE6D6;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 9px;
-    color: #888;
-    font-style: italic;
-  }
-  .print-footer strong {
-    font-family: 'Cinzel', serif;
-    font-style: normal;
-    font-size: 9px;
-    letter-spacing: 1px;
-    color: #4A4A4A;
-  }
-
-  @media (max-width: 600px) {
-    .hero { padding: 60px 20px 50px; }
-    .familles-grid { grid-template-columns: 1fr 1fr; }
-    .nav-btns { flex-direction: column-reverse; }
-    .btn-next, .btn-prev { width: 100%; text-align: center; }
-    .result-actions { flex-direction: column; align-items: center; }
-  }
-</style>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<script>emailjs.init("L7WqBkdaWiArMpRu9");</script>
+<style>
+:root {
+  --vert:#1B4D3E;--teal:#2A7F6F;--teal-lt:#4AACA0;--bleu:#1A3A5C;
+  --or:#C9922A;--or-lt:#E8C46A;--violet:#4A2C6E;--ivoire:#F7F3EC;
+  --ivoire2:#EDE6D6;--texte:#1C1C1C;--texte2:#4A4A4A;--blanc:#FFFFFF;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--ivoire);color:var(--texte);min-height:100vh;}
+
+/* HERO */
+.hero{background:linear-gradient(160deg,var(--vert) 0%,var(--bleu) 50%,var(--violet) 100%);color:var(--ivoire);text-align:center;padding:80px 24px 60px;position:relative;overflow:hidden;}
+.hero-eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--or-lt);text-transform:uppercase;margin-bottom:20px;}
+.hero h1{font-family:'Cinzel',serif;font-size:clamp(38px,7vw,72px);font-weight:700;line-height:1.1;margin-bottom:16px;background:linear-gradient(135deg,var(--ivoire) 40%,var(--or-lt) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-sub{font-size:clamp(16px,2.5vw,22px);font-style:italic;color:rgba(247,243,236,0.85);max-width:560px;margin:0 auto 40px;line-height:1.6;}
+.hero-cta{display:inline-block;background:linear-gradient(135deg,var(--or) 0%,var(--or-lt) 100%);color:var(--bleu);font-family:'Cinzel',serif;font-size:14px;font-weight:600;letter-spacing:2px;padding:16px 40px;border-radius:50px;border:none;cursor:pointer;text-decoration:none;transition:transform 0.2s,box-shadow 0.2s;}
+.hero-cta:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(201,146,42,0.4);}
+
+/* FAMILLES */
+.section{max-width:900px;margin:0 auto;padding:70px 24px;}
+.section-title{font-family:'Cinzel',serif;font-size:clamp(22px,4vw,32px);font-weight:600;text-align:center;color:var(--bleu);margin-bottom:12px;}
+.section-subtitle{text-align:center;font-size:18px;font-style:italic;color:var(--texte2);margin-bottom:50px;line-height:1.6;}
+.familles-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+.famille-card{border-radius:16px;padding:32px 24px 28px;text-align:center;display:flex;flex-direction:column;align-items:center;transition:transform 0.3s;}
+.famille-card:hover{transform:translateY(-4px);}
+.famille-card.batisseur{background:linear-gradient(145deg,#8B2E1A 0%,#C0522E 100%);}
+.famille-card.artisan{background:linear-gradient(145deg,#2E5E3A 0%,#5A9E6A 100%);}
+.famille-card.structurant{background:linear-gradient(145deg,#3D4A5C 0%,#6A7A90 100%);}
+.famille-card.passeur{background:linear-gradient(145deg,#4A1A6E 0%,#8B4FBA 100%);}
+.famille-icon{font-size:36px;margin-bottom:16px;display:block;flex-shrink:0;}
+.famille-nom{font-family:'Cinzel',serif;font-size:16px;font-weight:600;color:var(--ivoire);margin-bottom:8px;letter-spacing:1px;min-height:50px;display:flex;align-items:center;justify-content:center;text-align:center;}
+.famille-corps{font-size:11px;letter-spacing:2px;color:rgba(247,243,236,0.6);text-transform:uppercase;margin-bottom:14px;min-height:38px;display:flex;align-items:center;justify-content:center;text-align:center;}
+.famille-desc{font-size:14px;font-style:italic;color:rgba(247,243,236,0.88);line-height:1.6;text-align:center;}
+
+/* SEP */
+.sep{text-align:center;padding:10px 0 60px;}
+.sep-line{display:inline-flex;align-items:center;gap:16px;color:var(--or);}
+.sep-line::before,.sep-line::after{content:'';display:block;width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--or));}
+.sep-line::after{background:linear-gradient(90deg,var(--or),transparent);}
+
+/* QUESTIONNAIRE */
+#questionnaire{background:var(--blanc);border-top:1px solid var(--ivoire2);border-bottom:1px solid var(--ivoire2);}
+.quiz-wrap{max-width:700px;margin:0 auto;padding:70px 24px;}
+.prog-container{margin-bottom:40px;}
+.prog-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.prog-label{font-family:'Cinzel',serif;font-size:12px;letter-spacing:2px;color:var(--teal);text-transform:uppercase;}
+.prog-count{font-size:14px;color:var(--texte2);}
+.prog-bar{height:4px;background:var(--ivoire2);border-radius:2px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--or));border-radius:2px;transition:width 0.4s ease;}
+.screen{display:none;}
+.screen.active{display:block;}
+.welcome-title{font-family:'Cinzel',serif;font-size:clamp(24px,4vw,36px);font-weight:600;color:var(--bleu);margin-bottom:16px;line-height:1.2;}
+.welcome-text{font-size:18px;color:var(--texte2);line-height:1.8;margin-bottom:30px;font-style:italic;}
+.field{margin-bottom:24px;}
+.field label{display:block;font-family:'Cinzel',serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--teal);margin-bottom:8px;}
+.field input,.field textarea{width:100%;padding:14px 18px;border:1.5px solid var(--ivoire2);border-radius:10px;font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--texte);background:var(--ivoire);transition:border-color 0.2s;outline:none;resize:none;}
+.field input:focus,.field textarea:focus{border-color:var(--teal-lt);background:var(--blanc);}
+.question-eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;color:var(--or);text-transform:uppercase;margin-bottom:12px;}
+.question-text{font-size:clamp(20px,3vw,26px);color:var(--bleu);line-height:1.5;margin-bottom:32px;font-weight:400;}
+.choices{display:flex;flex-direction:column;gap:12px;}
+.choice-btn{display:flex;align-items:flex-start;gap:14px;padding:16px 20px;border:1.5px solid var(--ivoire2);border-radius:12px;background:var(--ivoire);cursor:pointer;text-align:left;font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--texte);transition:all 0.2s;line-height:1.5;}
+.choice-btn:hover{border-color:var(--teal-lt);background:var(--blanc);transform:translateX(4px);}
+.choice-btn.selected{border-color:var(--teal);background:linear-gradient(135deg,rgba(42,127,111,0.08) 0%,rgba(74,172,160,0.05) 100%);color:var(--bleu);font-weight:600;}
+.choice-letter{flex-shrink:0;width:28px;height:28px;border-radius:50%;background:var(--ivoire2);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:12px;font-weight:600;color:var(--texte2);transition:all 0.2s;margin-top:1px;}
+.choice-btn.selected .choice-letter{background:var(--teal);color:var(--blanc);}
+.nav-btns{display:flex;justify-content:space-between;align-items:center;margin-top:36px;gap:16px;}
+.btn-prev{padding:12px 28px;border:1.5px solid var(--ivoire2);border-radius:50px;background:transparent;font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--texte2);cursor:pointer;transition:all 0.2s;}
+.btn-prev:hover{border-color:var(--teal-lt);color:var(--teal);}
+.btn-next{padding:14px 36px;border:none;border-radius:50px;background:linear-gradient(135deg,var(--teal) 0%,var(--bleu) 100%);font-family:'Cinzel',serif;font-size:13px;letter-spacing:2px;color:var(--ivoire);cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;flex-shrink:0;}
+.btn-next:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(26,58,92,0.3);}
+.btn-next:disabled{opacity:0.4;cursor:not-allowed;transform:none;box-shadow:none;}
+
+/* LOADING */
+.loading-screen{text-align:center;padding:40px 0;}
+.loading-orb{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--teal) 0%,var(--violet) 100%);margin:0 auto 30px;animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(42,127,111,0.3);}50%{transform:scale(1.08);box-shadow:0 0 0 20px rgba(42,127,111,0);}}
+.loading-title{font-family:'Cinzel',serif;font-size:22px;color:var(--bleu);margin-bottom:12px;}
+.loading-text{font-size:17px;font-style:italic;color:var(--texte2);line-height:1.7;}
+.loading-dots span{display:inline-block;animation:blink 1.4s infinite both;font-size:24px;color:var(--or);}
+.loading-dots span:nth-child(2){animation-delay:0.2s;}
+.loading-dots span:nth-child(3){animation-delay:0.4s;}
+@keyframes blink{0%,80%,100%{opacity:0;}40%{opacity:1;}}
+
+/* RÉSULTATS */
+.result-header{text-align:center;margin-bottom:40px;}
+.result-prenom{font-family:'Cinzel',serif;font-size:13px;letter-spacing:3px;color:var(--or);text-transform:uppercase;margin-bottom:10px;}
+.result-title{font-size:clamp(28px,5vw,42px);color:var(--bleu);line-height:1.2;margin-bottom:16px;}
+.result-famille-badge{display:inline-block;padding:10px 28px;border-radius:50px;font-family:'Cinzel',serif;font-size:16px;font-weight:600;letter-spacing:1px;margin-bottom:30px;}
+.badge-batisseur{background:linear-gradient(135deg,#8B2E1A,#C0522E);color:var(--ivoire);}
+.badge-artisan{background:linear-gradient(135deg,#2E5E3A,#5A9E6A);color:var(--ivoire);}
+.badge-structurant{background:linear-gradient(135deg,#3D4A5C,#6A7A90);color:var(--ivoire);}
+.badge-passeur{background:linear-gradient(135deg,#4A1A6E,#8B4FBA);color:var(--ivoire);}
+.scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:30px;}
+.score-card{background:var(--ivoire);border-radius:12px;padding:18px 16px;text-align:center;border:1.5px solid var(--ivoire2);}
+.score-card.dominant{border-color:var(--teal);background:linear-gradient(145deg,rgba(42,127,111,0.07),rgba(74,172,160,0.04));}
+.score-nom{font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;color:var(--texte2);text-transform:uppercase;margin-bottom:10px;}
+.score-bar-bg{height:6px;background:var(--ivoire2);border-radius:3px;overflow:hidden;margin-bottom:8px;}
+.score-bar-fill{height:100%;border-radius:3px;transition:width 1s ease;}
+.batisseur-fill{background:linear-gradient(90deg,#8B2E1A,#C0522E);}
+.artisan-fill{background:linear-gradient(90deg,#2E5E3A,#5A9E6A);}
+.structurant-fill{background:linear-gradient(90deg,#3D4A5C,#6A7A90);}
+.passeur-fill{background:linear-gradient(90deg,#4A1A6E,#8B4FBA);}
+.score-pct{font-family:'Cinzel',serif;font-size:18px;font-weight:600;color:var(--bleu);}
+
+/* PALETTE */
+.palette-section{margin-bottom:30px;}
+.palette-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--or);margin-bottom:16px;}
+.palette-swatches{display:flex;gap:12px;flex-wrap:wrap;}
+.swatch{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;min-width:70px;}
+.swatch-circle{width:52px;height:52px;border-radius:50%;border:2px solid rgba(255,255,255,0.2);box-shadow:0 4px 12px rgba(0,0,0,0.15);flex-shrink:0;}
+.swatch-nom{font-family:'Cinzel',serif;font-size:10px;letter-spacing:1px;color:var(--texte);text-align:center;line-height:1.3;}
+.swatch-sens{font-size:11px;font-style:italic;color:var(--texte2);text-align:center;line-height:1.4;}
+
+/* PROFIL IA */
+.profil-ia{background:linear-gradient(160deg,var(--vert) 0%,var(--bleu) 60%,var(--violet) 100%);border-radius:20px;padding:40px 36px;color:var(--ivoire);margin-bottom:30px;position:relative;overflow:hidden;}
+.profil-ia h3{font-family:'Cinzel',serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:var(--or-lt);margin-bottom:20px;}
+.profil-ia-content{font-size:17px;line-height:1.9;color:rgba(247,243,236,0.92);}
+.profil-ia-content p{margin-bottom:16px;}
+.profil-ia-content h4{font-family:'Cinzel',serif;font-size:14px;letter-spacing:2px;color:var(--or-lt);text-transform:uppercase;margin:28px 0 12px;}
+.profil-ia-content strong{color:var(--or-lt);font-weight:600;}
+.result-actions{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:36px;}
+.btn-print{padding:14px 32px;border-radius:50px;border:1.5px solid var(--teal);background:transparent;font-family:'Cinzel',serif;font-size:13px;letter-spacing:2px;color:var(--teal);cursor:pointer;transition:all 0.2s;}
+.btn-print:hover{background:var(--teal);color:var(--ivoire);}
+.btn-restart{padding:14px 32px;border-radius:50px;border:none;background:linear-gradient(135deg,var(--or) 0%,var(--or-lt) 100%);font-family:'Cinzel',serif;font-size:13px;letter-spacing:2px;color:var(--bleu);cursor:pointer;font-weight:600;transition:transform 0.2s;}
+.btn-restart:hover{transform:translateY(-2px);}
+.error-box{background:#fff5f5;border:1.5px solid #f0a0a0;border-radius:12px;padding:20px 24px;margin-top:20px;font-size:16px;color:#8b2222;line-height:1.6;}
+.page-footer{text-align:center;padding:40px 24px;font-size:14px;color:var(--texte2);font-style:italic;border-top:1px solid var(--ivoire2);}
+.page-footer strong{color:var(--bleu);font-style:normal;font-family:'Cinzel',serif;font-size:13px;letter-spacing:1px;}
+@media(max-width:600px){.hero{padding:60px 20px 50px;}.familles-grid{grid-template-columns:1fr 1fr;}.nav-btns{flex-direction:column-reverse;}.btn-next,.btn-prev{width:100%;text-align:center;}.result-actions{flex-direction:column;align-items:center;}}
+</style>
 </head>
 <body>
 
-<!-- ===== HÉRO ===== -->
 <header class="hero">
   <p class="hero-eyebrow">Lara Herbinia · Capteuse de Vivant</p>
   <h1>Capte ta Lumière</h1>
@@ -928,81 +145,37 @@
   <a href="#questionnaire" class="hero-cta">Commencer le voyage ↓</a>
 </header>
 
-<!-- ===== PRÉSENTATION FAMILLES ===== -->
 <section class="section">
   <h2 class="section-title">Les quatre Familles d'Âmes</h2>
   <p class="section-subtitle">Chaque être porte en lui une couleur profonde. Laquelle est la tienne&nbsp;?</p>
-
   <div class="familles-grid">
-    <div class="famille-card batisseur">
-      <span class="famille-icon">🌿</span>
-      <div class="famille-nom">Le Bâtisseur</div>
-      <div class="famille-corps">Corps physique · Instinct</div>
-      <p class="famille-desc">Ancré dans la matière, il crée, construit, manifeste. Sa force est dans l'action concrète et la présence totale.</p>
-    </div>
-    <div class="famille-card artisan">
-      <span class="famille-icon">🕊️</span>
-      <div class="famille-nom">L'Artisan de la Paix</div>
-      <div class="famille-corps">Corps émotionnel · Empathie</div>
-      <p class="famille-desc">Gardien des liens, il ressent tout, comprend tous. Sa force est dans l'harmonie et la douceur désarmante.</p>
-    </div>
-    <div class="famille-card structurant">
-      <span class="famille-icon">✨</span>
-      <div class="famille-nom">Le Structurant</div>
-      <div class="famille-corps">Corps mental · Intuition</div>
-      <p class="famille-desc">Architecte du sens, il organise, analyse, illumine. Sa force est dans la clarté qu'il apporte au chaos.</p>
-    </div>
-    <div class="famille-card passeur">
-      <span class="famille-icon">🔥</span>
-      <div class="famille-nom">Le Passeur</div>
-      <div class="famille-corps">Corps spirituel · Connexion subtile</div>
-      <p class="famille-desc">Pont entre les mondes, il perçoit l'invisible et guide les âmes. Sa force est dans la transmission.</p>
-    </div>
+    <div class="famille-card batisseur"><span class="famille-icon">🌿</span><div class="famille-nom">Le Bâtisseur</div><div class="famille-corps">Corps physique · Instinct</div><p class="famille-desc">Ancré dans la matière, il crée, construit, manifeste. Sa force est dans l'action concrète et la présence totale.</p></div>
+    <div class="famille-card artisan"><span class="famille-icon">🕊️</span><div class="famille-nom">L'Artisan de la Paix</div><div class="famille-corps">Corps émotionnel · Empathie</div><p class="famille-desc">Gardien des liens, il ressent tout, comprend tous. Sa force est dans l'harmonie et la douceur désarmante.</p></div>
+    <div class="famille-card structurant"><span class="famille-icon">✨</span><div class="famille-nom">Le Structurant</div><div class="famille-corps">Corps mental · Intuition</div><p class="famille-desc">Architecte du sens, il organise, analyse, illumine. Sa force est dans la clarté qu'il apporte au chaos.</p></div>
+    <div class="famille-card passeur"><span class="famille-icon">🔥</span><div class="famille-nom">Le Passeur</div><div class="famille-corps">Corps spirituel · Connexion subtile</div><p class="famille-desc">Pont entre les mondes, il perçoit l'invisible et guide les âmes. Sa force est dans la transmission.</p></div>
   </div>
 </section>
 
-<div class="sep">
-  <div class="sep-line">Basé sur le travail de Diane LeBlanc</div>
-</div>
+<div class="sep"><div class="sep-line">Basé sur le travail de Diane LeBlanc</div></div>
 
-<!-- ===== QUESTIONNAIRE ===== -->
 <section id="questionnaire">
   <div class="quiz-wrap">
-
     <div class="prog-container" id="prog-container">
-      <div class="prog-top">
-        <span class="prog-label" id="prog-label">Bienvenue</span>
-        <span class="prog-count" id="prog-count"></span>
-      </div>
+      <div class="prog-top"><span class="prog-label" id="prog-label">Bienvenue</span><span class="prog-count" id="prog-count"></span></div>
       <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
     </div>
 
-    <!-- ÉCRAN 0 : BIENVENUE -->
     <div class="screen active" id="s-welcome">
       <h2 class="welcome-title">Bienvenue dans ton voyage intérieur</h2>
       <p class="welcome-text">Ce questionnaire va révéler ta Famille d'Âme — cette couleur profonde qui définit qui tu es, comment tu vis, et ce dont tu as besoin pour rayonner pleinement.<br><br>Réponds avec sincérité. Il n'y a pas de bonne ou de mauvaise réponse — seulement la tienne.</p>
-      <div class="field">
-        <label for="prenom">Ton prénom</label>
-        <input type="text" id="prenom" placeholder="Comment t'appelles-tu ?" />
-      </div>
-      <div class="field">
-        <label for="nom">Ton nom</label>
-        <input type="text" id="nom" placeholder="Ton nom de famille" />
-      </div>
-      <div class="field">
-        <label for="description">En quelques mots, qui es-tu ?</label>
-        <textarea id="description" rows="3" placeholder="Maman, artiste, chercheuse d'âme... À toi de choisir."></textarea>
-      </div>
-      <div class="nav-btns">
-        <span></span>
-        <button class="btn-next" onclick="startQuiz()">Suivant →</button>
-      </div>
+      <div class="field"><label for="prenom">Ton prénom</label><input type="text" id="prenom" placeholder="Comment t'appelles-tu ?"/></div>
+      <div class="field"><label for="nom">Ton nom</label><input type="text" id="nom" placeholder="Ton nom de famille"/></div>
+      <div class="field"><label for="description">En quelques mots, qui es-tu ?</label><textarea id="description" rows="3" placeholder="Maman, artiste, chercheuse d'âme... À toi de choisir."></textarea></div>
+      <div class="nav-btns"><span></span><button class="btn-next" onclick="startQuiz()">Suivant →</button></div>
     </div>
 
-    <!-- ÉCRANS QUESTIONS (générés en JS) -->
     <div id="questions-container"></div>
 
-    <!-- ÉCRAN LOADING -->
     <div class="screen" id="s-loading">
       <div class="loading-screen">
         <div class="loading-orb"></div>
@@ -1012,179 +185,58 @@
       </div>
     </div>
 
-    <!-- ÉCRAN RÉSULTATS -->
     <div class="screen" id="s-results">
       <div class="result-header">
         <p class="result-prenom" id="res-prenom"></p>
         <h2 class="result-title" id="res-title"></h2>
         <div class="result-famille-badge" id="res-badge"></div>
       </div>
-
       <div class="scores" id="res-scores"></div>
-
       <div class="palette-section">
         <p class="palette-title">🎨 Tes couleurs d'âme</p>
         <div class="palette-swatches" id="res-palette"></div>
       </div>
-
       <div class="profil-ia">
         <h3>✦ Ton profil personnalisé</h3>
         <div class="profil-ia-content" id="res-profil"></div>
       </div>
-
       <div class="result-actions">
-        <button class="btn-print" onclick="preparerEtImprimer()">Imprimer mon profil</button>
+        <button class="btn-print" onclick="ouvrirImpression()">Imprimer mon profil</button>
         <button class="btn-restart" onclick="restart()">Recommencer</button>
       </div>
     </div>
-
   </div>
 </section>
 
-<!-- ===== DOCUMENT IMPRIMABLE (caché, généré dynamiquement) ===== -->
-<div id="print-document"></div>
-
-<!-- ===== FOOTER ===== -->
 <footer class="page-footer">
-  <strong>Lara Herbinia — Capteuse de Vivant</strong><br>
-  Basé sur le travail de Diane LeBlanc
+  <strong>Lara Herbinia — Capteuse de Vivant</strong><br>Basé sur le travail de Diane LeBlanc
 </footer>
 
 <script>
-// ============================================================
-// ⚠️  REMPLACE ICI TA CLÉ API ANTHROPIC
-// ============================================================
-// Clé API gérée côté serveur
-// ============================================================
+emailjs.init("L7WqBkdaWiArMpRu9");
 
-// Données familles
 const FAMILLES = {
-  batisseur:   { nom: "Le Bâtisseur",        emoji: "🌿", couleur: "badge-batisseur",   fill: "batisseur-fill",
-    palette: [
-      { hex: "#8B2E1A", nom: "Rouge brique",   sens: "Feu intérieur & action" },
-      { hex: "#C0522E", nom: "Rouille chaude", sens: "Ancrage & vitalité" },
-      { hex: "#8B6914", nom: "Ocre doré",      sens: "Abondance & création" },
-      { hex: "#5C3D1E", nom: "Terre brune",    sens: "Enracinement profond" }
-    ]
-  },
-  artisan:     { nom: "L'Artisan de la Paix", emoji: "🕊️", couleur: "badge-artisan",    fill: "artisan-fill",
-    palette: [
-      { hex: "#2E5E3A", nom: "Vert sauge",     sens: "Harmonie & guérison" },
-      { hex: "#5A9E6A", nom: "Vert menthe",    sens: "Douceur & croissance" },
-      { hex: "#C9A4B0", nom: "Rose poudré",    sens: "Amour inconditionnel" },
-      { hex: "#7AB8C8", nom: "Bleu ciel",      sens: "Fluidité émotionnelle" }
-    ]
-  },
-  structurant: { nom: "Le Structurant",       emoji: "✨", couleur: "badge-structurant", fill: "structurant-fill",
-    palette: [
-      { hex: "#3D4A5C", nom: "Gris ardoise",   sens: "Clarté mentale & profondeur" },
-      { hex: "#6A7A90", nom: "Bleu acier",     sens: "Précision & intuition" },
-      { hex: "#A8B4C0", nom: "Argent doux",    sens: "Intelligence & lumière" },
-      { hex: "#F0F0F0", nom: "Blanc pur",      sens: "Espace & clarté absolue" }
-    ]
-  },
-  passeur:     { nom: "Le Passeur",           emoji: "🔥", couleur: "badge-passeur",     fill: "passeur-fill",
-    palette: [
-      { hex: "#4A1A6E", nom: "Violet profond", sens: "Connexion spirituelle" },
-      { hex: "#8B4FBA", nom: "Pourpre",        sens: "Mystère & transformation" },
-      { hex: "#1A1A2E", nom: "Bleu nuit",      sens: "Entre les mondes" },
-      { hex: "#C9922A", nom: "Or subtil",      sens: "Lumière intérieure" }
-    ]
-  }
+  batisseur: { nom:"Le Bâtisseur", emoji:"🌿", couleur:"badge-batisseur", fill:"batisseur-fill",
+    palette:[{hex:"#8B2E1A",nom:"Rouge brique",sens:"Feu intérieur & action"},{hex:"#C0522E",nom:"Rouille chaude",sens:"Ancrage & vitalité"},{hex:"#8B6914",nom:"Ocre doré",sens:"Abondance & création"},{hex:"#5C3D1E",nom:"Terre brune",sens:"Enracinement profond"}]},
+  artisan: { nom:"L'Artisan de la Paix", emoji:"🕊️", couleur:"badge-artisan", fill:"artisan-fill",
+    palette:[{hex:"#2E5E3A",nom:"Vert sauge",sens:"Harmonie & guérison"},{hex:"#5A9E6A",nom:"Vert menthe",sens:"Douceur & croissance"},{hex:"#C9A4B0",nom:"Rose poudré",sens:"Amour inconditionnel"},{hex:"#7AB8C8",nom:"Bleu ciel",sens:"Fluidité émotionnelle"}]},
+  structurant: { nom:"Le Structurant", emoji:"✨", couleur:"badge-structurant", fill:"structurant-fill",
+    palette:[{hex:"#3D4A5C",nom:"Gris ardoise",sens:"Clarté mentale"},{hex:"#6A7A90",nom:"Bleu acier",sens:"Précision & intuition"},{hex:"#A8B4C0",nom:"Argent doux",sens:"Intelligence & lumière"},{hex:"#F0F0F0",nom:"Blanc pur",sens:"Espace & clarté absolue"}]},
+  passeur: { nom:"Le Passeur", emoji:"🔥", couleur:"badge-passeur", fill:"passeur-fill",
+    palette:[{hex:"#4A1A6E",nom:"Violet profond",sens:"Connexion spirituelle"},{hex:"#8B4FBA",nom:"Pourpre",sens:"Mystère & transformation"},{hex:"#1A1A2E",nom:"Bleu nuit",sens:"Entre les mondes"},{hex:"#C9922A",nom:"Or subtil",sens:"Lumière intérieure"}]}
 };
 
-// Questions à choix multiples (B=Bâtisseur, A=Artisan, S=Structurant, P=Passeur)
 const QCM = [
-  {
-    q: "Il est 7h du matin, journée chargée. Comment tu démarres ?",
-    choices: [
-      { text: "Je me lève, je bouge, je prépare — le corps en route avant tout.", f: "batisseur" },
-      { text: "Je prends soin des autres d'abord : les enfants, le café partagé, les petits mots.", f: "artisan" },
-      { text: "Je note ma to-do, je planifie mentalement, je structure la journée.", f: "structurant" },
-      { text: "J'ai besoin d'un moment de silence, seul(e), avant de rejoindre le monde.", f: "passeur" }
-    ]
-  },
-  {
-    q: "Un conflit éclate dans ton cercle proche. Quel est ton premier réflexe ?",
-    choices: [
-      { text: "Je propose une solution concrète pour régler le problème.", f: "batisseur" },
-      { text: "J'essaie de comprendre chaque partie et de ramener la paix.", f: "artisan" },
-      { text: "J'analyse la situation pour comprendre d'où vient le nœud.", f: "structurant" },
-      { text: "Je ressens le malaise avant même qu'il soit exprimé et je me retire.", f: "passeur" }
-    ]
-  },
-  {
-    q: "On te donne une après-midi entière, libre, sans obligation. Qu'est-ce que tu fais ?",
-    choices: [
-      { text: "Je crée, je bricole, je jardine — quelque chose de concret avec mes mains.", f: "batisseur" },
-      { text: "Je passe du temps de qualité avec quelqu'un que j'aime.", f: "artisan" },
-      { text: "Je lis, j'explore une idée qui me trotte en tête depuis un moment.", f: "structurant" },
-      { text: "Je me promène seul(e), je médite, je laisse mon esprit vagabonder.", f: "passeur" }
-    ]
-  },
-  {
-    q: "Dans un projet de groupe, quel rôle prends-tu naturellement ?",
-    choices: [
-      { text: "Celui qui avance, qui produit, qui fait avancer les choses.", f: "batisseur" },
-      { text: "Celui qui fait attention à ce que chacun se sente bien et inclus.", f: "artisan" },
-      { text: "Celui qui organise, structure et clarifie les objectifs.", f: "structurant" },
-      { text: "Celui qui voit les choses sous un angle différent et inspire les autres.", f: "passeur" }
-    ]
-  },
-  {
-    q: "Tu traverses une période difficile. Ce qui t'aide vraiment, c'est :",
-    choices: [
-      { text: "Passer à l'action — faire quelque chose, même petit, pour avancer.", f: "batisseur" },
-      { text: "Être entouré(e), parler, sentir que tu n'es pas seul(e).", f: "artisan" },
-      { text: "Comprendre ce qui se passe pour mieux le traverser.", f: "structurant" },
-      { text: "Te retirer dans ton monde intérieur, méditer, chercher le sens.", f: "passeur" }
-    ]
-  },
-  {
-    q: "Ce qui t'épuise profondément, c'est :",
-    choices: [
-      { text: "L'inaction, l'attente, les projets qui n'avancent jamais.", f: "batisseur" },
-      { text: "Les tensions non résolues, les malentendus, les conflits latents.", f: "artisan" },
-      { text: "Le manque de clarté, le chaos désorganisé, les décisions sans logique.", f: "structurant" },
-      { text: "Le bruit constant, les environnements lourds énergétiquement, le manque de sens.", f: "passeur" }
-    ]
-  },
-  {
-    q: "Quand tu aimes quelqu'un, comment tu le montres ?",
-    choices: [
-      { text: "En faisant des choses pour lui — réparer, préparer, m'occuper du concret.", f: "batisseur" },
-      { text: "En étant pleinement présent(e), à l'écoute, en prenant soin.", f: "artisan" },
-      { text: "En partageant mes pensées, en construisant des projets ensemble.", f: "structurant" },
-      { text: "En créant un espace de connexion profonde, de compréhension silencieuse.", f: "passeur" }
-    ]
-  },
-  {
-    q: "Face à une grande décision, ton processus ressemble à quoi ?",
-    choices: [
-      { text: "Je teste, j'essaie, j'apprends en faisant.", f: "batisseur" },
-      { text: "Je ressens. Si ça me semble juste pour tout le monde, j'y vais.", f: "artisan" },
-      { text: "Je liste les pour et les contre, je cherche l'information, j'analyse.", f: "structurant" },
-      { text: "Je laisse venir. L'intuition finit toujours par parler.", f: "passeur" }
-    ]
-  },
-  {
-    q: "Le projet de ta vie, c'est :",
-    choices: [
-      { text: "Construire quelque chose de durable, de tangible, qui restera.", f: "batisseur" },
-      { text: "Créer un environnement de paix, de beauté, de lien pour ceux que j'aime.", f: "artisan" },
-      { text: "Comprendre, transmettre, laisser une trace de pensée dans le monde.", f: "structurant" },
-      { text: "Évoluer, me transformer, et aider les autres à faire de même.", f: "passeur" }
-    ]
-  },
-  {
-    q: "Dans ta vie, tu te reconnais le plus dans cette phrase :",
-    choices: [
-      { text: "\"Je fais, donc je suis.\"", f: "batisseur" },
-      { text: "\"Je relie, je prends soin, j'harmonise.\"", f: "artisan" },
-      { text: "\"Je comprends le monde pour mieux l'habiter.\"", f: "structurant" },
-      { text: "\"Je suis en chemin, toujours en chemin.\"", f: "passeur" }
-    ]
-  }
+  {q:"Il est 7h du matin, journée chargée. Comment tu démarres ?",choices:[{text:"Je me lève, je bouge, je prépare — le corps en route avant tout.",f:"batisseur"},{text:"Je prends soin des autres d'abord : les enfants, le café partagé, les petits mots.",f:"artisan"},{text:"Je note ma to-do, je planifie mentalement, je structure la journée.",f:"structurant"},{text:"J'ai besoin d'un moment de silence, seul(e), avant de rejoindre le monde.",f:"passeur"}]},
+  {q:"Un conflit éclate dans ton cercle proche. Quel est ton premier réflexe ?",choices:[{text:"Je propose une solution concrète pour régler le problème.",f:"batisseur"},{text:"J'essaie de comprendre chaque partie et de ramener la paix.",f:"artisan"},{text:"J'analyse la situation pour comprendre d'où vient le nœud.",f:"structurant"},{text:"Je ressens le malaise avant même qu'il soit exprimé et je me retire.",f:"passeur"}]},
+  {q:"On te donne une après-midi entière, libre, sans obligation. Qu'est-ce que tu fais ?",choices:[{text:"Je crée, je bricole, je jardine — quelque chose de concret avec mes mains.",f:"batisseur"},{text:"Je passe du temps de qualité avec quelqu'un que j'aime.",f:"artisan"},{text:"Je lis, j'explore une idée qui me trotte en tête depuis un moment.",f:"structurant"},{text:"Je me promène seul(e), je médite, je laisse mon esprit vagabonder.",f:"passeur"}]},
+  {q:"Dans un projet de groupe, quel rôle prends-tu naturellement ?",choices:[{text:"Celui qui avance, qui produit, qui fait avancer les choses.",f:"batisseur"},{text:"Celui qui fait attention à ce que chacun se sente bien et inclus.",f:"artisan"},{text:"Celui qui organise, structure et clarifie les objectifs.",f:"structurant"},{text:"Celui qui voit les choses sous un angle différent et inspire les autres.",f:"passeur"}]},
+  {q:"Tu traverses une période difficile. Ce qui t'aide vraiment, c'est :",choices:[{text:"Passer à l'action — faire quelque chose, même petit, pour avancer.",f:"batisseur"},{text:"Être entouré(e), parler, sentir que tu n'es pas seul(e).",f:"artisan"},{text:"Comprendre ce qui se passe pour mieux le traverser.",f:"structurant"},{text:"Te retirer dans ton monde intérieur, méditer, chercher le sens.",f:"passeur"}]},
+  {q:"Ce qui t'épuise profondément, c'est :",choices:[{text:"L'inaction, l'attente, les projets qui n'avancent jamais.",f:"batisseur"},{text:"Les tensions non résolues, les malentendus, les conflits latents.",f:"artisan"},{text:"Le manque de clarté, le chaos désorganisé, les décisions sans logique.",f:"structurant"},{text:"Le bruit constant, les environnements lourds énergétiquement, le manque de sens.",f:"passeur"}]},
+  {q:"Quand tu aimes quelqu'un, comment tu le montres ?",choices:[{text:"En faisant des choses pour lui — réparer, préparer, m'occuper du concret.",f:"batisseur"},{text:"En étant pleinement présent(e), à l'écoute, en prenant soin.",f:"artisan"},{text:"En partageant mes pensées, en construisant des projets ensemble.",f:"structurant"},{text:"En créant un espace de connexion profonde, de compréhension silencieuse.",f:"passeur"}]},
+  {q:"Face à une grande décision, ton processus ressemble à quoi ?",choices:[{text:"Je teste, j'essaie, j'apprends en faisant.",f:"batisseur"},{text:"Je ressens. Si ça me semble juste pour tout le monde, j'y vais.",f:"artisan"},{text:"Je liste les pour et les contre, je cherche l'information, j'analyse.",f:"structurant"},{text:"Je laisse venir. L'intuition finit toujours par parler.",f:"passeur"}]},
+  {q:"Le projet de ta vie, c'est :",choices:[{text:"Construire quelque chose de durable, de tangible, qui restera.",f:"batisseur"},{text:"Créer un environnement de paix, de beauté, de lien pour ceux que j'aime.",f:"artisan"},{text:"Comprendre, transmettre, laisser une trace de pensée dans le monde.",f:"structurant"},{text:"Évoluer, me transformer, et aider les autres à faire de même.",f:"passeur"}]},
+  {q:"Dans ta vie, tu te reconnais le plus dans cette phrase :",choices:[{text:"\"Je fais, donc je suis.\"",f:"batisseur"},{text:"\"Je relie, je prends soin, j'harmonise.\"",f:"artisan"},{text:"\"Je comprends le monde pour mieux l'habiter.\"",f:"structurant"},{text:"\"Je suis en chemin, toujours en chemin.\"",f:"passeur"}]}
 ];
 
 const OUVERTES = [
@@ -1193,92 +245,55 @@ const OUVERTES = [
   "Si tu pouvais changer une seule chose dans ton quotidien pour te sentir plus aligné(e), ce serait quoi ?"
 ];
 
-// État
 let currentQ = 0;
-let scores = { batisseur: 0, artisan: 0, structurant: 0, passeur: 0 };
+let scores = {batisseur:0,artisan:0,structurant:0,passeur:0};
 let reponsesQCM = {};
 let reponsesOuvertes = {};
 let prenomUser = "";
 let nomUser = "";
 let descriptionUser = "";
+let lastDominant = "";
+let lastPcts = {};
 
 function buildQuestions() {
   const container = document.getElementById("questions-container");
   container.innerHTML = "";
-
-  // Questions QCM
-  QCM.forEach((q, i) => {
-    const letters = ["A", "B", "C", "D"];
-    // Mélanger les choix
-    const shuffled = [...q.choices].sort(() => Math.random() - 0.5);
-    const choicesHtml = shuffled.map((c, j) => `
-      <button class="choice-btn" onclick="selectChoice(${i}, '${c.f}', this)" data-famille="${c.f}">
-        <span class="choice-letter">${letters[j]}</span>
-        <span>${c.text}</span>
-      </button>
-    `).join("");
-
+  const letters = ["A","B","C","D"];
+  QCM.forEach(function(q, i) {
+    const shuffled = q.choices.slice().sort(function(){return Math.random()-0.5;});
+    const choicesHtml = shuffled.map(function(c,j){
+      return '<button class="choice-btn" onclick="selectChoice('+i+',\''+c.f+'\',this)" data-famille="'+c.f+'"><span class="choice-letter">'+letters[j]+'</span><span>'+c.text+'</span></button>';
+    }).join("");
     const div = document.createElement("div");
     div.className = "screen";
-    div.id = `s-q${i}`;
-    div.innerHTML = `
-      <p class="question-eyebrow">Question ${i + 1} sur ${QCM.length}</p>
-      <p class="question-text">${q.q}</p>
-      <div class="choices">${choicesHtml}</div>
-      <div class="nav-btns">
-        <button class="btn-prev" onclick="prevScreen()">← Précédente</button>
-        <button class="btn-next" id="btn-next-q${i}" onclick="nextScreen()" disabled>Suivante →</button>
-      </div>
-    `;
+    div.id = "s-q"+i;
+    div.innerHTML = '<p class="question-eyebrow">Question '+(i+1)+' sur '+(QCM.length+OUVERTES.length)+'</p><p class="question-text">'+q.q+'</p><div class="choices">'+choicesHtml+'</div><div class="nav-btns"><button class="btn-prev" onclick="prevScreen()">← Précédente</button><button class="btn-next" id="btn-next-q'+i+'" onclick="nextScreen()" disabled>Suivante →</button></div>';
     container.appendChild(div);
   });
-
-  // Questions ouvertes
-  OUVERTES.forEach((q, i) => {
-    const idx = QCM.length + i;
-    const isLast = i === OUVERTES.length - 1;
+  OUVERTES.forEach(function(q,i){
+    const idx = QCM.length+i;
+    const isLast = i===OUVERTES.length-1;
     const div = document.createElement("div");
     div.className = "screen open-question";
-    div.id = `s-q${idx}`;
-    div.innerHTML = `
-      <p class="question-eyebrow">Question ouverte ${i + 1} sur ${OUVERTES.length}</p>
-      <p class="question-text">${q}</p>
-      <div class="field">
-        <textarea id="open${i}" rows="5" placeholder="Prends le temps d'y répondre avec sincérité…"
-          oninput="updateOpenBtn(${i}, ${idx})" style="font-size:17px;"></textarea>
-      </div>
-      <div class="nav-btns">
-        <button class="btn-prev" onclick="prevScreen()">← Précédente</button>
-        <button class="btn-next" id="btn-next-open${i}" onclick="${isLast ? 'submitQuiz()' : 'nextScreen()'}" disabled>
-          ${isLast ? 'Révèle ma lumière ✦' : 'Suivante →'}
-        </button>
-      </div>
-    `;
+    div.id = "s-q"+idx;
+    div.innerHTML = '<p class="question-eyebrow">Question ouverte '+(i+1)+' sur '+OUVERTES.length+'</p><p class="question-text">'+q+'</p><div class="field"><textarea id="open'+i+'" rows="5" placeholder="Prends le temps d\'y répondre avec sincérité…" oninput="updateOpenBtn('+i+','+idx+')" style="font-size:17px;"></textarea></div><div class="nav-btns"><button class="btn-prev" onclick="prevScreen()">← Précédente</button><button class="btn-next" id="btn-next-open'+i+'" onclick="'+(isLast?'submitQuiz()':'nextScreen()')+'" disabled>'+(isLast?'Révèle ma lumière ✦':'Suivante →')+'</button></div>';
     container.appendChild(div);
   });
 }
 
-const TOTAL_SCREENS = QCM.length + OUVERTES.length;
+const TOTAL = QCM.length + OUVERTES.length;
 
 function showScreen(id) {
-  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("active");});
   document.getElementById(id).classList.add("active");
-  window.scrollTo({ top: document.getElementById("questionnaire").offsetTop - 20, behavior: "smooth" });
+  window.scrollTo({top:document.getElementById("questionnaire").offsetTop-20,behavior:"smooth"});
 }
 
 function updateProgress(step) {
-  const pct = Math.round((step / (TOTAL_SCREENS + 1)) * 100);
-  document.getElementById("prog-fill").style.width = pct + "%";
-  if (step === 0) {
-    document.getElementById("prog-label").textContent = "Bienvenue";
-    document.getElementById("prog-count").textContent = "";
-  } else if (step <= QCM.length) {
-    document.getElementById("prog-label").textContent = "Questions";
-    document.getElementById("prog-count").textContent = `${step} / ${QCM.length + OUVERTES.length}`;
-  } else if (step <= TOTAL_SCREENS) {
-    document.getElementById("prog-label").textContent = "Questions ouvertes";
-    document.getElementById("prog-count").textContent = `${step} / ${TOTAL_SCREENS}`;
-  }
+  const pct = Math.round((step/(TOTAL+1))*100);
+  document.getElementById("prog-fill").style.width = pct+"%";
+  if(step===0){document.getElementById("prog-label").textContent="Bienvenue";document.getElementById("prog-count").textContent="";}
+  else{document.getElementById("prog-label").textContent="Questions";document.getElementById("prog-count").textContent=step+" / "+TOTAL;}
 }
 
 function startQuiz() {
@@ -1287,7 +302,7 @@ function startQuiz() {
   descriptionUser = document.getElementById("description").value.trim();
   buildQuestions();
   currentQ = 0;
-  scores = { batisseur: 0, artisan: 0, structurant: 0, passeur: 0 };
+  scores = {batisseur:0,artisan:0,structurant:0,passeur:0};
   reponsesQCM = {};
   reponsesOuvertes = {};
   showScreen("s-q0");
@@ -1295,206 +310,105 @@ function startQuiz() {
 }
 
 function selectChoice(qIdx, famille, btn) {
-  const screen = document.getElementById(`s-q${qIdx}`);
-  screen.querySelectorAll(".choice-btn").forEach(b => b.classList.remove("selected"));
+  const screen = document.getElementById("s-q"+qIdx);
+  screen.querySelectorAll(".choice-btn").forEach(function(b){b.classList.remove("selected");});
   btn.classList.add("selected");
   reponsesQCM[qIdx] = famille;
-  document.getElementById(`btn-next-q${qIdx}`).disabled = false;
+  document.getElementById("btn-next-q"+qIdx).disabled = false;
 }
 
 function updateOpenBtn(openIdx, screenIdx) {
-  const val = document.getElementById(`open${openIdx}`).value.trim();
+  const val = document.getElementById("open"+openIdx).value.trim();
   reponsesOuvertes[openIdx] = val;
-  document.getElementById(`btn-next-open${openIdx}`).disabled = val.length < 5;
+  document.getElementById("btn-next-open"+openIdx).disabled = val.length < 5;
 }
 
 function nextScreen() {
   currentQ++;
-  if (currentQ < TOTAL_SCREENS) {
-    showScreen(`s-q${currentQ}`);
-    updateProgress(currentQ + 1);
-  }
+  if(currentQ < TOTAL){showScreen("s-q"+currentQ);updateProgress(currentQ+1);}
 }
 
 function prevScreen() {
-  if (currentQ > 0) {
-    currentQ--;
-    showScreen(`s-q${currentQ}`);
-    updateProgress(currentQ + 1);
-  } else {
-    showScreen("s-welcome");
-    updateProgress(0);
-  }
+  if(currentQ > 0){currentQ--;showScreen("s-q"+currentQ);updateProgress(currentQ+1);}
+  else{showScreen("s-welcome");updateProgress(0);}
 }
 
-let lastScores = {};
-let lastPcts = {};
-
 async function submitQuiz() {
-  // Calcul scores
-  scores = { batisseur: 0, artisan: 0, structurant: 0, passeur: 0 };
-  Object.values(reponsesQCM).forEach(f => { if (scores[f] !== undefined) scores[f]++; });
-  const total = Object.values(scores).reduce((a, b) => a + b, 0);
+  scores = {batisseur:0,artisan:0,structurant:0,passeur:0};
+  Object.values(reponsesQCM).forEach(function(f){if(scores[f]!==undefined)scores[f]++;});
+  const total = Object.values(scores).reduce(function(a,b){return a+b;},0);
   const pcts = {};
-  Object.keys(scores).forEach(k => pcts[k] = Math.round((scores[k] / total) * 100));
-  lastScores = scores;
+  Object.keys(scores).forEach(function(k){pcts[k]=Math.round((scores[k]/total)*100);});
   lastPcts = pcts;
-
-  // Dominant
-  const dominant = Object.keys(scores).reduce((a, b) => scores[a] >= scores[b] ? a : b);
-
-  // Afficher loading
+  const dominant = Object.keys(scores).reduce(function(a,b){return scores[a]>=scores[b]?a:b;});
+  lastDominant = dominant;
   showScreen("s-loading");
   document.getElementById("prog-fill").style.width = "90%";
-  document.getElementById("prog-label").textContent = "Génération du profil";
-  document.getElementById("prog-count").textContent = "";
-
   try {
     const profil = await genererProfilIA(prenomUser, descriptionUser, dominant, pcts, reponsesOuvertes);
-    afficherResultats(prenomUser, dominant, pcts, profil);
-  } catch (e) {
+    afficherResultats(prenomUser, dominant, pcts, profil, null);
+  } catch(e) {
     afficherResultats(prenomUser, dominant, pcts, null, e.message);
   }
 }
 
 async function genererProfilIA(prenom, desc, dominant, pcts, ouvertes) {
-  const famDesc = {
-    batisseur: "ancré dans le corps physique, guidé par l'instinct, crée et manifeste dans la matière",
-    artisan: "ancré dans le corps émotionnel, guidé par l'empathie, relie et prend soin",
-    structurant: "ancré dans le corps mental, guidé par l'intuition, clarifie et organise",
-    passeur: "ancré dans le corps spirituel, guidé par la connexion subtile, transmet et éveille"
-  };
-
-  const prompt = `Tu es un guide bienveillant spécialisé dans les Familles d'Âmes selon le travail de Diane LeBlanc.
-
-${prenom} vient de compléter le questionnaire "Capte ta Lumière". Voici ses résultats :
-
-**Prénom :** ${prenom}
-**Se décrit comme :** ${desc || "n'a pas renseigné"}
-
-**Résultats :**
-- Bâtisseur : ${pcts.batisseur}%
-- Artisan de la Paix : ${pcts.artisan}%
-- Structurant : ${pcts.structurant}%
-- Passeur : ${pcts.passeur}%
-
-**Famille dominante :** ${FAMILLES[dominant].nom} (${famDesc[dominant]})
-
-**Réponses ouvertes :**
-1. Ce qui lui donne de l'énergie le matin : "${ouvertes[0] || 'non renseigné'}"
-2. Ce dont il/elle est le/la plus fier(e) : "${ouvertes[1] || 'non renseigné'}"
-3. Ce qu'il/elle changerait pour s'aligner : "${ouvertes[2] || 'non renseigné'}"
-
-Écris un profil personnalisé et profond pour ${prenom}, en français, structuré ainsi :
-
-**Ton essence** (2-3 phrases qui décrivent qui est vraiment ${prenom}, avec chaleur et précision)
-
-**Tes forces** (3 forces spécifiques, formulées comme des affirmations positives et concrètes)
-
-**Ton attention** (1-2 zones d'ombre ou tendances à observer avec bienveillance)
-
-**Ton Miracle Morning** (un rituel matinal de 3 pratiques adaptées à sa famille dominante ET à ce qu'il/elle a partagé dans ses réponses ouvertes — sois spécifique et inspirant)
-
-**Ton Miracle Evening** (un rituel du soir de 2-3 pratiques pour clôturer la journée en alignement)
-
-**Ton mantra** (une phrase courte, puissante, qui lui appartient)
-
-Ton ton est chaleureux, profond, comme une amie qui voit vraiment l'âme de ${prenom}. Pas de jargon ésotérique lourd. Parle directement à ${prenom} (tu/toi).`;
-
+  const famDesc = {batisseur:"ancré dans le corps physique, guidé par l'instinct, crée et manifeste dans la matière",artisan:"ancré dans le corps émotionnel, guidé par l'empathie, relie et prend soin",structurant:"ancré dans le corps mental, guidé par l'intuition, clarifie et organise",passeur:"ancré dans le corps spirituel, guidé par la connexion subtile, transmet et éveille"};
+  const prompt = "Tu es un guide bienveillant spécialisé dans les Familles d'Âmes selon le travail de Diane LeBlanc.\n\n"+prenom+" vient de compléter le questionnaire \"Capte ta Lumière\".\n\nRésultats :\n- Bâtisseur : "+pcts.batisseur+"%\n- Artisan de la Paix : "+pcts.artisan+"%\n- Structurant : "+pcts.structurant+"%\n- Passeur : "+pcts.passeur+"%\n\nFamille dominante : "+FAMILLES[dominant].nom+" ("+famDesc[dominant]+")\n\nSe décrit comme : "+(desc||"non renseigné")+"\n\nRéponses ouvertes :\n1. \""+( ouvertes[0]||"non renseigné")+"\" \n2. \""+(ouvertes[1]||"non renseigné")+"\" \n3. \""+(ouvertes[2]||"non renseigné")+"\"\n\nÉcris un profil personnalisé et profond pour "+prenom+", en français, structuré ainsi :\n\n**Ton essence** (2-3 phrases)\n\n**Tes forces** (3 forces concrètes)\n\n**Ton attention** (1-2 zones d'ombre)\n\n**Ton Miracle Morning** (3 pratiques adaptées)\n\n**Ton Miracle Evening** (2-3 pratiques)\n\n**Ton mantra** (une phrase courte et puissante)\n\nTon ton est chaleureux, profond. Parle directement à "+prenom+" (tu/toi).";
   const response = await fetch("/.netlify/functions/claude", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      messages: [{ role: "user", content: prompt }]
-    })
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({messages:[{role:"user",content:prompt}]})
   });
-
-  if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error?.message || `Erreur API (${response.status})`);
-  }
-
+  if(!response.ok){const err=await response.json();throw new Error(err.error?.message||"Erreur API ("+response.status+")");}
   const data = await response.json();
-  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-  if (!data.content || !data.content[0]) throw new Error("Réponse vide de l'IA");
+  if(data.error)throw new Error(data.error.message||JSON.stringify(data.error));
+  if(!data.content||!data.content[0])throw new Error("Réponse vide de l'IA");
   return data.content[0].text;
 }
 
 function afficherResultats(prenom, dominant, pcts, profil, erreur) {
-  // Sauvegarder pour l'impression
-  lastScores = scores;
-  lastPcts = pcts;
   const fam = FAMILLES[dominant];
-
   document.getElementById("res-prenom").textContent = prenom.toUpperCase();
-  document.getElementById("res-title").textContent = `Ta famille d'âme : ${fam.nom}`;
-
+  document.getElementById("res-title").textContent = "Ta famille d'âme : "+fam.nom;
   const badge = document.getElementById("res-badge");
-  badge.textContent = fam.emoji + " " + fam.nom;
-  badge.className = "result-famille-badge " + fam.couleur;
-
-  // Scores
+  badge.textContent = fam.emoji+" "+fam.nom;
+  badge.className = "result-famille-badge "+fam.couleur;
   const scoresEl = document.getElementById("res-scores");
-  scoresEl.innerHTML = Object.entries(FAMILLES).map(([key, f]) => `
-    <div class="score-card ${key === dominant ? 'dominant' : ''}">
-      <div class="score-nom">${f.nom}</div>
-      <div class="score-bar-bg">
-        <div class="score-bar-fill ${f.fill}" style="width:0%" data-pct="${pcts[key]}"></div>
-      </div>
-      <div class="score-pct">${pcts[key]}%</div>
-    </div>
-  `).join("");
-
-  // Animer les barres
-  requestAnimationFrame(() => {
-    document.querySelectorAll(".score-bar-fill").forEach(b => {
-      b.style.width = b.dataset.pct + "%";
-    });
+  scoresEl.innerHTML = Object.entries(FAMILLES).map(function(entry){
+    const key=entry[0],f=entry[1];
+    return '<div class="score-card '+(key===dominant?'dominant':'')+'"><div class="score-nom">'+f.nom+'</div><div class="score-bar-bg"><div class="score-bar-fill '+f.fill+'" style="width:0%" data-pct="'+pcts[key]+'"></div></div><div class="score-pct">'+pcts[key]+'%</div></div>';
+  }).join("");
+  requestAnimationFrame(function(){
+    document.querySelectorAll(".score-bar-fill").forEach(function(b){b.style.width=b.dataset.pct+"%";});
   });
-
-  // Palette de couleurs
-  const fam2 = FAMILLES[dominant];
-  const paletteContainer = document.getElementById("res-palette");
-  if (paletteContainer && fam2.palette) {
-    paletteContainer.innerHTML = fam2.palette.map(c => `
-      <div class="swatch">
-        <div class="swatch-circle" style="background:${c.hex}"></div>
-        <div class="swatch-nom">${c.nom}</div>
-        <div class="swatch-sens">${c.sens}</div>
-      </div>
-    `).join('');
+  const paletteEl = document.getElementById("res-palette");
+  if(paletteEl && fam.palette){
+    paletteEl.innerHTML = fam.palette.map(function(c){
+      return '<div class="swatch"><div class="swatch-circle" style="background:'+c.hex+'"></div><div class="swatch-nom">'+c.nom+'</div><div class="swatch-sens">'+c.sens+'</div></div>';
+    }).join("");
   }
-
-  // Profil IA
   const profilEl = document.getElementById("res-profil");
-  if (erreur) {
-    profilEl.innerHTML = `<div class="error-box">⚠️ Une erreur est survenue lors de la génération du profil : ${erreur}<br><br>Vérifie que ta clé API est correctement renseignée dans le code.</div>`;
+  if(erreur){
+    profilEl.innerHTML = '<div class="error-box">⚠️ '+erreur+'</div>';
   } else {
-    // Formatter le markdown basique
-    let html = profil
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/^## (.*)/gm, '<h4>$1</h4>')
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/\n/g, '<br>');
-    profilEl.innerHTML = "<p>" + html + "</p>";
+    let html = profil.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/^## (.*)/gm,'<h4>$1</h4>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
+    profilEl.innerHTML = "<p>"+html+"</p>";
   }
-
   showScreen("s-results");
   document.getElementById("prog-fill").style.width = "100%";
   document.getElementById("prog-label").textContent = "Profil révélé ✦";
   document.getElementById("prog-count").textContent = "";
-
-  // Envoi email (après affichage)
-  setTimeout(() => {
+  setTimeout(function(){
     try {
-      const profilTexte = document.getElementById("res-profil")?.innerText || "";
-      emailjs.send("service_ri53d3f", "template_r1e2fcm", {
-        nom_prenom: (nomUser ? nomUser + " " : "") + prenomUser,
-        famille: FAMILLES[dominant].nom,
-        profil: profilTexte
+      const profilTexte = document.getElementById("res-profil").innerText || "";
+      emailjs.send("service_ri53d3f","template_r1e2fcm",{
+        nom_prenom:(nomUser?nomUser+" ":"")+prenomUser,
+        famille:FAMILLES[dominant].nom,
+        profil:profilTexte
       });
-    } catch(e) { console.log("Email non envoyé:", e); }
-  }, 1000);
+    } catch(e){console.log("Email:",e);}
+  },1500);
 }
 
 function restart() {
@@ -1506,82 +420,36 @@ function restart() {
   document.getElementById("description").value = "";
 }
 
-// ===== IMPRESSION STRUCTURÉE A4 =====
-function preparerEtImprimer() {
-  // Lire le contenu directement depuis le DOM affiché
+function ouvrirImpression() {
   const prenomEl = document.getElementById("res-prenom");
-  const titleEl = document.getElementById("res-title");
   const badgeEl = document.getElementById("res-badge");
   const profilEl = document.getElementById("res-profil");
-  const scoresEl = document.getElementById("res-scores");
-
-  if (!prenomEl || !prenomEl.textContent) {
-    alert("Veuillez d'abord compléter le questionnaire !");
-    return;
-  }
-
-  // Ouvrir une nouvelle fenêtre avec le profil formaté
-  const dominant2 = Object.keys(lastScores).length > 0 
-    ? Object.keys(lastScores).reduce((a, b) => lastScores[a] >= lastScores[b] ? a : b)
-    : 'passeur';
-  const fam2 = FAMILLES[dominant2];
-
-  const win = window.open('', '_blank');
-  win.document.write(`<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<title>Mon profil Capte ta Lumière</title>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet">
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Cormorant Garamond', serif; background: white; color: #1C1C1C; padding: 20mm; }
-  @page { margin: 15mm; }
-  h1 { font-family: 'Cinzel', serif; font-size: 28px; color: #1B4D3E; margin-bottom: 6px; }
-  .sub { font-size: 15px; font-style: italic; color: #4A4A4A; margin-bottom: 20px; }
-  .badge { display: inline-block; padding: 8px 20px; border-radius: 50px; font-family: 'Cinzel', serif; font-size: 13px; font-weight: 600; margin-bottom: 24px; background: #1B4D3E; color: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .scores { display: flex; gap: 12px; margin-bottom: 28px; }
-  .score-card { flex: 1; border: 1px solid #EDE6D6; border-radius: 8px; padding: 12px; text-align: center; }
-  .score-nom { font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #4A4A4A; margin-bottom: 8px; }
-  .score-bar-bg { height: 5px; background: #EDE6D6; border-radius: 3px; margin-bottom: 6px; }
-  .score-bar-fill { height: 100%; border-radius: 3px; background: #2A7F6F; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .score-pct { font-family: 'Cinzel', serif; font-size: 16px; font-weight: 600; color: #1A3A5C; }
-  .sep { font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #C9922A; margin: 20px 0 14px; border-bottom: 1px solid #EDE6D6; padding-bottom: 6px; }
-  .profil { font-size: 14px; line-height: 1.9; white-space: pre-wrap; }
-  .profil h4 { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #2A7F6F; margin: 20px 0 8px; }
-  .footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #EDE6D6; font-size: 10px; color: #888; font-style: italic; display: flex; justify-content: space-between; }
-  .footer strong { font-family: 'Cinzel', serif; font-style: normal; color: #4A4A4A; }
-  .btn-print { position: fixed; bottom: 20px; right: 20px; padding: 12px 28px; background: #1B4D3E; color: white; border: none; border-radius: 50px; font-family: 'Cinzel', serif; font-size: 13px; cursor: pointer; }
-  @media print { .btn-print { display: none; } }
-</style>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<script>emailjs.init("L7WqBkdaWiArMpRu9");</script>
-</head>
-<body>
-<h1>Capte ta Lumière</h1>
-<div class="sub">Profil des Familles d'Âmes · ${prenomEl.textContent}</div>
-<div class="badge">${badgeEl.textContent}</div>
-<div class="scores">${scoresEl.innerHTML}</div>
-<div class="sep">🎨 Tes couleurs d'âme</div>
-<div id="print-palette" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px;"></div>
-<div class="sep">✦ Ton profil personnalisé</div>
-<div class="profil">${profilEl.innerHTML}</div>
-<div class="footer">
-  <div><strong>Lara Herbinia — Capteuse de Vivant</strong> · Basé sur le travail de Diane LeBlanc</div>
-  <div>${new Date().toLocaleDateString('fr-FR', {day:'numeric',month:'long',year:'numeric'})}</div>
-</div>
-<button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
-</body></html>`);
+  const fam = FAMILLES[lastDominant] || FAMILLES.passeur;
+  const pcts = lastPcts;
+  if(!prenomEl||!prenomEl.textContent){alert("Veuillez d'abord compléter le questionnaire !");return;}
+  const scoresHtml = Object.entries(FAMILLES).map(function(entry){
+    const key=entry[0],f=entry[1];
+    return '<div style="flex:1;border:1px solid #EDE6D6;border-radius:8px;padding:12px;text-align:center;">'+'<div style="font-family:Cinzel,serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#4A4A4A;margin-bottom:8px;">'+f.nom+'</div>'+'<div style="height:5px;background:#EDE6D6;border-radius:3px;margin-bottom:6px;"><div style="height:100%;border-radius:3px;background:#2A7F6F;width:'+(pcts[key]||0)+'%;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div></div>'+'<div style="font-family:Cinzel,serif;font-size:16px;font-weight:600;color:#1A3A5C;">'+(pcts[key]||0)+'%</div></div>';
+  }).join("");
+  const paletteHtml = fam.palette ? fam.palette.map(function(c){
+    return '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:60px;">'+'<div style="width:48px;height:48px;border-radius:50%;background:'+c.hex+';box-shadow:0 3px 10px rgba(0,0,0,0.15);-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'+'<div style="font-family:Cinzel,serif;font-size:9px;letter-spacing:1px;text-align:center;color:#1C1C1C;">'+c.nom+'</div>'+'<div style="font-size:11px;font-style:italic;color:#4A4A4A;text-align:center;line-height:1.3;">'+c.sens+'</div>'+'</div>';
+  }).join("") : "";
+  const today = new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  const win = window.open('','_blank');
+  win.document.write('<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Mon profil Capte ta Lumière</title><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;1,400&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:"Cormorant Garamond",serif;background:white;color:#1C1C1C;padding:20mm;}@page{margin:15mm;}.btn-print{position:fixed;bottom:20px;right:20px;padding:12px 28px;background:#1B4D3E;color:white;border:none;border-radius:50px;font-family:"Cinzel",serif;font-size:13px;cursor:pointer;}@media print{.btn-print{display:none;}}</style></head><body>');
+  win.document.write('<div style="background:#1B4D3E;color:#F7F3EC;padding:24px 28px;border-radius:12px;margin-bottom:24px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"><div style="font-family:Cinzel,serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#E8C46A;margin-bottom:8px;">Lara Herbinia · Capteuse de Vivant</div><h1 style="font-family:Cinzel,serif;font-size:28px;color:#F7F3EC;margin-bottom:6px;">Capte ta Lumière</h1><div style="font-size:14px;font-style:italic;color:rgba(247,243,236,0.8);">Profil des Familles d\'Âmes · '+prenomEl.textContent+'</div></div>');
+  win.document.write('<div style="margin-bottom:20px;"><span style="display:inline-block;padding:8px 22px;border-radius:50px;font-family:Cinzel,serif;font-size:13px;font-weight:600;background:#1B4D3E;color:#F7F3EC;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+badgeEl.textContent+'</span></div>');
+  win.document.write('<div style="font-family:Cinzel,serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#C9922A;margin:20px 0 14px;border-bottom:1px solid #EDE6D6;padding-bottom:6px;">Répartition de ton âme</div>');
+  win.document.write('<div style="display:flex;gap:10px;margin-bottom:24px;">'+scoresHtml+'</div>');
+  win.document.write('<div style="font-family:Cinzel,serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#C9922A;margin:20px 0 14px;border-bottom:1px solid #EDE6D6;padding-bottom:6px;">🎨 Tes couleurs d\'âme</div>');
+  win.document.write('<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px;">'+paletteHtml+'</div>');
+  win.document.write('<div style="font-family:Cinzel,serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#C9922A;margin:20px 0 14px;border-bottom:1px solid #EDE6D6;padding-bottom:6px;">✦ Ton profil personnalisé</div>');
+  win.document.write('<div style="font-size:14px;line-height:1.9;">'+profilEl.innerHTML+'</div>');
+  win.document.write('<div style="margin-top:28px;padding-top:14px;border-top:1px solid #EDE6D6;display:flex;justify-content:space-between;font-size:10px;color:#888;font-style:italic;"><div><strong style="font-family:Cinzel,serif;font-style:normal;color:#4A4A4A;">Lara Herbinia — Capteuse de Vivant</strong> · Basé sur le travail de Diane LeBlanc</div><div>'+today+'</div></div>');
+  win.document.write('<button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>');
+  win.document.write('</body></html>');
   win.document.close();
-  // Générer la palette côté fenêtre
-  setTimeout(() => {
-    try {
-      const pp = win.document.getElementById('print-palette');
-      if (pp && fam2.palette) {
-        pp.innerHTML = fam2.palette.map(function(c) {
-          return '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:60px;">' +
-          '<div style="width:48px;height:48px;border-radius:50%;background:' + c.hex + ';box-shadow:0 3px 10px rgba(0,0,0,0.15);-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>' +
-          '<div style="font-family:Cinzel,serif;font-size:9px;letter-spacing:1px;text-align:center;color:#1C1C1C;">' + c.nom + '</div>' +
-          '<div style="font-size:11px;font-style:italic;color:#4A4A4A;text-align:center;line-height:1.3;">' + c.sens + '</div>' +
-          '</div>';
-        }).join('');
+}
+</script>
+</body>
+</html>
