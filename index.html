@@ -1331,6 +1331,9 @@ Ton ton est chaleureux, profond, comme une amie qui voit vraiment l'âme de ${pr
 }
 
 function afficherResultats(prenom, dominant, pcts, profil, erreur) {
+  // Sauvegarder pour l'impression
+  lastScores = scores;
+  lastPcts = pcts;
   const fam = FAMILLES[dominant];
 
   document.getElementById("res-prenom").textContent = prenom.toUpperCase();
@@ -1389,6 +1392,11 @@ function restart() {
 
 // ===== IMPRESSION STRUCTURÉE A4 =====
 function preparerEtImprimer() {
+  // Si lastScores est vide, on ne peut pas imprimer
+  if (!lastScores || Object.keys(lastScores).length === 0) {
+    alert("Veuillez d'abord compléter le questionnaire pour générer ton profil !");
+    return;
+  }
   const dominant = Object.keys(lastScores).reduce((a, b) => lastScores[a] >= lastScores[b] ? a : b);
   const fam = FAMILLES[dominant];
   const pcts = lastPcts;
