@@ -1554,8 +1554,7 @@ function preparerEtImprimer() {
   .btn-print { position: fixed; bottom: 20px; right: 20px; padding: 12px 28px; background: #1B4D3E; color: white; border: none; border-radius: 50px; font-family: 'Cinzel', serif; font-size: 13px; cursor: pointer; }
   @media print { .btn-print { display: none; } }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js">
-}</script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>emailjs.init("L7WqBkdaWiArMpRu9");</script>
 </head>
 <body>
@@ -1564,15 +1563,7 @@ function preparerEtImprimer() {
 <div class="badge">${badgeEl.textContent}</div>
 <div class="scores">${scoresEl.innerHTML}</div>
 <div class="sep">🎨 Tes couleurs d'âme</div>
-<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px;">
-${fam2.palette.map(c => `
-  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:60px;">
-    <div style="width:48px;height:48px;border-radius:50%;background:${c.hex};box-shadow:0 3px 10px rgba(0,0,0,0.15);-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>
-    <div style="font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;text-align:center;color:#1C1C1C;">${c.nom}</div>
-    <div style="font-size:11px;font-style:italic;color:#4A4A4A;text-align:center;line-height:1.3;">${c.sens}</div>
-  </div>
-`).join('')}
-</div>
+<div id="print-palette" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px;"></div>
 <div class="sep">✦ Ton profil personnalisé</div>
 <div class="profil">${profilEl.innerHTML}</div>
 <div class="footer">
@@ -1582,6 +1573,15 @@ ${fam2.palette.map(c => `
 <button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
 </body></html>`);
   win.document.close();
-
-}
-
+  // Générer la palette côté fenêtre
+  setTimeout(() => {
+    try {
+      const pp = win.document.getElementById('print-palette');
+      if (pp && fam2.palette) {
+        pp.innerHTML = fam2.palette.map(function(c) {
+          return '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:60px;">' +
+          '<div style="width:48px;height:48px;border-radius:50%;background:' + c.hex + ';box-shadow:0 3px 10px rgba(0,0,0,0.15);-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>' +
+          '<div style="font-family:Cinzel,serif;font-size:9px;letter-spacing:1px;text-align:center;color:#1C1C1C;">' + c.nom + '</div>' +
+          '<div style="font-size:11px;font-style:italic;color:#4A4A4A;text-align:center;line-height:1.3;">' + c.sens + '</div>' +
+          '</div>';
+        }).join('');
