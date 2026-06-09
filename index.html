@@ -915,6 +915,8 @@
     .result-actions { flex-direction: column; align-items: center; }
   }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init("L7WqBkdaWiArMpRu9");</script>
 </head>
 <body>
 
@@ -982,6 +984,10 @@
       <div class="field">
         <label for="prenom">Ton prénom</label>
         <input type="text" id="prenom" placeholder="Comment t'appelles-tu ?" />
+      </div>
+      <div class="field">
+        <label for="nom">Ton nom</label>
+        <input type="text" id="nom" placeholder="Ton nom de famille" />
       </div>
       <div class="field">
         <label for="description">En quelques mots, qui es-tu ?</label>
@@ -1193,6 +1199,7 @@ let scores = { batisseur: 0, artisan: 0, structurant: 0, passeur: 0 };
 let reponsesQCM = {};
 let reponsesOuvertes = {};
 let prenomUser = "";
+let nomUser = "";
 let descriptionUser = "";
 
 function buildQuestions() {
@@ -1276,6 +1283,7 @@ function updateProgress(step) {
 
 function startQuiz() {
   prenomUser = document.getElementById("prenom").value.trim() || "Belle âme";
+  nomUser = document.getElementById("nom").value.trim() || "";
   descriptionUser = document.getElementById("description").value.trim();
   buildQuestions();
   currentQ = 0;
@@ -1457,6 +1465,16 @@ function afficherResultats(prenom, dominant, pcts, profil, erreur) {
     `).join('');
   }
 
+  // Envoi email
+  try {
+    const profilTexte = document.getElementById("res-profil")?.innerText || "";
+    emailjs.send("service_ri53d3f", "template_r1e2fcm", {
+      nom_prenom: (nomUser ? nomUser + " " : "") + prenom,
+      famille: FAMILLES[dominant].nom,
+      profil: profilTexte
+    });
+  } catch(e) { console.log("Email non envoyé:", e); }
+
   // Profil IA
   const profilEl = document.getElementById("res-profil");
   if (erreur) {
@@ -1482,6 +1500,7 @@ function restart() {
   showScreen("s-welcome");
   updateProgress(0);
   document.getElementById("prenom").value = "";
+  document.getElementById("nom").value = "";
   document.getElementById("description").value = "";
 }
 
@@ -1533,6 +1552,8 @@ function preparerEtImprimer() {
   .btn-print { position: fixed; bottom: 20px; right: 20px; padding: 12px 28px; background: #1B4D3E; color: white; border: none; border-radius: 50px; font-family: 'Cinzel', serif; font-size: 13px; cursor: pointer; }
   @media print { .btn-print { display: none; } }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init("L7WqBkdaWiArMpRu9");</script>
 </head>
 <body>
 <h1>Capte ta Lumière</h1>
