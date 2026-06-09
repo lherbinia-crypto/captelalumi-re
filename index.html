@@ -995,7 +995,7 @@
       </div>
       <div class="nav-btns">
         <span></span>
-        <button class="btn-next" onclick="startQuiz()">Commencer →</button>
+        <button class="btn-next" onclick="startQuiz()">Suivant →</button>
       </div>
     </div>
 
@@ -1554,7 +1554,8 @@ function preparerEtImprimer() {
   .btn-print { position: fixed; bottom: 20px; right: 20px; padding: 12px 28px; background: #1B4D3E; color: white; border: none; border-radius: 50px; font-family: 'Cinzel', serif; font-size: 13px; cursor: pointer; }
   @media print { .btn-print { display: none; } }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js">
+}</script>
 <script>emailjs.init("L7WqBkdaWiArMpRu9");</script>
 </head>
 <body>
@@ -1581,95 +1582,6 @@ ${fam2.palette.map(c => `
 <button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>
 </body></html>`);
   win.document.close();
-  return;
 
-  // Code mort ci-dessous — gardé pour compatibilité
-  const dominant = Object.keys(lastScores).reduce((a, b) => lastScores[a] >= lastScores[b] ? a : b);
-  const fam = FAMILLES[dominant];
-  const pcts = lastPcts;
-  const profilBrut = document.getElementById("res-profil").innerText || "";
-  const sections = parserSections(profilBrut);
-  const fillClass = { batisseur: 'fill-b', artisan: 'fill-a', structurant: 'fill-s', passeur: 'fill-p' };
-
-  const scoresHtml = Object.entries(FAMILLES).map(([key, f]) => `
-    <div class="print-score-card ${key === dominant ? 'dominant' : ''}">
-      <div class="print-score-nom">${f.nom}</div>
-      <div class="print-score-bar-bg">
-        <div class="print-score-bar-fill ${fillClass[key]}" style="width:${pcts[key]}%"></div>
-      </div>
-      <div class="print-score-pct">${pcts[key]}%</div>
-    </div>
-  `).join('');
-
-  const sectionsHtml = sections.map(s => {
-    if (s.type === 'mantra') return `
-      <div class="print-mantra">
-        <div class="print-mantra-label">✦ Ton mantra</div>
-        <div class="print-mantra-text">${s.contenu}</div>
-      </div>`;
-    return `
-      <div class="print-section">
-        <div class="print-section-title">${s.titre}</div>
-        <div class="print-section-body">${s.contenu}</div>
-      </div>`;
-  }).join('');
-
-  const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-
-  document.getElementById("print-document").innerHTML = `
-    <div class="print-page">
-      <div class="print-header">
-        <div class="print-header-top">Lara Herbinia · Capteuse de Vivant</div>
-        <h1>Capte ta Lumière</h1>
-        <div class="print-header-sub">Profil des Familles d'Âmes · ${prenomUser}</div>
-      </div>
-      <div class="print-badge ${dominant}">${fam.emoji} ${fam.nom}</div>
-      <div class="print-sep">
-        <div class="print-sep-label">Répartition de ton âme</div>
-        <div class="print-sep-line"></div>
-      </div>
-      <div class="print-scores">${scoresHtml}</div>
-      <div class="print-sep">
-        <div class="print-sep-label">Ton profil personnalisé</div>
-        <div class="print-sep-line"></div>
-      </div>
-      ${sectionsHtml}
-      <div class="print-footer">
-        <div><strong>Lara Herbinia — Capteuse de Vivant</strong> · Basé sur le travail de Diane LeBlanc</div>
-        <div>${today}</div>
-      </div>
-    </div>`;
-
-  window.print();
 }
 
-function parserSections(texte) {
-  const sections = [];
-  const lignes = texte.split('\n');
-  let titreCourant = '';
-  let contenuCourant = [];
-
-  lignes.forEach(ligne => {
-    const matchGras = ligne.match(/^\*\*(.*?)\*\*\s*$/);
-    const matchTitre = matchGras || ligne.match(/^(Ton essence|Tes forces|Ton attention|Ton Miracle Morning|Ton Miracle Evening|Ton mantra)/i);
-    if (matchTitre) {
-      if (titreCourant && contenuCourant.length > 0) {
-        sections.push({ titre: titreCourant, contenu: contenuCourant.join('<br>').trim(), type: titreCourant.toLowerCase().includes('mantra') ? 'mantra' : 'normal' });
-      }
-      titreCourant = matchGras ? matchGras[1] : matchTitre[0];
-      contenuCourant = [];
-    } else if (ligne.trim()) {
-      contenuCourant.push(ligne.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
-    }
-  });
-  if (titreCourant && contenuCourant.length > 0) {
-    sections.push({ titre: titreCourant, contenu: contenuCourant.join('<br>').trim(), type: titreCourant.toLowerCase().includes('mantra') ? 'mantra' : 'normal' });
-  }
-  if (sections.length === 0 && texte.trim()) {
-    sections.push({ titre: 'Ton profil', contenu: texte.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>'), type: 'normal' });
-  }
-  return sections;
-}
-</script>
-</body>
-</html>
