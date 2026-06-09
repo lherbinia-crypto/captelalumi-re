@@ -1500,6 +1500,11 @@ function preparerEtImprimer() {
   }
 
   // Ouvrir une nouvelle fenêtre avec le profil formaté
+  const dominant2 = Object.keys(lastScores).length > 0 
+    ? Object.keys(lastScores).reduce((a, b) => lastScores[a] >= lastScores[b] ? a : b)
+    : 'passeur';
+  const fam2 = FAMILLES[dominant2];
+
   const win = window.open('', '_blank');
   win.document.write(`<!DOCTYPE html>
 <html lang="fr">
@@ -1534,6 +1539,16 @@ function preparerEtImprimer() {
 <div class="sub">Profil des Familles d'Âmes · ${prenomEl.textContent}</div>
 <div class="badge">${badgeEl.textContent}</div>
 <div class="scores">${scoresEl.innerHTML}</div>
+<div class="sep">🎨 Tes couleurs d'âme</div>
+<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px;">
+${fam2.palette.map(c => `
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:60px;">
+    <div style="width:48px;height:48px;border-radius:50%;background:${c.hex};box-shadow:0 3px 10px rgba(0,0,0,0.15);-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>
+    <div style="font-family:'Cinzel',serif;font-size:9px;letter-spacing:1px;text-align:center;color:#1C1C1C;">${c.nom}</div>
+    <div style="font-size:11px;font-style:italic;color:#4A4A4A;text-align:center;line-height:1.3;">${c.sens}</div>
+  </div>
+`).join('')}
+</div>
 <div class="sep">✦ Ton profil personnalisé</div>
 <div class="profil">${profilEl.innerHTML}</div>
 <div class="footer">
