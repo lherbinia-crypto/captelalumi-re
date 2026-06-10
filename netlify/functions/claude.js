@@ -28,15 +28,8 @@ exports.handler = async function(event, context) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2000,
-        system: `Tu es un expert des Familles d'Ames. Tu reponds UNIQUEMENT en JSON valide.
-REGLES ABSOLUES:
-1. Dans les valeurs string JSON, remplace TOUTES les apostrophes par \\u2019
-2. Exemple: "c\\u2019est", "j\\u2019ai", "l\\u2019energie", "d\\u2019intention"
-3. JAMAIS de tirets pour remplacer des apostrophes
-4. Tous les accents francais doivent etre presents
-5. Commence par { et termine par }
-6. Pas de markdown ni backticks`,
+        max_tokens: 1200,
+        system: `Expert Familles d'Ames. JSON uniquement. Remplace apostrophes par \\u2019. Jamais de tirets pour apostrophes. Commence par {.`,
         messages: messages
       })
     });
@@ -47,7 +40,7 @@ REGLES ABSOLUES:
       return {
         statusCode: response.status,
         headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: data.error?.message || 'Erreur API Anthropic' })
+        body: JSON.stringify({ error: data.error?.message || 'Erreur API' })
       };
     }
 
