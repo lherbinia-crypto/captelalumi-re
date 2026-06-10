@@ -1,5 +1,9 @@
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[functions."claude"]
+  timeout = 26
 
 [[headers]]
   for = "/*"
