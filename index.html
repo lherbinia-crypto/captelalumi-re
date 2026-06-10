@@ -665,10 +665,60 @@ Format exact:
     const raw = (data.content?.[0]?.text || data.text || '').trim();
     // Nettoyage robuste du JSON
     let text = raw.replace(/```json/g,'').replace(/```/g,'').trim();
-    // Extraire uniquement le bloc JSON si du texte parasite existe
+    // Extraire uniquement le bloc JSON
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Réponse IA invalide — pas de JSON trouvé');
-    const result = JSON.parse(jsonMatch[0]);
+    if (!jsonMatch) throw new Error('Réponse IA invalide — pas de JSON trouve');
+    let jsonStr = jsonMatch[0];
+    // Parser avec gestion des apostrophes françaises dans les valeurs
+    let result;
+    try {
+      result = JSON.parse(jsonStr);
+    } catch(parseErr) {
+      // Tentative de réparation : remplacer les apostrophes dans les valeurs string
+      // On remplace les apostrophes qui ne sont pas des guillemets d'échappement
+      jsonStr = jsonStr.replace(/"([^"]*?)'/g, (match, p1) => '"' + p1 + '\u2019');
+      jsonStr = jsonStr.replace(/'([^"]*?)"/g, (match, p1) => '\u2019' + p1 + '"');
+      // Deuxième tentative plus agressive : extraire via regex chaque champ
+      try {
+        result = JSON.parse(jsonStr);
+      } catch(e2) {
+        // Construire manuellement depuis le texte brut
+        const getVal = (key) => {
+          const rx = new RegExp('"'+key+'"\s*:\s*"([^"]*)"');
+          const m = jsonStr.match(rx);
+          return m ? m[1] : '';
+        };
+        const getArr = (key) => {
+          const rx = new RegExp('"'+key+'"\s*:\s*\[([^\]]+)\]');
+          const m = jsonStr.match(rx);
+          if(!m) return [];
+          return m[1].match(/"([^"]*)"/g)?.map(s=>s.replace(/"/g,''))||[];
+        };
+        const getObjArr = (key) => {
+          const rx = new RegExp('"'+key+'"\s*:\s*\[([\s\S]*?)\](?=\s*[,}])');
+          const m = jsonStr.match(rx);
+          if(!m) return [];
+          const items = [];
+          const itemRx = /\{[^}]+\}/g;
+          let im;
+          while((im=itemRx.exec(m[1]))!==null){
+            try{ items.push(JSON.parse(im[0])); }catch(e){ 
+              const t=im[0].match(/"temps":"([^"]*)"/)?.[1]||'';
+              const ti=im[0].match(/"titre":"([^"]*)"/)?.[1]||'';
+              const c=im[0].match(/"contenu":"([^"]*)"/)?.[1]||'';
+              items.push({temps:t,titre:ti,contenu:c});
+            }
+          }
+          return items;
+        };
+        result = {
+          portrait: getVal('portrait'),
+          morning: getObjArr('morning'),
+          evening: getObjArr('evening'),
+          eclats: getArr('eclats')
+        };
+      }
+    }
     renderResults(pcts, sorted, pk, result);
   } catch(e){
     console.error(e);
