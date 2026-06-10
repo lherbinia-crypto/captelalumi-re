@@ -27,10 +27,16 @@ exports.handler = async function(event, context) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 2000,
-        messages: messages,
-        system: "Tu es un assistant qui repond UNIQUEMENT en JSON valide. Jamais de markdown, jamais de backticks, jamais de texte en dehors du JSON. Commence directement par { et termine par }. Dans les valeurs string, remplace toutes les apostrophes par des tirets ou reformule pour les eviter."
+        system: `Tu es un expert des Familles d'Âmes. Tu reponds UNIQUEMENT en JSON valide.
+REGLES ABSOLUES pour le JSON:
+1. Dans les valeurs string, echappe les apostrophes avec \\' ou utilise \\u2019
+2. N'utilise JAMAIS de tirets pour remplacer des apostrophes
+3. Tous les accents francais doivent etre presents et corrects
+4. Commence directement par { et termine par }
+5. Pas de markdown, pas de backticks autour du JSON`,
+        messages: messages
       })
     });
 
@@ -44,9 +50,11 @@ exports.handler = async function(event, context) {
       };
     }
 
-    const rawText = data.content?.[0]?.text || '';
+    let rawText = data.content?.[0]?.text || '';
     
-    // Renvoie le texte brut — le client fera le parsing
+    // Nettoyer côté serveur avant d'envoyer au client
+    rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+    
     return {
       statusCode: 200,
       headers: {
