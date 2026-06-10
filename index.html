@@ -177,6 +177,8 @@ textarea{resize:vertical;min-height:75px}
   .sw{border:1px solid #aaa!important}
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init("L7WqBkdaWiArMpRu9");</script>
 </head>
 <body>
 <div class="app">
@@ -439,57 +441,82 @@ const FM = {
 // QUESTIONS
 // ============================================
 const QQ = [
-  {txt:"Il est 7h du matin. Tu as une journée chargée devant toi. Comment tu démarres ?",opts:[
-    {t:"Je bondis du lit, j'ai déjà ma liste de choses à faire en tête. En route !",f:"batisseur"},
-    {t:"J'avais déjà planifié ma journée la veille. Je suis prêt(e), je suis mon plan.",f:"structurant"},
-    {t:"J'ai besoin d'un moment doux — une tasse chaude, de la musique — avant de démarrer.",f:"artisan"},
-    {t:"Je reste quelques minutes allongé(e) à sentir comment je me sens avant de bouger.",f:"passeur"}]},
-  {txt:"Tu es invité(e) à une fête avec des gens que tu ne connais pas. Une fois sur place, tu fais quoi ?",opts:[
-    {t:"Je vais naturellement vers les gens, je souris, je crée le contact — je suis dans mon élément.",f:"artisan"},
-    {t:"Je repère rapidement qui est qui. Je vais vers ceux avec qui je peux avoir une vraie conversation.",f:"batisseur"},
-    {t:"J'observe d'abord discrètement le groupe avant de m'approcher de quelqu'un qui m'intéresse vraiment.",f:"structurant"},
-    {t:"Je sens l'énergie de la pièce. Certaines personnes m'attirent sans savoir pourquoi. Je les rejoins.",f:"passeur"}]},
-  {txt:"Ton/ta meilleur(e) ami(e) t'appelle en pleurant. Il/elle vient de se faire quitter. Tu fais quoi ?",opts:[
-    {t:"Je fonce chez lui/elle avec de la nourriture, des bougies, un film. On passe la soirée ensemble.",f:"artisan"},
-    {t:"Je lui propose des solutions concrètes — chercher un appart, sortir, s'occuper. Il faut agir.",f:"batisseur"},
-    {t:"Je l'aide à analyser ce qui s'est passé pour qu'il/elle comprenne et puisse avancer.",f:"structurant"},
-    {t:"Je sens immédiatement sa douleur. Je l'écoute sans rien dire, je suis juste là, présent(e).",f:"passeur"}]},
-  {txt:"Ton/ta responsable te confie un projet important. Ta première réaction c'est...",opts:[
-    {t:"Je retrousse mes manches et je commence immédiatement. On y va.",f:"batisseur"},
-    {t:"Je pose des questions précises, je structure un plan clair avant de commencer.",f:"structurant"},
-    {t:"Je pense d'abord à l'équipe — qui peut m'aider, comment on va travailler ensemble.",f:"artisan"},
-    {t:"Je prends le temps de sentir si ce projet a du sens pour moi. Si ça résonne, je m'y donne à fond.",f:"passeur"}]},
-  {txt:"Tu rentres chez toi après une journée épuisante. Pour récupérer vraiment, tu as besoin de...",opts:[
-    {t:"Bouger — une course, du sport, bricoler. Mon corps doit évacuer avant que je puisse me poser.",f:"batisseur"},
+  {txt:"Il est 7h du matin. Tu as une journee chargee devant toi. Comment tu demarres ?",opts:[
+    {t:"Je bondis du lit, j'ai deja ma liste de choses a faire en tete. En route !",f:"batisseur"},
+    {t:"J'avais deja planifie ma journee la veille. Je suis pret(e), je suis mon plan.",f:"structurant"},
+    {t:"J'ai besoin d'un moment doux - une tasse chaude, de la musique - avant de demarrer.",f:"artisan"},
+    {t:"Je reste quelques minutes allonge(e) a sentir comment je me sens avant de bouger.",f:"passeur"}]},
+  {txt:"Tu es invite(e) a une fete avec des gens que tu ne connais pas. Une fois sur place, tu fais quoi ?",opts:[
+    {t:"Je vais naturellement vers les gens, je souris, je cree le contact - je suis dans mon element.",f:"artisan"},
+    {t:"Je repere rapidement qui est qui. Je vais vers ceux avec qui je peux avoir une vraie conversation.",f:"batisseur"},
+    {t:"J'observe d'abord discretement le groupe avant de m'approcher de quelqu'un qui m'interesse vraiment.",f:"structurant"},
+    {t:"Je sens l'energie de la piece. Certaines personnes m'attirent sans savoir pourquoi. Je les rejoins.",f:"passeur"}]},
+  {txt:"Ton meilleur(e) ami(e) t'appelle en pleurant. Il/elle vient de se faire quitter. Tu fais quoi ?",opts:[
+    {t:"Je fonce chez lui/elle avec de la nourriture, des bougies, un film. On passe la soiree ensemble.",f:"artisan"},
+    {t:"Je lui propose des solutions concretes - chercher un appart, sortir, s'occuper. Il faut agir.",f:"batisseur"},
+    {t:"Je l'aide a analyser ce qui s'est passe pour qu'il/elle comprenne et puisse avancer.",f:"structurant"},
+    {t:"Je sens immediatement sa douleur. Je l'ecoute sans rien dire, je suis juste la, present(e).",f:"passeur"}]},
+  {txt:"Ton responsable te confie un projet important. Ta premiere reaction c'est...",opts:[
+    {t:"Je retrousse mes manches et je commence immediatement. On y va.",f:"batisseur"},
+    {t:"Je pose des questions precises, je structure un plan clair avant de commencer.",f:"structurant"},
+    {t:"Je pense d'abord a l'equipe - qui peut m'aider, comment on va travailler ensemble.",f:"artisan"},
+    {t:"Je prends le temps de sentir si ce projet a du sens pour moi. Si ca resonne, je m'y donne a fond.",f:"passeur"}]},
+  {txt:"Tu rentres chez toi apres une journee epuisante. Pour recuperer vraiment, tu as besoin de...",opts:[
+    {t:"Bouger - une course, du sport, bricoler. Mon corps doit evacuer avant que je puisse me poser.",f:"batisseur"},
     {t:"M'asseoir seul(e) avec un livre ou un documentaire. Mon cerveau se repose en apprenant.",f:"structurant"},
-    {t:"Appeler un(e) ami(e), raconter ma journée, rire un peu — le contact humain me recharge.",f:"artisan"},
-    {t:"Du silence, de la solitude, peut-être de la musique douce. Je dois me retrouver moi-même.",f:"passeur"}]},
-  {txt:"Dans ta cuisine, le four tombe en panne juste avant un dîner important. Tu réagis comment ?",opts:[
-    {t:"Pas de panique. Je règle le problème dans la minute — j'appelle, je trouve, j'improvise.",f:"batisseur"},
-    {t:"Je cherche immédiatement une solution alternative logique — commander, adapter la recette.",f:"structurant"},
-    {t:"Je stresse un peu mais ce qui m'importe c'est que mes invités se sentent bien.",f:"artisan"},
-    {t:"Je prends une grande respiration. On s'adapte, l'essentiel c'est le moment partagé.",f:"passeur"}]},
-  {txt:"Tu as une heure complètement libre, inattendue, au milieu de ta journée. Spontanément tu...",opts:[
-    {t:"J'avance sur un truc de ma liste — cette heure c'est une chance, je ne la gaspille pas.",f:"batisseur"},
-    {t:"Je lis, j'écoute un podcast, je me documente sur quelque chose qui m'intéresse.",f:"structurant"},
-    {t:"J'envoie un message à quelqu'un que j'aime pour prendre des nouvelles ou proposer un café.",f:"artisan"},
-    {t:"Je me pose, je marche, je laisse mon esprit vagabonder. Ces moments de vide sont précieux.",f:"passeur"}]},
-  {txt:"Tu assistes à une réunion qui s'éternise et tourne en rond. Tu fais quoi ?",opts:[
-    {t:"Je prends la parole pour recadrer — on perd du temps, il faut décider et passer à l'action.",f:"batisseur"},
-    {t:"Je prends des notes, je restructure mentalement le problème et je propose un plan clair.",f:"structurant"},
-    {t:"Je sens la tension monter. J'essaie de désamorcer avec une blague ou un mot doux.",f:"artisan"},
+    {t:"Appeler un(e) ami(e), raconter ma journee, rire un peu - le contact humain me recharge.",f:"artisan"},
+    {t:"Du silence, de la solitude, peut-etre de la musique douce. Je dois me retrouver moi-meme.",f:"passeur"}]},
+  {txt:"Dans ta cuisine, le four tombe en panne juste avant un diner important. Tu reagis comment ?",opts:[
+    {t:"Pas de panique. Je regle le probleme dans la minute - j'appelle, je trouve, j'improvise.",f:"batisseur"},
+    {t:"Je cherche immediatement une solution alternative logique - commander, adapter la recette.",f:"structurant"},
+    {t:"Je stresse un peu mais ce qui m'importe c'est que mes invites se sentent bien.",f:"artisan"},
+    {t:"Je prends une grande respiration. On s'adapte, l'essentiel c'est le moment partage.",f:"passeur"}]},
+  {txt:"Tu as une heure completement libre, inattendue, au milieu de ta journee. Spontanement tu...",opts:[
+    {t:"J'avance sur un truc de ma liste - cette heure c'est une chance, je ne la gaspille pas.",f:"batisseur"},
+    {t:"Je lis, j'ecoute un podcast, je me documente sur quelque chose qui m'interesse.",f:"structurant"},
+    {t:"J'envoie un message a quelqu'un que j'aime pour prendre des nouvelles ou proposer un cafe.",f:"artisan"},
+    {t:"Je me pose, je marche, je laisse mon esprit vagabonder. Ces moments de vide sont precieux.",f:"passeur"}]},
+  {txt:"Tu assistes a une reunion qui s'eternise et tourne en rond. Tu fais quoi ?",opts:[
+    {t:"Je prends la parole pour recadrer - on perd du temps, il faut decider et passer a l'action.",f:"batisseur"},
+    {t:"Je prends des notes, je restructure mentalement le probleme et je propose un plan clair.",f:"structurant"},
+    {t:"Je sens la tension monter. J'essaie de desamorcer avec une blague ou un mot doux.",f:"artisan"},
     {t:"Je sens que quelque chose de plus profond bloque le groupe. Je pose une question qui touche au fond.",f:"passeur"}]},
-  {txt:"Tu apprends qu'un(e) collègue a dit du mal de toi dans ton dos. Ta réaction immédiate c'est...",opts:[
-    {t:"Je vais le/la voir directement et je mets les choses au clair. Pas question de laisser traîner ça.",f:"batisseur"},
-    {t:"Je prends du recul, j'analyse pourquoi il/elle a pu dire ça et je réfléchis à la meilleure réaction.",f:"structurant"},
-    {t:"Je suis blessé(e). J'ai besoin d'en parler à quelqu'un de confiance avant d'agir.",f:"artisan"},
-    {t:"Je ressens la trahison profondément. Je m'interroge sur ce que cette situation me révèle.",f:"passeur"}]},
-  {txt:"Tu dois choisir entre deux opportunités de vie. Comment tu décides ?",opts:[
-    {t:"Je pèse le pour et le contre concrètement — revenus, stabilité. La raison pratique décide.",f:"batisseur"},
-    {t:"Je fais des recherches approfondies, je liste tous les scénarios possibles avant de me décider.",f:"structurant"},
+  {txt:"Tu apprends qu'un(e) collegue a dit du mal de toi dans ton dos. Ta reaction immediate c'est...",opts:[
+    {t:"Je vais le/la voir directement et je mets les choses au clair. Pas question de laisser trainer ca.",f:"batisseur"},
+    {t:"Je prends du recul, j'analyse pourquoi il/elle a pu dire ca et je reflechis a la meilleure reaction.",f:"structurant"},
+    {t:"Je suis blesse(e). J'ai besoin d'en parler a quelqu'un de confiance avant d'agir.",f:"artisan"},
+    {t:"Je ressens la trahison profondement. Je m'interroge sur ce que cette situation me revele.",f:"passeur"}]},
+  {txt:"Tu dois choisir entre deux opportunites de vie. Comment tu decides ?",opts:[
+    {t:"Je pese le pour et le contre concretement - revenus, stabilite. La raison pratique decide.",f:"batisseur"},
+    {t:"Je fais des recherches approfondies, je liste tous les scenarios possibles avant de me decider.",f:"structurant"},
     {t:"Je consulte les gens que j'aime. Leur avis et l'impact sur mes relations comptent autant.",f:"artisan"},
-    {t:"Je ferme les yeux et j'écoute ce que mon ventre me dit. Une option résonne plus fort — c'est elle.",f:"passeur"}]}
-];
+    {t:"Je ferme les yeux et j'ecoute ce que mon ventre me dit. Une option resonne plus fort - c'est elle.",f:"passeur"}]},
+  {txt:"Tu recois une critique negative sur quelque chose que tu as cree ou accompli. Comment tu reagis ?",opts:[
+    {t:"Je l'encaisse, j'analyse ce qui est juste et je m'ameliore. Pas le temps de broyer du noir.",f:"batisseur"},
+    {t:"Ca me touche profondement. J'ai besoin de temps pour digerer avant de pouvoir avancer.",f:"artisan"},
+    {t:"Je decortique la critique pour voir si elle est fondee. Si oui, je l'integre. Si non, je la mets de cote.",f:"structurant"},
+    {t:"Je ressens si cette critique vient d'un endroit juste ou non. Mon intuition me guide.",f:"passeur"}]},
+  {txt:"Tu pars en vacances. Comment tu organises ton voyage ?",opts:[
+    {t:"J'ai un programme detaille, des reservations faites des semaines a l'avance. J'aime savoir ou je vais.",f:"structurant"},
+    {t:"Je fixe les grandes etapes mais je reste flexible. L'important c'est qu'on avance et qu'on profite.",f:"batisseur"},
+    {t:"Je pars avec peu de plans. Je suis les signes, les rencontres, les endroits qui me parlent.",f:"passeur"},
+    {t:"Ce qui compte c'est avec qui je pars. Le programme on verra ensemble, sur place.",f:"artisan"}]},
+  {txt:"Tu dois prendre la parole devant un groupe. Comment tu te sens ?",opts:[
+    {t:"J'y vais franchement - je prends ma place, je parle fort et clair. Pas d'hesitations.",f:"batisseur"},
+    {t:"J'ai peur mais je me lance quand meme. Je parle avec le coeur et j'espere que ca passe.",f:"artisan"},
+    {t:"J'ai prepare chaque mot a l'avance. C'est ma facon de gerer le stress - etre pret(e) a 100%.",f:"structurant"},
+    {t:"Je prends une grande respiration, je sens le groupe, et je laisse venir. Ce qui sort me surprend souvent moi-meme.",f:"passeur"}]},
+  {txt:"Tu regardes ta journee qui vient de se terminer. Ce qui te donne le sentiment d'avoir vecu une bonne journee c'est...",opts:[
+    {t:"J'ai accompli ce que je m'etais fixe. Ma liste est cochee, j'ai avance concretement.",f:"batisseur"},
+    {t:"J'ai eu un beau moment avec quelqu'un - un echange, un rire, une connexion vraie.",f:"artisan"},
+    {t:"J'ai appris quelque chose, compris quelque chose - mon esprit s'est nourri.",f:"structurant"},
+    {t:"J'ai eu le sentiment d'avoir ete utile a un niveau profond - d'avoir touche quelque chose d'essentiel.",f:"passeur"}]},
+  {txt:"Tu dois travailler sur un projet creatif. Comment tu t'y prends ?",opts:[
+    {t:"Je visualise le resultat final et je fonce. J'aime voir quelque chose de concret prendre forme rapidement.",f:"batisseur"},
+    {t:"Je m'inspire de ce qui est beau autour de moi - des couleurs, des ambiances. La creation c'est du ressenti.",f:"artisan"},
+    {t:"Je fais des recherches, je compare, je structure. Je veux que ce soit coherent et bien pense avant de commencer.",f:"structurant"},
+    {t:"Je laisse venir. Je ne sais jamais vraiment ou je vais au depart - et c'est souvent la que nait quelque chose d'unique.",f:"passeur"}]}
+]
 
 const OQ = [
   "Si tu devais décrire ce qui te rend vraiment vivant(e) — ce qui te fait te lever le matin avec envie — ce serait quoi ?",
@@ -549,7 +576,7 @@ function renderQ(){
   const bp = document.getElementById('bPrev');
   bp.textContent = curQ===0 ? '← Mes infos' : '← Précédente';
   bp.disabled = false;
-  setProgress(curQ+1, 16, 'Question '+(curQ+1)+' / 10');
+  setProgress(curQ+1, 19, 'Question '+(curQ+1)+' / 15');
 }
 function nextQ(){
   if(ans[curQ]===undefined){ alert('Choisis une réponse pour continuer 🌿'); return; }
@@ -568,7 +595,7 @@ function renderOQ(){
   document.getElementById('oqn').textContent = 'Question ouverte '+(curOQ+1)+' / '+OQ.length;
   document.getElementById('oqt').textContent = OQ[curOQ];
   document.getElementById('oqa').value = oanswers[curOQ]||'';
-  setProgress(11+curOQ, 16, 'Question ouverte '+(curOQ+1)+' / 3');
+  setProgress(16+curOQ, 19, 'Question ouverte '+(curOQ+1)+' / 3');
 }
 function nextOQ(){
   oanswers[curOQ] = document.getElementById('oqa').value;
@@ -817,7 +844,21 @@ function renderResults(pcts, sorted, pk, aiData){
   });
 
   showScreen('results');
-  setProgress(16,16,'Ton profil est prêt ✦');
+  setProgress(16,16,'Ton profil est pret');
+
+  // Envoi email
+  setTimeout(() => {
+    try {
+      const portrait = document.getElementById('rPortrait')?.innerText || '';
+      const famille = document.getElementById('rFam')?.innerText || '';
+      emailjs.send('service_ri53d3f', 'template_r1e2fcm', {
+        nom_prenom: udata.prenom,
+        famille: famille,
+        profil: portrait
+      });
+      console.log('Email envoye');
+    } catch(e) { console.log('Email non envoye:', e); }
+  }, 1000);
 }
 </script>
 </body>
