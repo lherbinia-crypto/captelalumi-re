@@ -442,102 +442,52 @@ const FM = {
 // ============================================
 const QQ = [
   {txt:"Il est 7h du matin. Tu as une journée chargée devant toi. Comment tu démarres ?",opts:[
-    {t:"Je bondis du lit, j'ai déjà ma liste de choses a faire en tete. En route !",f:"batisseur"},
-    {t:"J'avais déjà planifié ma journee la veille. Je suis prêt(e), je suis mon plan.",f:"structurant"},
+    {t:"Je bondis du lit, j'ai déjà ma liste de choses à faire en tête. En route !",f:"batisseur"},
+    {t:"J'avais déjà planifié ma journée la veille. Je suis prêt(e), je suis mon plan.",f:"structurant"},
     {t:"J'ai besoin d'un moment doux - une tasse chaude, de la musique - avant de démarrer.",f:"artisan"},
-    {t:"Je commence par mediter, fredonner ou respirer profondément. Je dois me connecter a moi avant de me connecter au monde.",f:"passeur"}]},
+    {t:"Je commence par méditer, fredonner ou respirer profondément. Je dois me connecter à moi avant de me connecter au monde.",f:"passeur"}]},
   {txt:"Tu es invité(e) à une fête avec des gens que tu ne connais pas. Une fois sur place, tu fais quoi ?",opts:[
-    {t:"Je vais naturellement vers les gens, je souris, je crée le contact - je suis dans mon element.",f:"artisan"},
-    {t:"Je repere rapidement qui est qui. Je vais vers ceux avec qui je peux avoir une vraie conversation.",f:"batisseur"},
-    {t:"J'observe d'abord discretement le groupe avant de m'approcher de quelqu'un qui m'intéresse vraiment.",f:"structurant"},
-    {t:"Je sens l'energie de la piece avant meme d'entrer. Je sais deja qui a quelque chose de profond à partager - et c'est vers eux que je vais.",f:"passeur"}]},
-  {txt:"Ton meilleur(e) ami(e) t'appelle en pleurant. Il/elle vient de se faire quitter. Tu fais quoi ?",opts:[
-    {t:"Je fonce chez lui/elle avec de la nourriture, des bougies, un film. On passe la soiree ensemble.",f:"artisan"},
+    {t:"Je vais naturellement vers les gens, je souris, je crée le contact - je suis dans mon élément.",f:"artisan"},
+    {t:"Je repère rapidement qui est qui. Je vais vers ceux avec qui je peux avoir une vraie conversation.",f:"batisseur"},
+    {t:"J'observe d'abord discrètement le groupe avant de m'approcher de quelqu'un qui m'intéresse vraiment.",f:"structurant"},
+    {t:"Je sens l'énergie de la pièce avant même d'entrer. Je sais déjà qui a quelque chose de profond à partager.",f:"passeur"}]},
+  {txt:"Ton/ta meilleur(e) ami(e) t'appelle en pleurant. Il/elle vient de se faire quitter. Tu fais quoi ?",opts:[
+    {t:"Je fonce chez lui/elle avec de la nourriture, des bougies, un film. On passe la soirée ensemble.",f:"artisan"},
     {t:"Je lui propose des solutions concrètes - chercher un appart, sortir, s'occuper. Il faut agir.",f:"batisseur"},
-    {t:"Je l'aide a analyser ce qui s'est passé pour qu'il/elle comprenne et puisse avancer.",f:"structurant"},
-    {t:"Je sens immediatement sa douleur. Je l'ecoute sans rien dire, je suis juste la, present(e).",f:"passeur"}]},
-  {txt:"Ton responsable te confie un projet important. Ta première réaction c'est...",opts:[
-    {t:"Je retrousse mes manches et je commence immediatement. On y va.",f:"batisseur"},
-    {t:"Je pose des questions précises, je structure un plan clair avant de commencer.",f:"structurant"},
-    {t:"Je pense d'abord a l'equipe - qui peut m'aider, comment on va travailler ensemble.",f:"artisan"},
-    {t:"Je prends le temps de sentir si ce projet a du sens pour moi. Si ca resonne, je m'y donne a fond.",f:"passeur"}]},
-  {txt:"Tu rentres chez toi apres une journée épuisante. Pour récupérer vraiment, tu as besoin de...",opts:[
+    {t:"Je l'aide à analyser ce qui s'est passé pour qu'il/elle comprenne et puisse avancer.",f:"structurant"},
+    {t:"Je sens immédiatement sa douleur. Je l'écoute sans rien dire, je suis juste là, présent(e).",f:"passeur"}]},
+  {txt:"Tu rentres chez toi après une journée épuisante. Pour récupérer vraiment, tu as besoin de...",opts:[
     {t:"Bouger - une course, du sport, bricoler. Mon corps doit évacuer avant que je puisse me poser.",f:"batisseur"},
     {t:"M'asseoir seul(e) avec un livre ou un documentaire. Mon cerveau se repose en apprenant.",f:"structurant"},
     {t:"Appeler un(e) ami(e), raconter ma journée, rire un peu - le contact humain me recharge.",f:"artisan"},
-    {t:"Du silence, de la solitude, peut-etre de la musique douce. Je dois me retrouver moi-même.",f:"passeur"}]},
-  {txt:"Tu dois choisir entre deux opportunités de vie. Comment tu décides ?",opts:[
-    {t:"Je pèse le pour et le contre et le contre concretement - revenus, stabilité. La raison pratique décide.",f:"batisseur"},
-    {t:"Je fais des recherches approfondies, je liste tous les scénarios possibles avant de me decider.",f:"structurant"},
-    {t:"Je consulte les gens que j'aime. Leur avis et l'impact sur mes relations comptent autant.",f:"artisan"},
-    {t:"Je ferme les yeux et j'ecoute ce que mon ventre me dit. Une option resonne plus fort - c'est elle.",f:"passeur"}]},
-  {txt:"Si tu etais un(e) héros/héroïne de film, tu serais plutôt...",opts:[
-    {t:"Rocky Balboa ou Erin Brockovich - celui/celle qui se relève toujours, qui se bat avec ses tripes et ne lâche jamais.",f:"batisseur"},
-    {t:"Mary Poppins ou Gandalf - celui/celle qui apporte douceur et magie, qui prend soin et rassemble les gens.",f:"artisan"},
-    {t:"Sherlock Holmes ou Hermione Granger - celui/celle qui analyse, comprend et résout ce que personne d'autre ne voit.",f:"structurant"},
+    {t:"Du silence, de la solitude, peut-être de la musique douce. Je dois me retrouver moi-même.",f:"passeur"}]},
+  {txt:"Si tu étais un(e) héros/héroïne de film, tu serais plutôt...",opts:[
+    {t:"Rocky Balboa ou Erin Brockovich - celui/celle qui se relève toujours, qui se bat avec ses tripes.",f:"batisseur"},
+    {t:"Mary Poppins ou Gandalf - celui/celle qui apporte douceur et magie, qui prend soin et rassemble.",f:"artisan"},
+    {t:"Sherlock Holmes ou Hermione Granger - celui/celle qui analyse et résout ce que personne ne voit.",f:"structurant"},
     {t:"Obi-Wan Kenobi ou Pocahontas - celui/celle qui guide en silence, connecté(e) à quelque chose de plus grand.",f:"passeur"}]},
-  {txt:"Tu pars en vacances. Comment tu organises ton voyage ?",opts:[
-    {t:"J'ai un programme detaille, des reservations faites des semaines à l'avance. J'aime savoir où je vais.",f:"structurant"},
-    {t:"Je fixe les grandes étapes mais je reste flexible. L'important c'est qu'on avance et qu'on profite.",f:"batisseur"},
-    {t:"Je pars avec peu de plans. Je suis les rencontres, les endroits qui me parlent, je vis au jour le jour.",f:"passeur"},
-    {t:"Ce qui compte c'est avec qui je pars. Le programme on verra ensemble, sur place.",f:"artisan"}]},
-  {txt:"Tu dois prendre la parole devant un groupe. Comment tu te sens ?",opts:[
-    {t:"J'y vais franchement - je prends ma place, je parle fort et clair. Pas d'hesitations.",f:"batisseur"},
-    {t:"J'ai peur mais je me lance quand même. Je parle avec le coeur et j'espere que ca passe.",f:"artisan"},
-    {t:"J'ai préparé chaque mot a l'avance. C'est ma façon de gérer le stress - être prêt(e) à 100%.",f:"structurant"},
-    {t:"Je prends une grande respiration, je sens le groupe, et je laisse venir. Ce qui sort me surprend souvent moi-même.",f:"passeur"}]},
-  {txt:"Tu regardes ta journée qui vient de se terminer. Ce qui te donne le sentiment d'avoir vécu une bonne journée c'est...",opts:[
-    {t:"J'ai accompli ce que je m'etais fixe. Ma liste est cochée, j'ai avancé concrètement.",f:"batisseur"},
-    {t:"J'ai eu un beau moment avec quelqu'un - un échange, un rire, une connexion vraie.",f:"artisan"},
-    {t:"J'ai appris quelque chose, compris quelque chose - mon esprit s'est nourri.",f:"structurant"},
-    {t:"Je me sens en paix dans mon corps et ma tete. J'ai été pleinement moi-même aujourd'hui - sans me trahir.",f:"passeur"}]},
-  {txt:"Tu dois travailler sur un projet créatif. Comment tu t'y prends ?",opts:[
-    {t:"Je visualise le résultat final et je fonce. J'aime voir quelque chose de concret prendre forme rapidement.",f:"batisseur"},
-    {t:"Je m'inspire de ce qui est beau autour de moi - des couleurs, des ambiances. La création c'est du ressenti.",f:"artisan"},
-    {t:"Je fais des recherches, je compare, je structure. Je veux que ce soit cohérent et bien pensé avant de commencer.",f:"structurant"},
-    {t:"Je laisse venir. Je ne sais jamais vraiment où je vais au départ - et c'est souvent la que naît quelque chose d'unique.",f:"passeur"}]},
   {txt:"Parmi ces qualités, lesquelles te ressemblent le plus ?",opts:[
     {t:"Courageux(se), déterminé(e), concret(ète) - tu avances, tu construis, tu ne lâches pas.",f:"batisseur"},
-    {t:"Généreux(se), attentionné(e), créatif(ve) - tu donnes, tu crees du lien, tu embellis la vie des autres.",f:"artisan"},
+    {t:"Généreux(se), attentionné(e), créatif(ve) - tu donnes, tu crées du lien, tu embellis la vie.",f:"artisan"},
     {t:"Curieux(se), rigoureux(se), perspicace - tu analyses, tu comprends, tu vas au fond des choses.",f:"structurant"},
-    {t:"Intuitif(ve), profond(e), bienveillant(e) - tu ressens ce que les autres ne voient pas, tu accompagnes avec douceur.",f:"passeur"}]},
+    {t:"Intuitif(ve), profond(e), bienveillant(e) - tu ressens ce que les autres ne voient pas.",f:"passeur"}]},
   {txt:"Et parmi ces défauts, lequel te reconnaîtrais-tu le plus facilement ?",opts:[
-    {t:"Impulsif(ve), autoritaire, impatient(e) - tu peux foncer tête baissée et brusquer les autres sans t'en rendre compte.",f:"batisseur"},
+    {t:"Impulsif(ve), autoritaire, impatient(e) - tu peux foncer tête baissée et brusquer les autres.",f:"batisseur"},
     {t:"Trop sensible, dépendant(e) du regard des autres - tu donnes trop et tu t'oublies facilement.",f:"artisan"},
-    {t:"Froid(e), arrogant(e), trop dans ta tête - tu peux sembler distant(e) ou condescendant(e) sans le vouloir.",f:"structurant"},
-    {t:"Trop idéaliste, naïf(ve), dispersé(e) - tu peux te perdre dans les grands idéaux et fuir le concret.",f:"passeur"}]},
+    {t:"Froid(e), arrogant(e), trop dans ta tête - tu peux sembler distant(e) sans le vouloir.",f:"structurant"},
+    {t:"Trop idéaliste, naïf(ve), dispersé(e) - tu peux te perdre dans les grands idéaux.",f:"passeur"}]},
   {txt:"Enfant, tu rêvais de...",opts:[
-    {t:"Construire des cabanes, gagner des compétitions, creer quelque chose de tes mains - tu voulais déjà prouver que tu pouvais le faire.",f:"batisseur"},
-    {t:"Avoir plein d'amis, organiser des fetes, prendre soin de tes poupees ou animaux - tu voulais déjà que tout le monde soit heureux.",f:"artisan"},
-    {t:"Tout comprendre, poser des questions sans fin, lire des encyclopedies - tu voulais déjà savoir comment le monde fonctionnait.",f:"structurant"},
-    {t:"Parler aux animaux, sentir des choses que les autres ne voyaient pas - tu vivais deja dans un monde un peu magique et invisible.",f:"passeur"}]},
-  {txt:"Dans un groupe, on te reconnaît souvent comme...",opts:[
-    {t:"Celui/celle qui prend les décisions et met les choses en mouvement - les autres se tournent vers toi quand il faut agir.",f:"batisseur"},
-    {t:"Celui/celle qui met tout le monde à l'aise et cree la bonne ambiance - tu es la colle du groupe.",f:"artisan"},
-    {t:"Celui/celle qui a toujours une analyse pertinente et une solution logique - on vient te voir quand il faut réfléchir sérieusement.",f:"structurant"},
-    {t:"Celui/celle a qui les gens se confient sans vraiment savoir pourquoi - tu as quelque chose qui inspire confiance et profondeur.",f:"passeur"}]},
-  {txt:"Quand tu aimes quelqu'un, tu le montres comment ?",opts:[
-    {t:"Tu lui rends service, tu résous ses problèmes, tu es là concrètement quand ça va mal.",f:"batisseur"},
-    {t:"Tu lui fais des surprises, tu lui dis que tu l'aimes, tu passes du temps avec lui/elle.",f:"artisan"},
-    {t:"Tu l'ecoutes vraiment, tu l'aides à réfléchir, tu lui donnes des conseils éclairés.",f:"structurant"},
-    {t:"Tu le/la comprends sans qu'il/elle ait besoin de tout expliquer - tu ressens ce dont il/elle a besoin avant même qu'il/elle le dise.",f:"passeur"}]},
+    {t:"Construire des cabanes, gagner des compétitions, créer quelque chose de tes mains.",f:"batisseur"},
+    {t:"Avoir plein d'amis, organiser des fêtes, prendre soin de tes poupées ou animaux.",f:"artisan"},
+    {t:"Tout comprendre, poser des questions sans fin, lire des encyclopédies.",f:"structurant"},
+    {t:"Parler aux animaux, sentir des choses que les autres ne voyaient pas.",f:"passeur"}]},
   {txt:"Si tu pouvais choisir ton métier idéal sans aucune contrainte, ce serait...",opts:[
-    {t:"Entrepreneur(e), commercial(e)/vendeur(se), chirurgien(ne), sportif(ve) professionnel(le) - un métier où tu crées, tu te bats, tu relèves des défis concrets.",f:"batisseur"},
-    {t:"Artiste, infirmier(e), animateur(rice), organisateur(rice) d'événements - un métier où tu crées du lien, tu prends soin, tu apportes de la joie.",f:"artisan"},
-    {t:"Scientifique, avocat(e), comptable, journaliste d'investigation - un métier où tu analyses, tu structures, tu vas au fond des choses.",f:"structurant"},
-    {t:"Enseignant(e), thérapeute, sage-femme, accompagnateur(rice) - un métier où tu guides, tu éveilles, tu accompagnes les gens dans leurs transformations.",f:"passeur"}]},
-  {txt:"Si tu avais un super pouvoir, ce serait...",opts:[
-    {t:"La force surhumaine et une résistance à toute épreuve - rien ne t'arrete, tu peux tout surmonter et protéger ceux que tu aimes.",f:"batisseur"},
-    {t:"Rendre les gens heureux instantanément et guérir les cœurs blessés - tu apportes la joie et la paix partout où tu passes.",f:"artisan"},
-    {t:"Lire dans les pensees et tout comprendre en un instant - aucun mystère ne te résiste, tu vois ce que les autres ne voient pas.",f:"structurant"},
-    {t:"Parler toutes les langues du monde - y compris celle des animaux et de la nature - tu es un pont entre tous les êtres vivants.",f:"passeur"}]},
-  {txt:"Le soir avec des amis, tu es plutôt...",opts:[
-    {t:"Celui/celle qu'on remarque - tu aimes etre au centre, tu imposes ta présence naturellement.",f:"batisseur"},
-    {t:"Celui/celle qui danse, qui rit, qui s'assure que tout le monde passe un bon moment.",f:"artisan"},
-    {t:"Celui/celle qui observe discrètement et analyse le comportement des gens.",f:"structurant"},
-    {t:"Celui/celle qui recherche les conversations profondes et les vraies connexions.",f:"passeur"}]},
+    {t:"Entrepreneur(e), commercial(e), chirurgien(ne), sportif(ve) - créer, se battre, voir les résultats.",f:"batisseur"},
+    {t:"Artiste, infirmier(e), animateur(rice) - créer du lien, prendre soin, apporter de la joie.",f:"artisan"},
+    {t:"Scientifique, avocat(e), comptable, journaliste - analyser, structurer, aller au fond des choses.",f:"structurant"},
+    {t:"Enseignant(e), thérapeute, sage-femme, accompagnateur(rice) - guider, éveiller, accompagner.",f:"passeur"}]},
   {txt:"Ce qui te fait le plus mal dans la vie c'est...",opts:[
-    {t:"Quand quelqu'un ne respecte pas ses engagements envers toi — la trahison.",f:"batisseur"},
+    {t:"Quand quelqu'un ne respecte pas ses engagements envers toi - la trahison.",f:"batisseur"},
     {t:"Quand tu te sens abandonné(e) ou ignoré(e) par ceux que tu aimes.",f:"artisan"},
     {t:"Quand on t'écarte ou qu'on ne prend pas tes idées au sérieux - le rejet.",f:"structurant"},
     {t:"Quand on se moque de toi ou qu'on est injuste envers toi sans raison.",f:"passeur"}]}
@@ -601,7 +551,7 @@ function renderQ(){
   const bp = document.getElementById('bPrev');
   bp.textContent = curQ===0 ? '← Mes infos' : '← Précédente';
   bp.disabled = false;
-  setProgress(curQ+1, 23, 'Question '+(curQ+1)+' / 20');
+  setProgress(curQ+1, 13, 'Question '+(curQ+1)+' / 10');
 }
 function nextQ(){
   if(ans[curQ]===undefined){ alert('Choisis une réponse pour continuer 🌿'); return; }
@@ -620,7 +570,7 @@ function renderOQ(){
   document.getElementById('oqn').textContent = 'Question ouverte '+(curOQ+1)+' / '+OQ.length;
   document.getElementById('oqt').textContent = OQ[curOQ];
   document.getElementById('oqa').value = oanswers[curOQ]||'';
-  setProgress(21+curOQ, 23, 'Question ouverte '+(curOQ+1)+' / 3');
+  setProgress(11+curOQ, 13, 'Question ouverte '+(curOQ+1)+' / 3');
 }
 function nextOQ(){
   oanswers[curOQ] = document.getElementById('oqa').value;
@@ -701,14 +651,24 @@ Lis les reponses libres attentivement — elles revelent souvent la vraie famill
 {"famille_confirmee":"Nom","pourcentages":{"batisseur":X,"artisan":X,"structurant":X,"passeur":X},"portrait":"3-4 phrases TU bienveillantes avec elements specifiques de ses reponses","morning":[{"temps":"5 min","titre":"Titre evocateur","contenu":"Texte personnalise"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"evening":[{"temps":"5 min","titre":"Titre","contenu":"Texte personnalise"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"eclats":["Phrase JE personnalisee et poetique","Phrase JE ancree dans une force","Phrase JE profonde et liberatrice"]}`
 
     try {
-    const resp = await fetch('/.netlify/functions/claude', {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({prompt})
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': 'ANTHROPIC_API_KEY_PLACEHOLDER',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1200,
+        system: 'Expert Familles Ames. JSON uniquement. Apostrophes = \\u2019. Jamais tirets. Commence {.',
+        messages: [{role:'user', content: prompt}]
+      })
     });
-    if(!resp.ok){ const e=await resp.json(); throw new Error(e.error||'Erreur serveur '+resp.status); }
+    if(!resp.ok){ const e=await resp.json(); throw new Error(e.error?.message||'Erreur API '+resp.status); }
     const data = await resp.json();
-    const raw = (data.content?.[0]?.text || data.text || '').trim();
+    const raw = (data.content?.[0]?.text || '').trim();
     // Nettoyage robuste du JSON
     let text = raw.replace(/```json/g,'').replace(/```/g,'').trim();
     // Extraire uniquement le bloc JSON
