@@ -4,451 +4,784 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Capte ta Lumière — Familles d'Âmes</title>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
 <style>
-:root {
-  --vert:#1B4D3E;--teal:#2A7F6F;--teal-lt:#4AACA0;--bleu:#1A3A5C;
-  --or:#C9922A;--or-lt:#E8C46A;--violet:#4A2C6E;--ivoire:#F7F3EC;
-  --ivoire2:#EDE6D6;--texte:#1C1C1C;--texte2:#4A4A4A;--blanc:#FFFFFF;
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --teal:#00B4B4;--gold:#C9A84C;--violet:#6A4C93;
+  --dark:#0D1F1A;--dark2:#0A1628;--dark3:#0D3B2E;
+  --green:#1A6B4A;--green2:#1A3C2E;--light:#F5EFE6;--mid:#B8D4C8;
 }
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Cormorant Garamond',Georgia,serif;background:var(--ivoire);color:var(--texte);min-height:100vh;}
+body{font-family:'Cormorant Garamond',serif;background:var(--dark);color:var(--light);min-height:100vh}
+.app{max-width:720px;margin:0 auto}
+.screen{display:none}.screen.active{display:block;animation:fi 0.4s ease}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
-/* HERO */
-.hero{background:linear-gradient(160deg,var(--vert) 0%,var(--bleu) 50%,var(--violet) 100%);color:var(--ivoire);text-align:center;padding:80px 24px 60px;position:relative;overflow:hidden;}
-.hero-eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:4px;color:var(--or-lt);text-transform:uppercase;margin-bottom:20px;}
-.hero h1{font-family:'Cinzel',serif;font-size:clamp(38px,7vw,72px);font-weight:700;line-height:1.1;margin-bottom:16px;background:linear-gradient(135deg,var(--ivoire) 40%,var(--or-lt) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-.hero-sub{font-size:clamp(16px,2.5vw,22px);font-style:italic;color:rgba(247,243,236,0.85);max-width:560px;margin:0 auto 40px;line-height:1.6;}
-.hero-cta{display:inline-block;background:linear-gradient(135deg,var(--or) 0%,var(--or-lt) 100%);color:var(--bleu);font-family:'Cinzel',serif;font-size:14px;font-weight:600;letter-spacing:2px;padding:16px 40px;border-radius:50px;border:none;cursor:pointer;text-decoration:none;transition:transform 0.2s,box-shadow 0.2s;}
-.hero-cta:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(201,146,42,0.4);}
+/* HEADER */
+.hdr{text-align:center;padding:2rem 1.5rem 1.5rem;background:linear-gradient(180deg,var(--dark2),var(--dark3));border-bottom:1px solid #00B4B444}
+.logo{font-family:'Cinzel',serif;font-size:2rem;font-weight:600;letter-spacing:0.15em;background:linear-gradient(135deg,var(--gold),var(--teal),var(--violet));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.logo-sub{font-size:0.75rem;letter-spacing:0.3em;color:var(--teal);margin-top:0.3rem;text-transform:uppercase}
+.hdr-desc{font-size:0.85rem;color:var(--mid);font-style:italic;margin-top:0.75rem;line-height:1.6}
 
-/* FAMILLES */
-.section{max-width:900px;margin:0 auto;padding:70px 24px;}
-.section-title{font-family:'Cinzel',serif;font-size:clamp(22px,4vw,32px);font-weight:600;text-align:center;color:var(--bleu);margin-bottom:12px;}
-.section-subtitle{text-align:center;font-size:18px;font-style:italic;color:var(--texte2);margin-bottom:50px;line-height:1.6;}
-.familles-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
-.famille-card{border-radius:16px;padding:32px 24px 28px;text-align:center;display:flex;flex-direction:column;align-items:center;transition:transform 0.3s;}
-.famille-card:hover{transform:translateY(-4px);}
-.famille-card.batisseur{background:linear-gradient(145deg,#8B2E1A 0%,#C0522E 100%);}
-.famille-card.artisan{background:linear-gradient(145deg,#2E5E3A 0%,#5A9E6A 100%);}
-.famille-card.structurant{background:linear-gradient(145deg,#3D4A5C 0%,#6A7A90 100%);}
-.famille-card.passeur{background:linear-gradient(145deg,#4A1A6E 0%,#8B4FBA 100%);}
-.famille-icon{font-size:36px;margin-bottom:16px;display:block;flex-shrink:0;}
-.famille-nom{font-family:'Cinzel',serif;font-size:16px;font-weight:600;color:var(--ivoire);margin-bottom:8px;letter-spacing:1px;min-height:50px;display:flex;align-items:center;justify-content:center;text-align:center;}
-.famille-corps{font-size:11px;letter-spacing:2px;color:rgba(247,243,236,0.6);text-transform:uppercase;margin-bottom:14px;min-height:38px;display:flex;align-items:center;justify-content:center;text-align:center;}
-.famille-desc{font-size:14px;font-style:italic;color:rgba(247,243,236,0.88);line-height:1.6;text-align:center;}
+/* PROGRESS */
+.prog-bar{height:3px;background:var(--green2)}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--gold));transition:width 0.4s}
+.prog-label{text-align:center;padding:0.5rem;font-size:0.7rem;color:var(--gold);letter-spacing:0.2em;text-transform:uppercase}
 
-/* SEP */
-.sep{text-align:center;padding:10px 0 60px;}
-.sep-line{display:inline-flex;align-items:center;gap:16px;color:var(--or);}
-.sep-line::before,.sep-line::after{content:'';display:block;width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--or));}
-.sep-line::after{background:linear-gradient(90deg,var(--or),transparent);}
+/* FORMS */
+.welcome{padding:2rem 1.5rem 0}
+.welcome h2{font-family:'Cinzel',serif;font-size:1.3rem;font-weight:400;color:var(--gold);margin-bottom:0.75rem}
+.welcome p{color:var(--mid);line-height:1.7;margin-bottom:0.75rem;font-size:0.95rem}
+.lbl{display:block;font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--teal);margin-bottom:0.4rem;margin-top:0.9rem}
+input[type=text],input[type=number],textarea{width:100%;background:#0A2518;border:1px solid var(--green);border-radius:6px;padding:0.7rem 1rem;color:var(--light);font-family:'Cormorant Garamond',serif;font-size:1rem;outline:none;transition:border-color 0.3s}
+input:focus,textarea:focus{border-color:var(--teal)}
+textarea{resize:vertical;min-height:75px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
 
-/* QUESTIONNAIRE */
-#questionnaire{background:var(--blanc);border-top:1px solid var(--ivoire2);border-bottom:1px solid var(--ivoire2);}
-.quiz-wrap{max-width:700px;margin:0 auto;padding:70px 24px;}
-.prog-container{margin-bottom:40px;}
-.prog-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
-.prog-label{font-family:'Cinzel',serif;font-size:12px;letter-spacing:2px;color:var(--teal);text-transform:uppercase;}
-.prog-count{font-size:14px;color:var(--texte2);}
-.prog-bar{height:4px;background:var(--ivoire2);border-radius:2px;overflow:hidden;}
-.prog-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--or));border-radius:2px;transition:width 0.4s ease;}
-.screen{display:none;}
-.screen.active{display:block;}
-.welcome-title{font-family:'Cinzel',serif;font-size:clamp(24px,4vw,36px);font-weight:600;color:var(--bleu);margin-bottom:16px;line-height:1.2;}
-.welcome-text{font-size:18px;color:var(--texte2);line-height:1.8;margin-bottom:30px;font-style:italic;}
-.field{margin-bottom:24px;}
-.field label{display:block;font-family:'Cinzel',serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--teal);margin-bottom:8px;}
-.field input,.field textarea{width:100%;padding:14px 18px;border:1.5px solid var(--ivoire2);border-radius:10px;font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--texte);background:var(--ivoire);transition:border-color 0.2s;outline:none;resize:none;}
-.field input:focus,.field textarea:focus{border-color:var(--teal-lt);background:var(--blanc);}
-.question-eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;color:var(--or);text-transform:uppercase;margin-bottom:12px;}
-.question-text{font-size:clamp(20px,3vw,26px);color:var(--bleu);line-height:1.5;margin-bottom:32px;font-weight:400;}
-.choices{display:flex;flex-direction:column;gap:12px;}
-.choice-btn{display:flex;align-items:flex-start;gap:14px;padding:16px 20px;border:1.5px solid var(--ivoire2);border-radius:12px;background:var(--ivoire);cursor:pointer;text-align:left;font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--texte);transition:all 0.2s;line-height:1.5;}
-.choice-btn:hover{border-color:var(--teal-lt);background:var(--blanc);transform:translateX(4px);}
-.choice-btn.selected{border-color:var(--teal);background:linear-gradient(135deg,rgba(42,127,111,0.08) 0%,rgba(74,172,160,0.05) 100%);color:var(--bleu);font-weight:600;}
-.choice-letter{flex-shrink:0;width:28px;height:28px;border-radius:50%;background:var(--ivoire2);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:12px;font-weight:600;color:var(--texte2);transition:all 0.2s;margin-top:1px;}
-.choice-btn.selected .choice-letter{background:var(--teal);color:var(--blanc);}
-.nav-btns{display:flex;justify-content:space-between;align-items:center;margin-top:36px;gap:16px;}
-.btn-prev{padding:12px 28px;border:1.5px solid var(--ivoire2);border-radius:50px;background:transparent;font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--texte2);cursor:pointer;transition:all 0.2s;}
-.btn-prev:hover{border-color:var(--teal-lt);color:var(--teal);}
-.btn-next{padding:14px 36px;border:none;border-radius:50px;background:linear-gradient(135deg,var(--teal) 0%,var(--bleu) 100%);font-family:'Cinzel',serif;font-size:13px;letter-spacing:2px;color:var(--ivoire);cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;flex-shrink:0;}
-.btn-next:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(26,58,92,0.3);}
-.btn-next:disabled{opacity:0.4;cursor:not-allowed;transform:none;box-shadow:none;}
+/* NAV — sticky, toujours visible */
+.nav{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:1rem 1.5rem;
+  border-top:1px solid var(--green2);
+  margin-top:1rem;
+  background:var(--dark2);
+  position:sticky;bottom:0;z-index:10;
+}
+.btn-main{padding:0.85rem 2rem;background:linear-gradient(135deg,var(--dark3),#0A1628);border:1px solid var(--teal);border-radius:8px;color:var(--light);font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.12em;cursor:pointer;transition:all 0.3s}
+.btn-main:hover{background:linear-gradient(135deg,var(--teal),var(--dark3))}
+.btn-sm{padding:0.6rem 1.3rem;background:transparent;border:1px solid var(--green2);border-radius:6px;color:var(--mid);font-family:'Cormorant Garamond',serif;font-size:0.95rem;cursor:pointer;transition:all 0.3s}
+.btn-sm:hover{border-color:var(--teal);color:var(--teal)}
+.btn-sm:disabled{opacity:0.3;cursor:default}
+
+/* QUESTIONS */
+.q-wrap{padding:1.5rem 1.5rem 0}
+.q-num{font-size:0.7rem;letter-spacing:0.25em;color:var(--violet);text-transform:uppercase;margin-bottom:0.5rem}
+.q-text{font-family:'Cinzel',serif;font-size:1.05rem;font-weight:400;color:var(--light);margin-bottom:1.2rem;line-height:1.55}
+.opts{display:flex;flex-direction:column;gap:0.65rem}
+.opt{display:flex;align-items:flex-start;gap:0.75rem;padding:0.9rem 1rem;background:#0A2518;border:1px solid var(--green2);border-radius:8px;cursor:pointer;text-align:left;width:100%;transition:all 0.25s}
+.opt:hover{border-color:var(--teal);background:var(--dark3)}
+.opt.sel{border-color:var(--gold);background:#152E1E}
+.opt-ltr{width:28px;height:28px;border-radius:50%;background:var(--green2);border:1px solid var(--green);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:0.75rem;color:var(--gold);flex-shrink:0}
+.opt.sel .opt-ltr{background:var(--gold);color:var(--dark);border-color:var(--gold)}
+.opt-txt{color:var(--mid);font-size:0.93rem;line-height:1.45}
+.oq-wrap{padding:1.5rem 1.5rem 0}
+.oq-wrap textarea{min-height:120px;margin-top:0.75rem}
 
 /* LOADING */
-.loading-screen{text-align:center;padding:40px 0;}
-.loading-orb{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--teal) 0%,var(--violet) 100%);margin:0 auto 30px;animation:pulse 2s ease-in-out infinite;}
-@keyframes pulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(42,127,111,0.3);}50%{transform:scale(1.08);box-shadow:0 0 0 20px rgba(42,127,111,0);}}
-.loading-title{font-family:'Cinzel',serif;font-size:22px;color:var(--bleu);margin-bottom:12px;}
-.loading-text{font-size:17px;font-style:italic;color:var(--texte2);line-height:1.7;}
-.loading-dots span{display:inline-block;animation:blink 1.4s infinite both;font-size:24px;color:var(--or);}
-.loading-dots span:nth-child(2){animation-delay:0.2s;}
-.loading-dots span:nth-child(3){animation-delay:0.4s;}
-@keyframes blink{0%,80%,100%{opacity:0;}40%{opacity:1;}}
+.loading{padding:4rem 1.5rem;text-align:center}
+.orb{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--violet));margin:0 auto 1.5rem;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:0.8}50%{transform:scale(1.1);opacity:1}}
+.load-txt{font-family:'Cinzel',serif;font-size:1.2rem;color:var(--gold)}
+.load-sub{color:var(--mid);font-size:0.88rem;margin-top:0.5rem}
+.load-steps{margin:2rem auto 0;max-width:320px;text-align:left}
+.ls{font-size:0.82rem;color:#2A4A3A;padding:0.35rem 0;transition:color 0.4s}
+.ls.done{color:var(--teal)}.ls.active{color:var(--gold);font-style:italic}
 
-/* RÉSULTATS */
-.result-header{text-align:center;margin-bottom:40px;}
-.result-prenom{font-family:'Cinzel',serif;font-size:13px;letter-spacing:3px;color:var(--or);text-transform:uppercase;margin-bottom:10px;}
-.result-title{font-size:clamp(28px,5vw,42px);color:var(--bleu);line-height:1.2;margin-bottom:16px;}
-.result-famille-badge{display:inline-block;padding:10px 28px;border-radius:50px;font-family:'Cinzel',serif;font-size:16px;font-weight:600;letter-spacing:1px;margin-bottom:30px;}
-.badge-batisseur{background:linear-gradient(135deg,#8B2E1A,#C0522E);color:var(--ivoire);}
-.badge-artisan{background:linear-gradient(135deg,#2E5E3A,#5A9E6A);color:var(--ivoire);}
-.badge-structurant{background:linear-gradient(135deg,#3D4A5C,#6A7A90);color:var(--ivoire);}
-.badge-passeur{background:linear-gradient(135deg,#4A1A6E,#8B4FBA);color:var(--ivoire);}
-.scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:30px;}
-.score-card{background:var(--ivoire);border-radius:12px;padding:18px 16px;text-align:center;border:1.5px solid var(--ivoire2);}
-.score-card.dominant{border-color:var(--teal);background:linear-gradient(145deg,rgba(42,127,111,0.07),rgba(74,172,160,0.04));}
-.score-nom{font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;color:var(--texte2);text-transform:uppercase;margin-bottom:10px;}
-.score-bar-bg{height:6px;background:var(--ivoire2);border-radius:3px;overflow:hidden;margin-bottom:8px;}
-.score-bar-fill{height:100%;border-radius:3px;transition:width 1s ease;}
-.batisseur-fill{background:linear-gradient(90deg,#8B2E1A,#C0522E);}
-.artisan-fill{background:linear-gradient(90deg,#2E5E3A,#5A9E6A);}
-.structurant-fill{background:linear-gradient(90deg,#3D4A5C,#6A7A90);}
-.passeur-fill{background:linear-gradient(90deg,#4A1A6E,#8B4FBA);}
-.score-pct{font-family:'Cinzel',serif;font-size:18px;font-weight:600;color:var(--bleu);}
+/* RESULTS */
+.res-hdr{padding:2rem 1.5rem 1.2rem;background:linear-gradient(180deg,var(--dark2),var(--dark3));text-align:center;border-bottom:1px solid var(--green2)}
+.res-label{font-size:0.72rem;color:var(--mid);letter-spacing:0.2em;text-transform:uppercase}
+.res-name{font-family:'Cinzel',serif;font-size:1.8rem;color:var(--gold);margin-top:0.3rem}
+.res-info{font-size:0.75rem;color:var(--violet);letter-spacing:0.15em;margin-top:0.2rem}
+.fam-main{text-align:center;padding:1.5rem;border-bottom:1px solid var(--green2)}
+.fam-name{font-family:'Cinzel',serif;font-size:1.8rem;margin:0.5rem 0 0.3rem}
+.fam-tag{color:var(--mid);font-size:0.95rem;font-style:italic}
+.section{padding:1.3rem 1.5rem;border-bottom:1px solid var(--green2)}
+.sec-title{font-size:0.7rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--violet);margin-bottom:1rem}
+.pct-row{display:flex;align-items:center;gap:0.75rem;margin-bottom:0.7rem}
+.pct-lbl{width:140px;font-size:0.85rem;color:var(--mid)}
+.pct-bg{flex:1;height:8px;background:var(--green2);border-radius:4px;overflow:hidden}
+.pct-fill{height:100%;border-radius:4px;transition:width 1.2s ease}
+.pct-n{width:35px;text-align:right;font-size:0.85rem;color:var(--gold);font-weight:600}
+.swatches{display:flex;gap:0.5rem;flex-wrap:wrap}
+.sw-item{text-align:center}
+.sw{width:38px;height:38px;border-radius:50%;border:2px solid var(--green);display:block;margin:0 auto}
+.sw-lbl{font-size:0.6rem;color:var(--mid);margin-top:0.25rem;max-width:42px;line-height:1.2}
+.ai-content{color:var(--mid);font-size:1rem;line-height:1.8;font-style:italic;border-left:2px solid var(--violet);padding-left:1rem}
+.tags{display:flex;flex-wrap:wrap;gap:0.4rem}
+.tag{padding:0.22rem 0.7rem;border-radius:12px;font-size:0.8rem;border:1px solid}
+.tag-f{border-color:var(--teal);color:var(--teal);background:#00B4B411}
+.tag-a{border-color:var(--gold);color:var(--gold);background:#C9A84C11}
+.step{display:flex;gap:0.75rem;margin-bottom:0.8rem;padding:0.8rem;background:#0A2518;border-radius:6px;border-left:2px solid var(--teal)}
+.step-t{font-size:0.68rem;color:var(--teal);text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;margin-top:0.1rem;min-width:44px}
+.step-c{color:var(--mid);font-size:0.92rem;line-height:1.5}
+.step-c b,.step-c strong{color:var(--light)}
 
-/* PALETTE */
-.palette-section{margin-bottom:30px;}
-.palette-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--or);margin-bottom:16px;}
-.palette-swatches{display:flex;gap:12px;flex-wrap:wrap;}
-.swatch{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;min-width:70px;}
-.swatch-circle{width:52px;height:52px;border-radius:50%;border:2px solid rgba(255,255,255,0.2);box-shadow:0 4px 12px rgba(0,0,0,0.15);flex-shrink:0;}
-.swatch-nom{font-family:'Cinzel',serif;font-size:10px;letter-spacing:1px;color:var(--texte);text-align:center;line-height:1.3;}
-.swatch-sens{font-size:11px;font-style:italic;color:var(--texte2);text-align:center;line-height:1.4;}
+/* ÉCLATS DE LUMIÈRE */
+.eclats-intro{color:var(--mid);font-size:0.88rem;font-style:italic;margin-bottom:1rem}
+.eclat-card{background:var(--dark2);border:1px solid var(--violet);border-radius:10px;padding:1.1rem 1.3rem;margin-bottom:0.75rem;cursor:pointer;transition:all 0.3s}
+.eclat-card:hover{border-color:var(--gold);background:#0A1A2E}
+.eclat-card.chosen{border-color:var(--gold);background:#12122A}
+.eclat-num{font-size:0.65rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--violet);margin-bottom:0.4rem}
+.eclat-txt{font-size:1rem;font-style:italic;color:var(--light);line-height:1.7}
 
-/* PROFIL IA */
-.profil-ia{background:linear-gradient(160deg,var(--vert) 0%,var(--bleu) 60%,var(--violet) 100%);border-radius:20px;padding:40px 36px;color:var(--ivoire);margin-bottom:30px;position:relative;overflow:hidden;}
-.profil-ia h3{font-family:'Cinzel',serif;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:var(--or-lt);margin-bottom:20px;}
-.profil-ia-content{font-size:17px;line-height:1.9;color:rgba(247,243,236,0.92);}
-.profil-ia-content p{margin-bottom:16px;}
-.profil-ia-content h4{font-family:'Cinzel',serif;font-size:14px;letter-spacing:2px;color:var(--or-lt);text-transform:uppercase;margin:28px 0 12px;}
-.profil-ia-content strong{color:var(--or-lt);font-weight:600;}
-.result-actions{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:36px;}
-.btn-print{padding:14px 32px;border-radius:50px;border:1.5px solid var(--teal);background:transparent;font-family:'Cinzel',serif;font-size:13px;letter-spacing:2px;color:var(--teal);cursor:pointer;transition:all 0.2s;}
-.btn-print:hover{background:var(--teal);color:var(--ivoire);}
-.btn-restart{padding:14px 32px;border-radius:50px;border:none;background:linear-gradient(135deg,var(--or) 0%,var(--or-lt) 100%);font-family:'Cinzel',serif;font-size:13px;letter-spacing:2px;color:var(--bleu);cursor:pointer;font-weight:600;transition:transform 0.2s;}
-.btn-restart:hover{transform:translateY(-2px);}
-.error-box{background:#fff5f5;border:1.5px solid #f0a0a0;border-radius:12px;padding:20px 24px;margin-top:20px;font-size:16px;color:#8b2222;line-height:1.6;}
-.page-footer{text-align:center;padding:40px 24px;font-size:14px;color:var(--texte2);font-style:italic;border-top:1px solid var(--ivoire2);}
-.page-footer strong{color:var(--bleu);font-style:normal;font-family:'Cinzel',serif;font-size:13px;letter-spacing:1px;}
-@media(max-width:600px){.hero{padding:60px 20px 50px;}.familles-grid{grid-template-columns:1fr 1fr;}.nav-btns{flex-direction:column-reverse;}.btn-next,.btn-prev{width:100%;text-align:center;}.result-actions{flex-direction:column;align-items:center;}}
+/* OISEAUX */
+.oiseaux{display:flex;flex-wrap:wrap;gap:0.75rem;margin-top:0.5rem}
+.oiseau-card{background:#0A2518;border:1px solid var(--green2);border-radius:8px;padding:0.75rem 1rem;flex:1;min-width:180px}
+.oiseau-emoji{font-size:1.3rem;margin-bottom:0.3rem}
+.oiseau-name{font-family:'Cinzel',serif;font-size:0.78rem;color:var(--gold);letter-spacing:0.05em;margin-bottom:0.2rem}
+.oiseau-desc{font-size:0.78rem;color:var(--mid);line-height:1.4;font-style:italic}
+
+.pl-name{font-style:italic;color:var(--gold);margin-bottom:0.75rem;font-size:0.9rem}
+.pl-item{display:flex;align-items:center;gap:0.65rem;padding:0.45rem 0;border-bottom:1px solid #1A3C2E33}
+.pl-n{font-size:0.72rem;color:var(--violet);width:20px;flex-shrink:0}
+.pl-info{flex:1}
+.pl-title{font-size:0.9rem;color:var(--light);font-style:italic}
+.pl-artist{font-size:0.75rem;color:var(--mid)}
+.pl-style{font-size:0.68rem;color:var(--violet);white-space:nowrap}
+.print-btn{display:block;width:100%;padding:1rem;background:linear-gradient(135deg,var(--dark3),var(--dark2));border:1px solid var(--gold);border-radius:8px;color:var(--gold);font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.2em;cursor:pointer;text-align:center;margin:1.5rem 0 0.5rem;transition:all 0.3s}
+.print-btn:hover{background:linear-gradient(135deg,#C9A84C22,var(--dark3))}
+.print-zone{padding:0 1.5rem 1.5rem}
+.error-box{background:#2A0A0A;border:1px solid #C44;border-radius:8px;padding:1rem 1.5rem;color:#F88;font-size:0.9rem;margin:1rem 1.5rem}
+.footer{text-align:center;padding:1.2rem 1.5rem;border-top:1px solid var(--green2)}
+.footer-name{font-family:'Cinzel',serif;font-size:0.85rem;color:var(--gold);letter-spacing:0.12em}
+.footer-sub{font-size:0.72rem;color:var(--violet);margin-top:0.25rem;font-style:italic}
+
+/* PRINT */
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  body{background:white!important;color:#1a1a1a!important}
+  .app{max-width:100%}
+  .hdr{background:white!important;border-bottom:2px solid #0D3B2E!important;padding:1rem}
+  .logo{-webkit-text-fill-color:#0D3B2E!important;font-size:1.5rem}
+  .logo-sub{color:#1A6B4A!important}
+  .hdr-desc{color:#444!important}
+  .prog-bar,.prog-label,.nav,.print-zone,.screen:not(.active){display:none!important}
+  .res-hdr{background:white!important;border-bottom:1px solid #ddd!important}
+  .res-name,.pl-name,.eclat-card.chosen .eclat-txt{color:#C9A84C!important}
+  .res-label,.res-info{color:#6A4C93!important}
+  .fam-main,.section{border-bottom:1px solid #eee!important}
+  .fam-name{color:#0D3B2E!important}
+  .fam-tag,.load-sub{color:#555!important}
+  .sec-title{color:#0D3B2E!important}
+  .step{background:#f8f8f8!important;border-left:2px solid #00B4B4!important}
+  .step-t{color:#1A6B4A!important}
+  .step-c,.ai-content,.opt-txt,.pl-artist{color:#333!important}
+  .step-c b,.step-c strong,.pl-title{color:#1a1a1a!important}
+  .eclat-card{background:#f8f0ff!important;border:1px solid #6A4C93!important}
+  .eclat-card:not(.chosen){display:none!important}
+  .eclat-num{color:#6A4C93!important}
+  .eclat-txt{color:#1a1a1a!important}
+  .oiseau-card{background:#f8f8f8!important;border:1px solid #ddd!important}
+  .oiseau-name{color:#C9A84C!important}
+  .oiseau-desc{color:#444!important}
+  .tag-f{color:#1A6B4A!important;border-color:#1A6B4A!important;background:transparent!important}
+  .tag-a{color:#9A7A20!important;border-color:#9A7A20!important;background:transparent!important}
+  .pct-bg{background:#eee!important}
+  .pct-lbl{color:#333!important}
+  .pct-n{color:#C9A84C!important}
+  .footer{border-top:1px solid #ddd!important}
+  .footer-name{color:#C9A84C!important}
+  .footer-sub{color:#6A4C93!important}
+  .pl-style{color:#6A4C93!important}
+  .ai-content{border-left:2px solid #6A4C93!important}
+  .sw{border:1px solid #aaa!important}
+}
 </style>
 </head>
 <body>
+<div class="app">
 
-<header class="hero">
-  <p class="hero-eyebrow">Lara Herbinia · Capteuse de Vivant</p>
-  <h1>Capte ta Lumière</h1>
-  <p class="hero-sub">Découvre ta Famille d'Âme et reçois tes rituels personnalisés pour rayonner pleinement</p>
-  <a href="#questionnaire" class="hero-cta">Commencer le voyage ↓</a>
-</header>
+<div class="hdr">
+  <div class="logo">Capte ta Lumière</div>
+  <div class="logo-sub">Familles d'Âmes · Révèle qui tu es</div>
+  <p class="hdr-desc">Un questionnaire pour trouver ta famille d'âme<br>et recevoir tes rituels personnalisés</p>
+</div>
+<div class="prog-bar"><div class="prog-fill" id="pf" style="width:0%"></div></div>
+<div class="prog-label" id="pl">Bienvenue</div>
 
-<section class="section">
-  <h2 class="section-title">Les quatre Familles d'Âmes</h2>
-  <p class="section-subtitle">Chaque être porte en lui une couleur profonde. Laquelle est la tienne&nbsp;?</p>
-  <div class="familles-grid">
-    <div class="famille-card batisseur"><span class="famille-icon">🌿</span><div class="famille-nom">Le Bâtisseur</div><div class="famille-corps">Corps physique · Instinct</div><p class="famille-desc">Ancré dans la matière, il crée, construit, manifeste. Sa force est dans l'action concrète et la présence totale.</p></div>
-    <div class="famille-card artisan"><span class="famille-icon">🕊️</span><div class="famille-nom">L'Artisan de la Paix</div><div class="famille-corps">Corps émotionnel · Empathie</div><p class="famille-desc">Gardien des liens, il ressent tout, comprend tous. Sa force est dans l'harmonie et la douceur désarmante.</p></div>
-    <div class="famille-card structurant"><span class="famille-icon">✨</span><div class="famille-nom">Le Structurant</div><div class="famille-corps">Corps mental · Intuition</div><p class="famille-desc">Architecte du sens, il organise, analyse, illumine. Sa force est dans la clarté qu'il apporte au chaos.</p></div>
-    <div class="famille-card passeur"><span class="famille-icon">🔥</span><div class="famille-nom">Le Passeur</div><div class="famille-corps">Corps spirituel · Connexion subtile</div><p class="famille-desc">Pont entre les mondes, il perçoit l'invisible et guide les âmes. Sa force est dans la transmission.</p></div>
+<!-- WELCOME -->
+<div class="screen active" id="s-welcome">
+  <div class="welcome">
+    <h2>Bienvenue dans ton voyage intérieur</h2>
+    <p>Ce questionnaire va révéler ta famille d'âme — cette couleur profonde qui définit qui tu es, comment tu vis, et ce dont tu as besoin pour rayonner pleinement.</p>
+    <p>Réponds avec sincérité. Il n'y a pas de bonne ou de mauvaise réponse — seulement la tienne.</p>
+    <label class="lbl">Ton prénom *</label>
+    <input type="text" id="prenom" placeholder="Comment t'appelles-tu ?">
+    <div class="two-col">
+      <div><label class="lbl">Ton âge</label><input type="number" id="age" placeholder="Ex: 42" min="18" max="99"></div>
+      <div><label class="lbl">Ta ville</label><input type="text" id="ville" placeholder="Ex: Bruxelles"></div>
+    </div>
+    <label class="lbl">En quelques mots, qui es-tu ?</label>
+    <textarea id="qui" placeholder="Ta façon de te décrire, librement..."></textarea>
+    <label class="lbl">Qu'est-ce qui t'a amené(e) ici aujourd'hui ?</label>
+    <textarea id="pourquoi" placeholder="Une intuition, une envie, une quête..."></textarea>
   </div>
-</section>
+  <div class="nav">
+    <button class="btn-sm" disabled>← Précédente</button>
+    <button class="btn-main" onclick="startQ()">Commencer mon voyage ✦</button>
+  </div>
+  <div class="footer">
+    <div class="footer-name">Lara Herbinia — Capteuse de Vivant</div>
+    <div class="footer-sub">Basé sur le travail de Diane LeBlanc</div>
+  </div>
+</div>
 
-<div class="sep"><div class="sep-line">Basé sur le travail de Diane LeBlanc</div></div>
+<!-- QUESTIONS -->
+<div class="screen" id="s-questions">
+  <div class="q-wrap">
+    <div class="q-num" id="qn"></div>
+    <div class="q-text" id="qt"></div>
+    <div class="opts" id="qo"></div>
+  </div>
+  <div class="nav">
+    <button class="btn-sm" id="bPrev" onclick="prevQ()">← Précédente</button>
+    <button class="btn-sm" onclick="nextQ()">Suivante →</button>
+  </div>
+  <div class="footer">
+    <div class="footer-name">Lara Herbinia — Capteuse de Vivant</div>
+    <div class="footer-sub">Basé sur le travail de Diane LeBlanc</div>
+  </div>
+</div>
 
-<section id="questionnaire">
-  <div class="quiz-wrap">
-    <div class="prog-container" id="prog-container">
-      <div class="prog-top"><span class="prog-label" id="prog-label">Bienvenue</span><span class="prog-count" id="prog-count"></span></div>
-      <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
-    </div>
+<!-- OPEN QUESTIONS -->
+<div class="screen" id="s-open">
+  <div class="oq-wrap">
+    <div class="q-num" id="oqn"></div>
+    <div class="q-text" id="oqt"></div>
+    <textarea id="oqa" placeholder="Réponds librement, avec tes propres mots..."></textarea>
+  </div>
+  <div class="nav">
+    <button class="btn-sm" onclick="prevOQ()">← Précédente</button>
+    <button class="btn-sm" onclick="nextOQ()">Suivante →</button>
+  </div>
+  <div class="footer">
+    <div class="footer-name">Lara Herbinia — Capteuse de Vivant</div>
+    <div class="footer-sub">Basé sur le travail de Diane LeBlanc</div>
+  </div>
+</div>
 
-    <div class="screen active" id="s-welcome">
-      <h2 class="welcome-title">Bienvenue dans ton voyage intérieur</h2>
-      <p class="welcome-text">Ce questionnaire va révéler ta Famille d'Âme — cette couleur profonde qui définit qui tu es, comment tu vis, et ce dont tu as besoin pour rayonner pleinement.<br><br>Réponds avec sincérité. Il n'y a pas de bonne ou de mauvaise réponse — seulement la tienne.</p>
-      <div class="field"><label for="prenom">Ton prénom</label><input type="text" id="prenom" placeholder="Comment t'appelles-tu ?"/></div>
-      <div class="field"><label for="nom">Ton nom</label><input type="text" id="nom" placeholder="Ton nom de famille"/></div>
-      <div class="field"><label for="description">En quelques mots, qui es-tu ?</label><textarea id="description" rows="3" placeholder="Maman, artiste, chercheuse d'âme... À toi de choisir."></textarea></div>
-      <div class="nav-btns"><span></span><button class="btn-next" onclick="startQuiz()">Suivant →</button></div>
-    </div>
-
-    <div id="questions-container"></div>
-
-    <div class="screen" id="s-loading">
-      <div class="loading-screen">
-        <div class="loading-orb"></div>
-        <h3 class="loading-title">Ton profil se tisse…</h3>
-        <p class="loading-text">Les fils de lumière s'entrelacent entre tes réponses.<br>Un instant de magie.</p>
-        <div class="loading-dots"><span>·</span><span>·</span><span>·</span></div>
-      </div>
-    </div>
-
-    <div class="screen" id="s-results">
-      <div class="result-header">
-        <p class="result-prenom" id="res-prenom"></p>
-        <h2 class="result-title" id="res-title"></h2>
-        <div class="result-famille-badge" id="res-badge"></div>
-      </div>
-      <div class="scores" id="res-scores"></div>
-      <div class="palette-section">
-        <p class="palette-title">🎨 Tes couleurs d'âme</p>
-        <div class="palette-swatches" id="res-palette"></div>
-      </div>
-      <div class="profil-ia">
-        <h3>✦ Ton profil personnalisé</h3>
-        <div class="profil-ia-content" id="res-profil"></div>
-      </div>
-      <div class="result-actions">
-        <button class="btn-print" onclick="ouvrirImpression()">Imprimer mon profil</button>
-        <button class="btn-restart" onclick="restart()">Recommencer</button>
-      </div>
+<!-- LOADING -->
+<div class="screen" id="s-loading">
+  <div class="loading">
+    <div class="orb"></div>
+    <div class="load-txt">Révélation en cours...</div>
+    <div class="load-sub">L'IA tisse ton profil d'âme unique</div>
+    <div class="load-steps">
+      <div class="ls" id="ls1">✦ Analyse de tes réponses...</div>
+      <div class="ls" id="ls2">✦ Calcul de ta composition d'âme...</div>
+      <div class="ls" id="ls3">✦ Génération de tes rituels personnalisés...</div>
+      <div class="ls" id="ls4">✦ Tissage de tes Éclats de Lumière...</div>
+      <div class="ls" id="ls5">✦ Finalisation de ton profil...</div>
     </div>
   </div>
-</section>
+</div>
 
-<footer class="page-footer">
-  <strong>Lara Herbinia — Capteuse de Vivant</strong><br>Basé sur le travail de Diane LeBlanc
-</footer>
+<!-- RESULTS -->
+<div class="screen" id="s-results">
+  <div class="res-hdr">
+    <div class="res-label">Profil d'âme de</div>
+    <div class="res-name" id="rName"></div>
+    <div class="res-info" id="rInfo"></div>
+  </div>
+  <div class="fam-main">
+    <div id="rBadge"></div>
+    <div class="fam-name" id="rFam"></div>
+    <div class="fam-tag" id="rTag"></div>
+  </div>
+  <div class="section">
+    <div class="sec-title">Composition de ton âme</div>
+    <div id="rPct"></div>
+  </div>
+  <div class="section">
+    <div class="sec-title">Ta palette de couleurs d'âme</div>
+    <div class="swatches" id="rPalette"></div>
+  </div>
+  <div class="section">
+    <div class="sec-title">✦ Ce que l'IA voit en toi</div>
+    <div class="ai-content" id="rPortrait"></div>
+  </div>
+  <div class="section">
+    <div class="sec-title">✦ Tes forces</div>
+    <div class="tags" id="rForces"></div>
+  </div>
+  <div class="section">
+    <div class="sec-title">◈ Points d'attention</div>
+    <div class="tags" id="rAttention"></div>
+  </div>
+  <div class="section">
+    <div class="sec-title">☀ Ton Miracle Morning personnalisé — 30 minutes</div>
+    <div id="rMorning"></div>
+  </div>
+  <div class="section">
+    <div class="sec-title">☽ Ton Miracle Evening personnalisé — 30 minutes</div>
+    <div id="rEvening"></div>
+  </div>
+  <div class="section">
+    <div class="sec-title">✨ Tes Éclats de Lumière</div>
+    <p class="eclats-intro">Choisis celui qui résonne le plus juste en toi aujourd'hui...</p>
+    <div id="rEclats"></div>
+  </div>
+  <div class="section">
+    <div class="sec-title">🐦 Les voix de ta famille d'âme</div>
+    <p class="eclats-intro" style="margin-bottom:0.75rem">Ces oiseaux chantent avec la même énergie que la tienne...</p>
+    <div class="oiseaux" id="rOiseaux"></div>
+  </div>
+  <div class="section">
+    <div class="sec-title">🎵 Ta playlist vibratoire</div>
+    <div class="pl-name" id="rPlName"></div>
+    <div id="rPl"></div>
+  </div>
+  <div class="print-zone">
+    <button class="print-btn" onclick="window.print()">✦ Imprimer mon profil d'âme</button>
+  </div>
+  <div class="footer">
+    <div class="footer-name">Lara Herbinia — Capteuse de Vivant</div>
+    <div class="footer-sub">Basé sur le travail de Diane LeBlanc</div>
+  </div>
+</div>
+
+</div>
 
 <script>
-emailjs.init("L7WqBkdaWiArMpRu9");
-
-const FAMILLES = {
-  batisseur: { nom:"Le Bâtisseur", emoji:"🌿", couleur:"badge-batisseur", fill:"batisseur-fill",
-    palette:[{hex:"#8B2E1A",nom:"Rouge brique",sens:"Feu intérieur & action"},{hex:"#C0522E",nom:"Rouille chaude",sens:"Ancrage & vitalité"},{hex:"#8B6914",nom:"Ocre doré",sens:"Abondance & création"},{hex:"#5C3D1E",nom:"Terre brune",sens:"Enracinement profond"}]},
-  artisan: { nom:"L'Artisan de la Paix", emoji:"🕊️", couleur:"badge-artisan", fill:"artisan-fill",
-    palette:[{hex:"#2E5E3A",nom:"Vert sauge",sens:"Harmonie & guérison"},{hex:"#5A9E6A",nom:"Vert menthe",sens:"Douceur & croissance"},{hex:"#C9A4B0",nom:"Rose poudré",sens:"Amour inconditionnel"},{hex:"#7AB8C8",nom:"Bleu ciel",sens:"Fluidité émotionnelle"}]},
-  structurant: { nom:"Le Structurant", emoji:"✨", couleur:"badge-structurant", fill:"structurant-fill",
-    palette:[{hex:"#3D4A5C",nom:"Gris ardoise",sens:"Clarté mentale"},{hex:"#6A7A90",nom:"Bleu acier",sens:"Précision & intuition"},{hex:"#A8B4C0",nom:"Argent doux",sens:"Intelligence & lumière"},{hex:"#F0F0F0",nom:"Blanc pur",sens:"Espace & clarté absolue"}]},
-  passeur: { nom:"Le Passeur", emoji:"🔥", couleur:"badge-passeur", fill:"passeur-fill",
-    palette:[{hex:"#4A1A6E",nom:"Violet profond",sens:"Connexion spirituelle"},{hex:"#8B4FBA",nom:"Pourpre",sens:"Mystère & transformation"},{hex:"#1A1A2E",nom:"Bleu nuit",sens:"Entre les mondes"},{hex:"#C9922A",nom:"Or subtil",sens:"Lumière intérieure"}]}
+// ============================================
+// DONNÉES FAMILLES D'ÂMES
+// ============================================
+const FM = {
+  batisseur:{
+    name:"Le Bâtisseur", emoji:"🧱",
+    tag:"Ancré dans la matière, tu construis le monde réel",
+    badge:{text:"Corps Physique · Instinct", col:"#C4704F"},
+    col:["#8B2500","#C4704F","#D4836A","#C9A84C","#1A3C2E","#2E8B8B","#F5EFE6"],
+    coln:["Rouge Brique","Terracotta","Saumon","Or Chaud","Vert Forêt","Turquoise","Blanc Cassé"],
+    forces:["Résilience","Leadership","Confiance innée","Énergie débordante","Courage","Concrétisation","Instinct puissant"],
+    att:["Persécuteur sous stress","Difficulté à lâcher prise","Méfiance envers les autres","Peut épuiser l'entourage"],
+    oiseaux:[
+      {emoji:"🐦",name:"Le Merle noir",desc:"Premier à chanter avant l'aube, son chant puissant et mélodieux affirme sa présence sans hésitation."},
+      {emoji:"🎶",name:"La Grive musicienne",desc:"Chant fort et répété dès l'aurore — elle frappe la matière, structure le territoire, marque son espace."},
+      {emoji:"🌅",name:"L'Alouette des champs",desc:"Elle s'élève depuis la terre en chantant à pleine voix — entre ancrage et élan, la signature du Bâtisseur."}
+    ],
+    pl:{name:"L'Éveil du Fondateur",tracks:[
+      {t:"Fratres",a:"Arvo Pärt",s:"Classique contemporain"},
+      {t:"River of Birds",a:"Robert Mirabal",s:"Chamanique amérindien"},
+      {t:"Become Ocean",a:"John Luther Adams",s:"Orchestral"},
+      {t:"Kelo",a:"Tenores di Bitti",s:"Chant sarde polyphonique"},
+      {t:"Jabula",a:"Wim Mertens",s:"Minimaliste belge"},
+      {t:"Huun-Huur-Tu Medley",a:"Huun-Huur-Tu",s:"Chant diphonique touva"},
+      {t:"Adiemus",a:"Karl Jenkins",s:"Monde/Orchestral"},
+      {t:"Lux Aeterna",a:"Morten Lauridsen",s:"Choral contemporain"}
+    ]}
+  },
+  artisan:{
+    name:"L'Artisan de la Paix", emoji:"🤍",
+    tag:"Tisseuse de liens, ton cœur est ton laboratoire",
+    badge:{text:"Corps Émotionnel · Empathie", col:"#8E7BA0"},
+    col:["#F4C0D1","#E8A0B0","#8E7BA0","#2E8B8B","#C9A84C","#9FE1CB","#F5EFE6"],
+    coln:["Rose Poudré","Rose Doux","Mauve","Turquoise","Or","Menthe","Blanc Cassé"],
+    forces:["Empathie profonde","Créativité","Générosité","Tissage de liens","Amour inconditionnel","Spontanéité","Écoute naturelle"],
+    att:["Victime sous stress","S'oublie pour les autres","Peur de l'abandon","Difficulté à clore"],
+    oiseaux:[
+      {emoji:"❤️",name:"Le Rouge-Gorge",desc:"Chante toute l'année, même en hiver — fidèle, proche des humains, son chant doux crée du lien en toutes saisons."},
+      {emoji:"🌸",name:"La Fauvette à tête noire",desc:"Chant fluide et mélodieux, tout en douceur — elle chante pour la beauté du moment, sans ostentation."},
+      {emoji:"🌞",name:"Le Pinson des arbres",desc:"Chant joyeux et social, souvent en groupe — il célèbre le collectif, la joie partagée, la chaleur du lien."}
+    ],
+    pl:{name:"La Fréquence Céleste",tracks:[
+      {t:"Aïcha",a:"Nusrat Fateh Ali Khan",s:"Qawwali pakistanais"},
+      {t:"Yiri",a:"Koko",s:"Musique du Burkina"},
+      {t:"Salva Nos",a:"Mediaeval Baebes",s:"Chant médiéval"},
+      {t:"Rasa Lila",a:"Craig Pruess",s:"Indien/Dévotionnel"},
+      {t:"Sognu",a:"I Muvrini",s:"Corse polyphonique"},
+      {t:"Pie Jesu",a:"Gabriel Fauré",s:"Classique romantique"},
+      {t:"Kaira",a:"Toumani Diabaté",s:"Kora mandingue"},
+      {t:"O Magnum Mysterium",a:"Morten Lauridsen",s:"Choral contemporain"}
+    ]}
+  },
+  structurant:{
+    name:"Le Structurant", emoji:"🧠",
+    tag:"Aigle royal de l'âme, tu cartographies l'invisible",
+    badge:{text:"Corps Mental · Intuition", col:"#1B4F72"},
+    col:["#1B4F72","#378ADD","#85B7EB","#C9A84C","#888780","#F5EFE6","#2C2C2A"],
+    coln:["Bleu Nuit","Bleu Vif","Bleu Clair","Or","Gris","Blanc","Anthracite"],
+    forces:["Analyse fine","Pédagogie naturelle","Intuition stratégique","Autonomie","Curiosité insatiable","Clarté de pensée","Perspicacité"],
+    att:["Arrogance intellectuelle sous stress","Se fige face aux émotions","Difficulté à identifier ses besoins","Peut paraître froid"],
+    oiseaux:[
+      {emoji:"🔵",name:"La Mésange bleue",desc:"Chant court, précis et répété dès l'aube — vive, méthodique, elle structure le temps avec clarté et efficacité."},
+      {emoji:"🔍",name:"Le Troglodyte mignon",desc:"Minuscule mais chant étonnamment puissant — comme le Structurant, sa force dépasse largement les apparences."},
+      {emoji:"🌲",name:"Le Grimpereau des jardins",desc:"Discret, méthodique, il observe avant d'agir — son chant fin est celui de l'intelligence patiente et précise."}
+    ],
+    pl:{name:"La Partition Intérieure",tracks:[
+      {t:"Gymnopedie No.3",a:"Erik Satie",s:"Classique impressionniste"},
+      {t:"Comptine d'un autre été",a:"Yann Tiersen",s:"Néoclassique"},
+      {t:"Passacaglia",a:"Handel/Halvorsen",s:"Baroque"},
+      {t:"Libertango",a:"Astor Piazzolla",s:"Tango argentin"},
+      {t:"Canto Ostinato",a:"Simeon ten Holt",s:"Minimaliste"},
+      {t:"Tabula Rasa",a:"Arvo Pärt",s:"Classique contemporain"},
+      {t:"Metamorphosis Two",a:"Philip Glass",s:"Minimaliste"},
+      {t:"Vocalise",a:"Rachmaninov",s:"Classique romantique"}
+    ]}
+  },
+  passeur:{
+    name:"Le Passeur", emoji:"✨",
+    tag:"Pont entre les mondes, tu éveilles les consciences",
+    badge:{text:"Corps Spirituel · Connexion", col:"#6A4C93"},
+    col:["#6A4C93","#8E7BA0","#1B4F72","#00B4B4","#C9A84C","#0D3B2E","#F5EFE6"],
+    coln:["Violet","Mauve","Bleu Pétrole","Turquoise","Or","Vert Forêt","Blanc Cassé"],
+    forces:["Connexion au subtil","Enthousiasme vibrant","Compassion profonde","Dons de guérison","Vision du sens","Accompagnement des transitions","Positivité rayonnante"],
+    att:["S'épuise à sauver les autres","Blessure de persécution","Caméléon social","Fuit ses propres difficultés"],
+    oiseaux:[
+      {emoji:"🌙",name:"Le Rossignol",desc:"Chante la nuit, entre deux mondes — son chant profond et mystérieux touche quelque chose d'invisible en chacun."},
+      {emoji:"🦉",name:"La Chouette hulotte",desc:"Voix de l'entre-deux, elle chante dans l'obscurité — gardienne des passages, messagère de l'invisible."},
+      {emoji:"🌆",name:"L'Engoulevent d'Europe",desc:"Chant crépusculaire, entre jour et nuit — il habite les seuils, les transitions, les moments hors du temps."}
+    ],
+    pl:{name:"Le Chant des Seuils",tracks:[
+      {t:"Atmosphere",a:"Harold Budd",s:"Ambient"},
+      {t:"Sunyata",a:"Karunesh",s:"World/Méditatif"},
+      {t:"Oceanic",a:"Estas Tonne",s:"Guitare sacrée"},
+      {t:"Bardo",a:"Deuter",s:"Tibétain/Ambient"},
+      {t:"Strókar",a:"Sigur Rós",s:"Post-rock islandais"},
+      {t:"Zikr",a:"Mercan Dede",s:"Soufi/Électro"},
+      {t:"Lament",a:"Patrick Ball",s:"Harpe celtique"},
+      {t:"River",a:"Brian Eno",s:"Ambient"}
+    ]}
+  }
 };
 
-const QCM = [
-  {q:"Il est 7h du matin, journée chargée. Comment tu démarres ?",choices:[{text:"Je me lève, je bouge, je prépare — le corps en route avant tout.",f:"batisseur"},{text:"Je prends soin des autres d'abord : les enfants, le café partagé, les petits mots.",f:"artisan"},{text:"Je note ma to-do, je planifie mentalement, je structure la journée.",f:"structurant"},{text:"J'ai besoin d'un moment de silence, seul(e), avant de rejoindre le monde.",f:"passeur"}]},
-  {q:"Un conflit éclate dans ton cercle proche. Quel est ton premier réflexe ?",choices:[{text:"Je propose une solution concrète pour régler le problème.",f:"batisseur"},{text:"J'essaie de comprendre chaque partie et de ramener la paix.",f:"artisan"},{text:"J'analyse la situation pour comprendre d'où vient le nœud.",f:"structurant"},{text:"Je ressens le malaise avant même qu'il soit exprimé et je me retire.",f:"passeur"}]},
-  {q:"On te donne une après-midi entière, libre, sans obligation. Qu'est-ce que tu fais ?",choices:[{text:"Je crée, je bricole, je jardine — quelque chose de concret avec mes mains.",f:"batisseur"},{text:"Je passe du temps de qualité avec quelqu'un que j'aime.",f:"artisan"},{text:"Je lis, j'explore une idée qui me trotte en tête depuis un moment.",f:"structurant"},{text:"Je me promène seul(e), je médite, je laisse mon esprit vagabonder.",f:"passeur"}]},
-  {q:"Dans un projet de groupe, quel rôle prends-tu naturellement ?",choices:[{text:"Celui qui avance, qui produit, qui fait avancer les choses.",f:"batisseur"},{text:"Celui qui fait attention à ce que chacun se sente bien et inclus.",f:"artisan"},{text:"Celui qui organise, structure et clarifie les objectifs.",f:"structurant"},{text:"Celui qui voit les choses sous un angle différent et inspire les autres.",f:"passeur"}]},
-  {q:"Tu traverses une période difficile. Ce qui t'aide vraiment, c'est :",choices:[{text:"Passer à l'action — faire quelque chose, même petit, pour avancer.",f:"batisseur"},{text:"Être entouré(e), parler, sentir que tu n'es pas seul(e).",f:"artisan"},{text:"Comprendre ce qui se passe pour mieux le traverser.",f:"structurant"},{text:"Te retirer dans ton monde intérieur, méditer, chercher le sens.",f:"passeur"}]},
-  {q:"Ce qui t'épuise profondément, c'est :",choices:[{text:"L'inaction, l'attente, les projets qui n'avancent jamais.",f:"batisseur"},{text:"Les tensions non résolues, les malentendus, les conflits latents.",f:"artisan"},{text:"Le manque de clarté, le chaos désorganisé, les décisions sans logique.",f:"structurant"},{text:"Le bruit constant, les environnements lourds énergétiquement, le manque de sens.",f:"passeur"}]},
-  {q:"Quand tu aimes quelqu'un, comment tu le montres ?",choices:[{text:"En faisant des choses pour lui — réparer, préparer, m'occuper du concret.",f:"batisseur"},{text:"En étant pleinement présent(e), à l'écoute, en prenant soin.",f:"artisan"},{text:"En partageant mes pensées, en construisant des projets ensemble.",f:"structurant"},{text:"En créant un espace de connexion profonde, de compréhension silencieuse.",f:"passeur"}]},
-  {q:"Face à une grande décision, ton processus ressemble à quoi ?",choices:[{text:"Je teste, j'essaie, j'apprends en faisant.",f:"batisseur"},{text:"Je ressens. Si ça me semble juste pour tout le monde, j'y vais.",f:"artisan"},{text:"Je liste les pour et les contre, je cherche l'information, j'analyse.",f:"structurant"},{text:"Je laisse venir. L'intuition finit toujours par parler.",f:"passeur"}]},
-  {q:"Le projet de ta vie, c'est :",choices:[{text:"Construire quelque chose de durable, de tangible, qui restera.",f:"batisseur"},{text:"Créer un environnement de paix, de beauté, de lien pour ceux que j'aime.",f:"artisan"},{text:"Comprendre, transmettre, laisser une trace de pensée dans le monde.",f:"structurant"},{text:"Évoluer, me transformer, et aider les autres à faire de même.",f:"passeur"}]},
-  {q:"Dans ta vie, tu te reconnais le plus dans cette phrase :",choices:[{text:"\"Je fais, donc je suis.\"",f:"batisseur"},{text:"\"Je relie, je prends soin, j'harmonise.\"",f:"artisan"},{text:"\"Je comprends le monde pour mieux l'habiter.\"",f:"structurant"},{text:"\"Je suis en chemin, toujours en chemin.\"",f:"passeur"}]}
+// ============================================
+// QUESTIONS
+// ============================================
+const QQ = [
+  {txt:"Il est 7h du matin. Tu as une journée chargée devant toi. Comment tu démarres ?",opts:[
+    {t:"Je bondis du lit, j'ai déjà ma liste de choses à faire en tête. En route !",f:"batisseur"},
+    {t:"J'avais déjà planifié ma journée la veille. Je suis prêt(e), je suis mon plan.",f:"structurant"},
+    {t:"J'ai besoin d'un moment doux — une tasse chaude, de la musique — avant de démarrer.",f:"artisan"},
+    {t:"Je reste quelques minutes allongé(e) à sentir comment je me sens avant de bouger.",f:"passeur"}]},
+  {txt:"Tu es invité(e) à une fête avec des gens que tu ne connais pas. Une fois sur place, tu fais quoi ?",opts:[
+    {t:"Je vais naturellement vers les gens, je souris, je crée le contact — je suis dans mon élément.",f:"artisan"},
+    {t:"Je repère rapidement qui est qui. Je vais vers ceux avec qui je peux avoir une vraie conversation.",f:"batisseur"},
+    {t:"J'observe d'abord discrètement le groupe avant de m'approcher de quelqu'un qui m'intéresse vraiment.",f:"structurant"},
+    {t:"Je sens l'énergie de la pièce. Certaines personnes m'attirent sans savoir pourquoi. Je les rejoins.",f:"passeur"}]},
+  {txt:"Ton/ta meilleur(e) ami(e) t'appelle en pleurant. Il/elle vient de se faire quitter. Tu fais quoi ?",opts:[
+    {t:"Je fonce chez lui/elle avec de la nourriture, des bougies, un film. On passe la soirée ensemble.",f:"artisan"},
+    {t:"Je lui propose des solutions concrètes — chercher un appart, sortir, s'occuper. Il faut agir.",f:"batisseur"},
+    {t:"Je l'aide à analyser ce qui s'est passé pour qu'il/elle comprenne et puisse avancer.",f:"structurant"},
+    {t:"Je sens immédiatement sa douleur. Je l'écoute sans rien dire, je suis juste là, présent(e).",f:"passeur"}]},
+  {txt:"Ton/ta responsable te confie un projet important. Ta première réaction c'est...",opts:[
+    {t:"Je retrousse mes manches et je commence immédiatement. On y va.",f:"batisseur"},
+    {t:"Je pose des questions précises, je structure un plan clair avant de commencer.",f:"structurant"},
+    {t:"Je pense d'abord à l'équipe — qui peut m'aider, comment on va travailler ensemble.",f:"artisan"},
+    {t:"Je prends le temps de sentir si ce projet a du sens pour moi. Si ça résonne, je m'y donne à fond.",f:"passeur"}]},
+  {txt:"Tu rentres chez toi après une journée épuisante. Pour récupérer vraiment, tu as besoin de...",opts:[
+    {t:"Bouger — une course, du sport, bricoler. Mon corps doit évacuer avant que je puisse me poser.",f:"batisseur"},
+    {t:"M'asseoir seul(e) avec un livre ou un documentaire. Mon cerveau se repose en apprenant.",f:"structurant"},
+    {t:"Appeler un(e) ami(e), raconter ma journée, rire un peu — le contact humain me recharge.",f:"artisan"},
+    {t:"Du silence, de la solitude, peut-être de la musique douce. Je dois me retrouver moi-même.",f:"passeur"}]},
+  {txt:"Dans ta cuisine, le four tombe en panne juste avant un dîner important. Tu réagis comment ?",opts:[
+    {t:"Pas de panique. Je règle le problème dans la minute — j'appelle, je trouve, j'improvise.",f:"batisseur"},
+    {t:"Je cherche immédiatement une solution alternative logique — commander, adapter la recette.",f:"structurant"},
+    {t:"Je stresse un peu mais ce qui m'importe c'est que mes invités se sentent bien.",f:"artisan"},
+    {t:"Je prends une grande respiration. On s'adapte, l'essentiel c'est le moment partagé.",f:"passeur"}]},
+  {txt:"Tu as une heure complètement libre, inattendue, au milieu de ta journée. Spontanément tu...",opts:[
+    {t:"J'avance sur un truc de ma liste — cette heure c'est une chance, je ne la gaspille pas.",f:"batisseur"},
+    {t:"Je lis, j'écoute un podcast, je me documente sur quelque chose qui m'intéresse.",f:"structurant"},
+    {t:"J'envoie un message à quelqu'un que j'aime pour prendre des nouvelles ou proposer un café.",f:"artisan"},
+    {t:"Je me pose, je marche, je laisse mon esprit vagabonder. Ces moments de vide sont précieux.",f:"passeur"}]},
+  {txt:"Tu assistes à une réunion qui s'éternise et tourne en rond. Tu fais quoi ?",opts:[
+    {t:"Je prends la parole pour recadrer — on perd du temps, il faut décider et passer à l'action.",f:"batisseur"},
+    {t:"Je prends des notes, je restructure mentalement le problème et je propose un plan clair.",f:"structurant"},
+    {t:"Je sens la tension monter. J'essaie de désamorcer avec une blague ou un mot doux.",f:"artisan"},
+    {t:"Je sens que quelque chose de plus profond bloque le groupe. Je pose une question qui touche au fond.",f:"passeur"}]},
+  {txt:"Tu apprends qu'un(e) collègue a dit du mal de toi dans ton dos. Ta réaction immédiate c'est...",opts:[
+    {t:"Je vais le/la voir directement et je mets les choses au clair. Pas question de laisser traîner ça.",f:"batisseur"},
+    {t:"Je prends du recul, j'analyse pourquoi il/elle a pu dire ça et je réfléchis à la meilleure réaction.",f:"structurant"},
+    {t:"Je suis blessé(e). J'ai besoin d'en parler à quelqu'un de confiance avant d'agir.",f:"artisan"},
+    {t:"Je ressens la trahison profondément. Je m'interroge sur ce que cette situation me révèle.",f:"passeur"}]},
+  {txt:"Tu dois choisir entre deux opportunités de vie. Comment tu décides ?",opts:[
+    {t:"Je pèse le pour et le contre concrètement — revenus, stabilité. La raison pratique décide.",f:"batisseur"},
+    {t:"Je fais des recherches approfondies, je liste tous les scénarios possibles avant de me décider.",f:"structurant"},
+    {t:"Je consulte les gens que j'aime. Leur avis et l'impact sur mes relations comptent autant.",f:"artisan"},
+    {t:"Je ferme les yeux et j'écoute ce que mon ventre me dit. Une option résonne plus fort — c'est elle.",f:"passeur"}]}
 ];
 
-const OUVERTES = [
-  "Qu'est-ce qui te donne de l'énergie le matin, ce qui te fait te lever avec envie ?",
-  "Quelle est la chose dont tu es le plus fier(e) dans ta vie, grande ou petite ?",
-  "Si tu pouvais changer une seule chose dans ton quotidien pour te sentir plus aligné(e), ce serait quoi ?"
+const OQ = [
+  "Si tu devais décrire ce qui te rend vraiment vivant(e) — ce qui te fait te lever le matin avec envie — ce serait quoi ?",
+  "Quel est le plus grand défi que tu aies relevé dans ta vie, et comment tu l'as surmonté ?",
+  "Si tu pouvais changer une seule chose dans ta façon d'être avec les autres, ce serait quoi ?"
 ];
 
-let currentQ = 0;
-let scores = {batisseur:0,artisan:0,structurant:0,passeur:0};
-let reponsesQCM = {};
-let reponsesOuvertes = {};
-let prenomUser = "";
-let nomUser = "";
-let descriptionUser = "";
-let lastDominant = "";
-let lastPcts = {};
+// ============================================
+// STATE
+// ============================================
+let curQ=0, curOQ=0, ans={}, oanswers={}, udata={};
 
-function buildQuestions() {
-  const container = document.getElementById("questions-container");
-  container.innerHTML = "";
-  const letters = ["A","B","C","D"];
-  QCM.forEach(function(q, i) {
-    const shuffled = q.choices.slice().sort(function(){return Math.random()-0.5;});
-    const choicesHtml = shuffled.map(function(c,j){
-      return '<button class="choice-btn" onclick="selectChoice('+i+',\''+c.f+'\',this)" data-famille="'+c.f+'"><span class="choice-letter">'+letters[j]+'</span><span>'+c.text+'</span></button>';
-    }).join("");
-    const div = document.createElement("div");
-    div.className = "screen";
-    div.id = "s-q"+i;
-    div.innerHTML = '<p class="question-eyebrow">Question '+(i+1)+' sur '+(QCM.length+OUVERTES.length)+'</p><p class="question-text">'+q.q+'</p><div class="choices">'+choicesHtml+'</div><div class="nav-btns"><button class="btn-prev" onclick="prevScreen()">← Précédente</button><button class="btn-next" id="btn-next-q'+i+'" onclick="nextScreen()" disabled>Suivante →</button></div>';
-    container.appendChild(div);
+// ============================================
+// UTILS
+// ============================================
+function setProgress(step, total, label){
+  document.getElementById('pf').style.width = Math.round(step/total*100)+'%';
+  document.getElementById('pl').textContent = label;
+}
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('s-'+id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ============================================
+// WELCOME
+// ============================================
+function startQ(){
+  const p = document.getElementById('prenom').value.trim();
+  if(!p){ alert('Ton prénom est nécessaire pour personnaliser ton profil 🌿'); return; }
+  udata = {
+    prenom: p,
+    age: document.getElementById('age').value,
+    ville: document.getElementById('ville').value,
+    qui: document.getElementById('qui').value,
+    pourquoi: document.getElementById('pourquoi').value
+  };
+  curQ = 0; renderQ(); showScreen('questions');
+}
+
+// ============================================
+// QUESTIONS CHOIX MULTIPLES
+// ============================================
+function renderQ(){
+  const q = QQ[curQ];
+  document.getElementById('qn').textContent = 'Question '+(curQ+1)+' / '+QQ.length;
+  document.getElementById('qt').textContent = q.txt;
+  const c = document.getElementById('qo'); c.innerHTML = '';
+  ['A','B','C','D'].forEach((l,i) => {
+    const b = document.createElement('button');
+    b.className = 'opt'+(ans[curQ]===q.opts[i].f?' sel':'');
+    b.innerHTML = '<div class="opt-ltr">'+l+'</div><div class="opt-txt">'+q.opts[i].t+'</div>';
+    b.onclick = () => { ans[curQ]=q.opts[i].f; document.querySelectorAll('.opt').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); };
+    c.appendChild(b);
   });
-  OUVERTES.forEach(function(q,i){
-    const idx = QCM.length+i;
-    const isLast = i===OUVERTES.length-1;
-    const div = document.createElement("div");
-    div.className = "screen open-question";
-    div.id = "s-q"+idx;
-    div.innerHTML = '<p class="question-eyebrow">Question ouverte '+(i+1)+' sur '+OUVERTES.length+'</p><p class="question-text">'+q+'</p><div class="field"><textarea id="open'+i+'" rows="5" placeholder="Prends le temps d\'y répondre avec sincérité…" oninput="updateOpenBtn('+i+','+idx+')" style="font-size:17px;"></textarea></div><div class="nav-btns"><button class="btn-prev" onclick="prevScreen()">← Précédente</button><button class="btn-next" id="btn-next-open'+i+'" onclick="'+(isLast?'submitQuiz()':'nextScreen()')+'" disabled>'+(isLast?'Révèle ma lumière ✦':'Suivante →')+'</button></div>';
-    container.appendChild(div);
-  });
+  const bp = document.getElementById('bPrev');
+  bp.textContent = curQ===0 ? '← Mes infos' : '← Précédente';
+  bp.disabled = false;
+  setProgress(curQ+1, 16, 'Question '+(curQ+1)+' / 10');
+}
+function nextQ(){
+  if(ans[curQ]===undefined){ alert('Choisis une réponse pour continuer 🌿'); return; }
+  if(curQ < QQ.length-1){ curQ++; renderQ(); }
+  else{ curOQ=0; renderOQ(); showScreen('open'); }
+}
+function prevQ(){
+  if(curQ > 0){ curQ--; renderQ(); }
+  else{ showScreen('welcome'); setProgress(0,16,'Bienvenue'); }
 }
 
-const TOTAL = QCM.length + OUVERTES.length;
-
-function showScreen(id) {
-  document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("active");});
-  document.getElementById(id).classList.add("active");
-  window.scrollTo({top:document.getElementById("questionnaire").offsetTop-20,behavior:"smooth"});
+// ============================================
+// QUESTIONS OUVERTES
+// ============================================
+function renderOQ(){
+  document.getElementById('oqn').textContent = 'Question ouverte '+(curOQ+1)+' / '+OQ.length;
+  document.getElementById('oqt').textContent = OQ[curOQ];
+  document.getElementById('oqa').value = oanswers[curOQ]||'';
+  setProgress(11+curOQ, 16, 'Question ouverte '+(curOQ+1)+' / 3');
+}
+function nextOQ(){
+  oanswers[curOQ] = document.getElementById('oqa').value;
+  if(curOQ < OQ.length-1){ curOQ++; renderOQ(); }
+  else{ launchAI(); }
+}
+function prevOQ(){
+  oanswers[curOQ] = document.getElementById('oqa').value;
+  if(curOQ > 0){ curOQ--; renderOQ(); }
+  else{ curQ=QQ.length-1; renderQ(); showScreen('questions'); }
 }
 
-function updateProgress(step) {
-  const pct = Math.round((step/(TOTAL+1))*100);
-  document.getElementById("prog-fill").style.width = pct+"%";
-  if(step===0){document.getElementById("prog-label").textContent="Bienvenue";document.getElementById("prog-count").textContent="";}
-  else{document.getElementById("prog-label").textContent="Questions";document.getElementById("prog-count").textContent=step+" / "+TOTAL;}
+// ============================================
+// CALCUL SCORES
+// ============================================
+function calcScores(){
+  const sc = {batisseur:0, artisan:0, structurant:0, passeur:0};
+  Object.values(ans).forEach(f => { if(sc[f]!==undefined) sc[f]++; });
+  const tot = Object.values(sc).reduce((a,b)=>a+b,0)||1;
+  const pcts = {}; Object.keys(sc).forEach(k => pcts[k]=Math.round(sc[k]/tot*100));
+  return pcts;
 }
 
-function startQuiz() {
-  prenomUser = document.getElementById("prenom").value.trim() || "Belle âme";
-  nomUser = document.getElementById("nom").value.trim() || "";
-  descriptionUser = document.getElementById("description").value.trim();
-  buildQuestions();
-  currentQ = 0;
-  scores = {batisseur:0,artisan:0,structurant:0,passeur:0};
-  reponsesQCM = {};
-  reponsesOuvertes = {};
-  showScreen("s-q0");
-  updateProgress(1);
+// ============================================
+// LOADING ANIMATION
+// ============================================
+function animateLoadSteps(){
+  const steps = ['ls1','ls2','ls3','ls4','ls5']; let i=0;
+  const iv = setInterval(() => {
+    if(i>0) document.getElementById(steps[i-1]).className='ls done';
+    if(i<steps.length){ document.getElementById(steps[i]).className='ls active'; i++; }
+    else clearInterval(iv);
+  }, 1400);
 }
 
-function selectChoice(qIdx, famille, btn) {
-  const screen = document.getElementById("s-q"+qIdx);
-  screen.querySelectorAll(".choice-btn").forEach(function(b){b.classList.remove("selected");});
-  btn.classList.add("selected");
-  reponsesQCM[qIdx] = famille;
-  document.getElementById("btn-next-q"+qIdx).disabled = false;
-}
+// ============================================
+// APPEL API VIA NETLIFY FUNCTION
+// ============================================
+async function launchAI(){
+  showScreen('loading');
+  setProgress(14, 16, "L'IA analyse tes réponses...");
+  animateLoadSteps();
 
-function updateOpenBtn(openIdx, screenIdx) {
-  const val = document.getElementById("open"+openIdx).value.trim();
-  reponsesOuvertes[openIdx] = val;
-  document.getElementById("btn-next-open"+openIdx).disabled = val.length < 5;
-}
+  const pcts = calcScores();
+  const sorted = Object.entries(pcts).sort((a,b)=>b[1]-a[1]);
+  const pk = sorted[0][0];
+  const famNames = {batisseur:'Bâtisseur', artisan:'Artisan de la Paix', structurant:'Structurant', passeur:'Passeur'};
+  const compStr = sorted.map(([k,v])=>v>0?famNames[k]+' '+v+'%':'').filter(Boolean).join(', ');
+  const qSummary = QQ.map((q,i)=>{
+    const chosen = q.opts.find(o=>o.f===ans[i]);
+    return `Q${i+1}: ${q.txt}\nRéponse: ${chosen?chosen.t:'(non répondu)'}`;
+  }).join('\n\n');
 
-function nextScreen() {
-  currentQ++;
-  if(currentQ < TOTAL){showScreen("s-q"+currentQ);updateProgress(currentQ+1);}
-}
+  const prompt = `Tu es un assistant de Lara Herbinia, Capteuse de Vivant, spécialisée dans les Familles d'Âmes (modèle de Diane LeBlanc).
 
-function prevScreen() {
-  if(currentQ > 0){currentQ--;showScreen("s-q"+currentQ);updateProgress(currentQ+1);}
-  else{showScreen("s-welcome");updateProgress(0);}
-}
+PROFIL:
+- Prénom: ${udata.prenom}
+- Âge: ${udata.age||'non précisé'}
+- Ville: ${udata.ville||'non précisée'}
+- Se décrit comme: ${udata.qui||'(non renseigné)'}
+- Motivation: ${udata.pourquoi||'(non renseigné)'}
 
-async function submitQuiz() {
-  scores = {batisseur:0,artisan:0,structurant:0,passeur:0};
-  Object.values(reponsesQCM).forEach(function(f){if(scores[f]!==undefined)scores[f]++;});
-  const total = Object.values(scores).reduce(function(a,b){return a+b;},0);
-  const pcts = {};
-  Object.keys(scores).forEach(function(k){pcts[k]=Math.round((scores[k]/total)*100);});
-  lastPcts = pcts;
-  const dominant = Object.keys(scores).reduce(function(a,b){return scores[a]>=scores[b]?a:b;});
-  lastDominant = dominant;
-  showScreen("s-loading");
-  document.getElementById("prog-fill").style.width = "90%";
+COMPOSITION D'ÂME: ${compStr}
+Famille principale: ${famNames[pk]}
+
+RÉPONSES AU QUESTIONNAIRE:
+${qSummary}
+
+RÉPONSES LIBRES:
+1. Ce qui me rend vivant(e): ${oanswers[0]||'(non renseigné)'}
+2. Mon plus grand défi surmonté: ${oanswers[1]||'(non renseigné)'}
+3. Ce que je changerais dans ma façon d'être: ${oanswers[2]||'(non renseigné)'}
+
+RÉFÉRENTIEL:
+- Bâtisseur: corps physique, instinct, résilience, blessure trahison, énergie action/sport
+- Artisan de la Paix: corps émotionnel, empathie, amour, blessure abandon, énergie art/fête
+- Structurant: corps mental, intuition, pédagogie, blessure rejet, énergie lire/réfléchir
+- Passeur: corps spirituel, connexion subtile, guérison, blessure persécution, énergie méditation
+
+Génère un profil complet et personnalisé pour ${udata.prenom}.
+Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks:
+{
+  "portrait": "3-4 phrases personnalisées qui parlent directement à ${udata.prenom} en utilisant ses réponses pour dresser un portrait juste et touchant",
+  "morning": [
+    {"temps":"5 min","titre":"Titre","contenu":"Description personnalisée adaptée à ${udata.prenom}"},
+    {"temps":"5 min","titre":"Titre","contenu":"Description"},
+    {"temps":"10 min","titre":"Titre","contenu":"Description"},
+    {"temps":"5 min","titre":"Titre","contenu":"Description"},
+    {"temps":"5 min","titre":"Titre","contenu":"Description"}
+  ],
+  "evening": [
+    {"temps":"5 min","titre":"Titre","contenu":"Description personnalisée"},
+    {"temps":"5 min","titre":"Titre","contenu":"Description"},
+    {"temps":"10 min","titre":"Titre","contenu":"Description"},
+    {"temps":"5 min","titre":"Titre","contenu":"Description"},
+    {"temps":"5 min","titre":"Titre","contenu":"Description"}
+  ],
+  "eclats": [
+    "Premier éclat de lumière — une phrase courte, poétique et personnalisée pour ${udata.prenom}",
+    "Deuxième éclat de lumière — différent du premier, ancré dans une autre facette de sa personnalité",
+    "Troisième éclat de lumière — plus profond, qui touche sa mission ou sa blessure d'âme"
+  ]
+}`;
+
   try {
-    const profil = await genererProfilIA(prenomUser, descriptionUser, dominant, pcts, reponsesOuvertes);
-    afficherResultats(prenomUser, dominant, pcts, profil, null);
-  } catch(e) {
-    afficherResultats(prenomUser, dominant, pcts, null, e.message);
+    const resp = await fetch('/.netlify/functions/claude', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({prompt})
+    });
+    if(!resp.ok){ const e=await resp.json(); throw new Error(e.error||'Erreur serveur '+resp.status); }
+    const data = await resp.json();
+    const text = (data.text||'').replace(/```json|```/g,'').trim();
+    const result = JSON.parse(text);
+    renderResults(pcts, sorted, pk, result);
+  } catch(e){
+    console.error(e);
+    const errDiv = document.createElement('div');
+    errDiv.className='error-box';
+    errDiv.innerHTML='⚠️ Erreur lors de la génération.<br><small>'+e.message+'</small><br><br><button class="btn-sm" onclick="launchAI()">Réessayer</button>';
+    document.getElementById('s-loading').appendChild(errDiv);
   }
 }
 
-async function genererProfilIA(prenom, desc, dominant, pcts, ouvertes) {
-  const famDesc = {batisseur:"ancré dans le corps physique, guidé par l'instinct, crée et manifeste dans la matière",artisan:"ancré dans le corps émotionnel, guidé par l'empathie, relie et prend soin",structurant:"ancré dans le corps mental, guidé par l'intuition, clarifie et organise",passeur:"ancré dans le corps spirituel, guidé par la connexion subtile, transmet et éveille"};
-  const prompt = "Tu es un guide bienveillant spécialisé dans les Familles d'Âmes selon le travail de Diane LeBlanc.\n\n"+prenom+" vient de compléter le questionnaire \"Capte ta Lumière\".\n\nRésultats :\n- Bâtisseur : "+pcts.batisseur+"%\n- Artisan de la Paix : "+pcts.artisan+"%\n- Structurant : "+pcts.structurant+"%\n- Passeur : "+pcts.passeur+"%\n\nFamille dominante : "+FAMILLES[dominant].nom+" ("+famDesc[dominant]+")\n\nSe décrit comme : "+(desc||"non renseigné")+"\n\nRéponses ouvertes :\n1. \""+( ouvertes[0]||"non renseigné")+"\" \n2. \""+(ouvertes[1]||"non renseigné")+"\" \n3. \""+(ouvertes[2]||"non renseigné")+"\"\n\nÉcris un profil personnalisé et profond pour "+prenom+", en français, structuré ainsi :\n\n**Ton essence** (2-3 phrases)\n\n**Tes forces** (3 forces concrètes)\n\n**Ton attention** (1-2 zones d'ombre)\n\n**Ton Miracle Morning** (3 pratiques adaptées)\n\n**Ton Miracle Evening** (2-3 pratiques)\n\n**Ton mantra** (une phrase courte et puissante)\n\nTon ton est chaleureux, profond. Parle directement à "+prenom+" (tu/toi).";
-  const response = await fetch("/.netlify/functions/claude", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({messages:[{role:"user",content:prompt}]})
+// ============================================
+// RENDU RÉSULTATS
+// ============================================
+function renderResults(pcts, sorted, pk, aiData){
+  const F = FM[pk];
+  const bc = {batisseur:'#C4704F', artisan:'#8E7BA0', structurant:'#378ADD', passeur:'#6A4C93'};
+  const fn = {batisseur:'Bâtisseur', artisan:'Artisan de la Paix', structurant:'Structurant', passeur:'Passeur'};
+
+  document.getElementById('rName').textContent = udata.prenom;
+  const inf=[]; if(udata.age)inf.push(udata.age+' ans'); if(udata.ville)inf.push(udata.ville);
+  document.getElementById('rInfo').textContent = inf.join(' · ');
+
+  const bd=document.getElementById('rBadge');
+  bd.textContent=F.badge.text;
+  bd.style.cssText='display:inline-block;padding:0.35rem 1.2rem;border-radius:20px;border:1px solid '+F.badge.col+';color:'+F.badge.col+';background:'+F.badge.col+'22;font-family:Cinzel,serif;font-size:0.72rem;letter-spacing:0.15em;margin-bottom:0.6rem';
+  document.getElementById('rFam').textContent=F.emoji+' '+F.name;
+  document.getElementById('rTag').textContent=F.tag;
+
+  // Pourcentages
+  const pd=document.getElementById('rPct'); pd.innerHTML='';
+  sorted.forEach(([k,v])=>{
+    if(!v)return;
+    const r=document.createElement('div'); r.className='pct-row';
+    r.innerHTML='<div class="pct-lbl">'+FM[k].emoji+' '+fn[k]+'</div><div class="pct-bg"><div class="pct-fill" style="width:0%;background:'+bc[k]+'" data-p="'+v+'"></div></div><div class="pct-n">'+v+'%</div>';
+    pd.appendChild(r);
   });
-  if(!response.ok){const err=await response.json();throw new Error(err.error?.message||"Erreur API ("+response.status+")");}
-  const data = await response.json();
-  if(data.error)throw new Error(data.error.message||JSON.stringify(data.error));
-  if(!data.content||!data.content[0])throw new Error("Réponse vide de l'IA");
-  return data.content[0].text;
-}
+  setTimeout(()=>document.querySelectorAll('.pct-fill').forEach(e=>e.style.width=e.dataset.p+'%'),100);
 
-function afficherResultats(prenom, dominant, pcts, profil, erreur) {
-  const fam = FAMILLES[dominant];
-  document.getElementById("res-prenom").textContent = prenom.toUpperCase();
-  document.getElementById("res-title").textContent = "Ta famille d'âme : "+fam.nom;
-  const badge = document.getElementById("res-badge");
-  badge.textContent = fam.emoji+" "+fam.nom;
-  badge.className = "result-famille-badge "+fam.couleur;
-  const scoresEl = document.getElementById("res-scores");
-  scoresEl.innerHTML = Object.entries(FAMILLES).map(function(entry){
-    const key=entry[0],f=entry[1];
-    return '<div class="score-card '+(key===dominant?'dominant':'')+'"><div class="score-nom">'+f.nom+'</div><div class="score-bar-bg"><div class="score-bar-fill '+f.fill+'" style="width:0%" data-pct="'+pcts[key]+'"></div></div><div class="score-pct">'+pcts[key]+'%</div></div>';
-  }).join("");
-  requestAnimationFrame(function(){
-    document.querySelectorAll(".score-bar-fill").forEach(function(b){b.style.width=b.dataset.pct+"%";});
+  // Palette
+  const sw=document.getElementById('rPalette'); sw.innerHTML='';
+  F.col.forEach((c,i)=>{
+    const w=document.createElement('div'); w.className='sw-item';
+    w.innerHTML='<div class="sw" style="background:'+c+'"></div><div class="sw-lbl">'+F.coln[i]+'</div>';
+    sw.appendChild(w);
   });
-  const paletteEl = document.getElementById("res-palette");
-  if(paletteEl && fam.palette){
-    paletteEl.innerHTML = fam.palette.map(function(c){
-      return '<div class="swatch"><div class="swatch-circle" style="background:'+c.hex+'"></div><div class="swatch-nom">'+c.nom+'</div><div class="swatch-sens">'+c.sens+'</div></div>';
-    }).join("");
-  }
-  const profilEl = document.getElementById("res-profil");
-  if(erreur){
-    profilEl.innerHTML = '<div class="error-box">⚠️ '+erreur+'</div>';
-  } else {
-    let html = profil.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/^## (.*)/gm,'<h4>$1</h4>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
-    profilEl.innerHTML = "<p>"+html+"</p>";
-  }
-  showScreen("s-results");
-  document.getElementById("prog-fill").style.width = "100%";
-  document.getElementById("prog-label").textContent = "Profil révélé ✦";
-  document.getElementById("prog-count").textContent = "";
-  setTimeout(function(){
-    try {
-      const profilTexte = document.getElementById("res-profil").innerText || "";
-      emailjs.send("service_ri53d3f","template_r1e2fcm",{
-        nom_prenom:(nomUser?nomUser+" ":"")+prenomUser,
-        famille:FAMILLES[dominant].nom,
-        profil:profilTexte
-      });
-    } catch(e){console.log("Email:",e);}
-  },1500);
-}
 
-function restart() {
-  currentQ = 0;
-  showScreen("s-welcome");
-  updateProgress(0);
-  document.getElementById("prenom").value = "";
-  document.getElementById("nom").value = "";
-  document.getElementById("description").value = "";
-}
+  // Portrait
+  document.getElementById('rPortrait').textContent=aiData.portrait||'';
 
-function ouvrirImpression() {
-  const prenomEl = document.getElementById("res-prenom");
-  const badgeEl = document.getElementById("res-badge");
-  const profilEl = document.getElementById("res-profil");
-  const fam = FAMILLES[lastDominant] || FAMILLES.passeur;
-  const pcts = lastPcts;
-  if(!prenomEl||!prenomEl.textContent){alert("Veuillez d'abord compléter le questionnaire !");return;}
-  const scoresHtml = Object.entries(FAMILLES).map(function(entry){
-    const key=entry[0],f=entry[1];
-    return '<div style="flex:1;border:1px solid #EDE6D6;border-radius:8px;padding:12px;text-align:center;">'+'<div style="font-family:Cinzel,serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#4A4A4A;margin-bottom:8px;">'+f.nom+'</div>'+'<div style="height:5px;background:#EDE6D6;border-radius:3px;margin-bottom:6px;"><div style="height:100%;border-radius:3px;background:#2A7F6F;width:'+(pcts[key]||0)+'%;-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div></div>'+'<div style="font-family:Cinzel,serif;font-size:16px;font-weight:600;color:#1A3A5C;">'+(pcts[key]||0)+'%</div></div>';
-  }).join("");
-  const paletteHtml = fam.palette ? fam.palette.map(function(c){
-    return '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:60px;">'+'<div style="width:48px;height:48px;border-radius:50%;background:'+c.hex+';box-shadow:0 3px 10px rgba(0,0,0,0.15);-webkit-print-color-adjust:exact;print-color-adjust:exact;"></div>'+'<div style="font-family:Cinzel,serif;font-size:9px;letter-spacing:1px;text-align:center;color:#1C1C1C;">'+c.nom+'</div>'+'<div style="font-size:11px;font-style:italic;color:#4A4A4A;text-align:center;line-height:1.3;">'+c.sens+'</div>'+'</div>';
-  }).join("") : "";
-  const today = new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
-  const win = window.open('','_blank');
-  win.document.write('<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Mon profil Capte ta Lumière</title><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;1,400&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:"Cormorant Garamond",serif;background:white;color:#1C1C1C;padding:20mm;}@page{margin:15mm;}.btn-print{position:fixed;bottom:20px;right:20px;padding:12px 28px;background:#1B4D3E;color:white;border:none;border-radius:50px;font-family:"Cinzel",serif;font-size:13px;cursor:pointer;}@media print{.btn-print{display:none;}}</style></head><body>');
-  win.document.write('<div style="background:#1B4D3E;color:#F7F3EC;padding:24px 28px;border-radius:12px;margin-bottom:24px;-webkit-print-color-adjust:exact;print-color-adjust:exact;"><div style="font-family:Cinzel,serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#E8C46A;margin-bottom:8px;">Lara Herbinia · Capteuse de Vivant</div><h1 style="font-family:Cinzel,serif;font-size:28px;color:#F7F3EC;margin-bottom:6px;">Capte ta Lumière</h1><div style="font-size:14px;font-style:italic;color:rgba(247,243,236,0.8);">Profil des Familles d\'Âmes · '+prenomEl.textContent+'</div></div>');
-  win.document.write('<div style="margin-bottom:20px;"><span style="display:inline-block;padding:8px 22px;border-radius:50px;font-family:Cinzel,serif;font-size:13px;font-weight:600;background:#1B4D3E;color:#F7F3EC;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+badgeEl.textContent+'</span></div>');
-  win.document.write('<div style="font-family:Cinzel,serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#C9922A;margin:20px 0 14px;border-bottom:1px solid #EDE6D6;padding-bottom:6px;">Répartition de ton âme</div>');
-  win.document.write('<div style="display:flex;gap:10px;margin-bottom:24px;">'+scoresHtml+'</div>');
-  win.document.write('<div style="font-family:Cinzel,serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#C9922A;margin:20px 0 14px;border-bottom:1px solid #EDE6D6;padding-bottom:6px;">🎨 Tes couleurs d\'âme</div>');
-  win.document.write('<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px;">'+paletteHtml+'</div>');
-  win.document.write('<div style="font-family:Cinzel,serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#C9922A;margin:20px 0 14px;border-bottom:1px solid #EDE6D6;padding-bottom:6px;">✦ Ton profil personnalisé</div>');
-  win.document.write('<div style="font-size:14px;line-height:1.9;">'+profilEl.innerHTML+'</div>');
-  win.document.write('<div style="margin-top:28px;padding-top:14px;border-top:1px solid #EDE6D6;display:flex;justify-content:space-between;font-size:10px;color:#888;font-style:italic;"><div><strong style="font-family:Cinzel,serif;font-style:normal;color:#4A4A4A;">Lara Herbinia — Capteuse de Vivant</strong> · Basé sur le travail de Diane LeBlanc</div><div>'+today+'</div></div>');
-  win.document.write('<button class="btn-print" onclick="window.print()">🖨️ Imprimer</button>');
-  win.document.write('</body></html>');
-  win.document.close();
+  // Forces & Attention
+  const fd=document.getElementById('rForces'); fd.innerHTML='';
+  F.forces.forEach(f=>{const t=document.createElement('span');t.className='tag tag-f';t.textContent=f;fd.appendChild(t);});
+  const ad=document.getElementById('rAttention'); ad.innerHTML='';
+  F.att.forEach(a=>{const t=document.createElement('span');t.className='tag tag-a';t.textContent=a;ad.appendChild(t);});
+
+  // Steps
+  function renderSteps(id, steps){
+    const d=document.getElementById(id); d.innerHTML='';
+    (steps||[]).forEach(s=>{
+      const el=document.createElement('div'); el.className='step';
+      el.innerHTML='<div class="step-t">'+(s.temps||'')+'</div><div class="step-c"><b>'+(s.titre||'')+'</b><br>'+(s.contenu||'')+'</div>';
+      d.appendChild(el);
+    });
+  }
+  renderSteps('rMorning', aiData.morning);
+  renderSteps('rEvening', aiData.evening);
+
+  // ÉCLATS DE LUMIÈRE
+  const ed=document.getElementById('rEclats'); ed.innerHTML='';
+  const eclats = aiData.eclats||[];
+  eclats.forEach((e,i)=>{
+    const card=document.createElement('div'); card.className='eclat-card';
+    card.innerHTML='<div class="eclat-num">Éclat '+(i+1)+'</div><div class="eclat-txt">'+e+'</div>';
+    card.onclick=()=>{
+      document.querySelectorAll('.eclat-card').forEach(c=>c.classList.remove('chosen'));
+      card.classList.add('chosen');
+    };
+    ed.appendChild(card);
+  });
+
+  // OISEAUX
+  const od=document.getElementById('rOiseaux'); od.innerHTML='';
+  F.oiseaux.forEach(o=>{
+    const card=document.createElement('div'); card.className='oiseau-card';
+    card.innerHTML='<div class="oiseau-emoji">'+o.emoji+'</div><div class="oiseau-name">'+o.name+'</div><div class="oiseau-desc">'+o.desc+'</div>';
+    od.appendChild(card);
+  });
+
+  // Playlist
+  document.getElementById('rPlName').textContent='✦ '+F.pl.name;
+  const pld=document.getElementById('rPl'); pld.innerHTML='';
+  F.pl.tracks.forEach((t,i)=>{
+    const d=document.createElement('div'); d.className='pl-item';
+    d.innerHTML='<div class="pl-n">'+(i+1)+'</div><div class="pl-info"><div class="pl-title">'+t.t+'</div><div class="pl-artist">'+t.a+'</div></div><div class="pl-style">'+t.s+'</div>';
+    pld.appendChild(d);
+  });
+
+  showScreen('results');
+  setProgress(16,16,'Ton profil est prêt ✦');
 }
 </script>
 </body>
