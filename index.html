@@ -681,7 +681,7 @@ Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks:
     });
     if(!resp.ok){ const e=await resp.json(); throw new Error(e.error||'Erreur serveur '+resp.status); }
     const data = await resp.json();
-    const text = (data.text||'').replace(/```json|```/g,'').trim();
+    const text = (data.content?.[0]?.text || data.text || '').replace(/```json|```/g,'').trim();
     const result = JSON.parse(text);
     renderResults(pcts, sorted, pk, result);
   } catch(e){
