@@ -651,24 +651,14 @@ Lis les reponses libres attentivement — elles revelent souvent la vraie famill
 {"famille_confirmee":"Nom","pourcentages":{"batisseur":X,"artisan":X,"structurant":X,"passeur":X},"portrait":"3-4 phrases TU bienveillantes avec elements specifiques de ses reponses","morning":[{"temps":"5 min","titre":"Titre evocateur","contenu":"Texte personnalise"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"evening":[{"temps":"5 min","titre":"Titre","contenu":"Texte personnalise"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"eclats":["Phrase JE personnalisee et poetique","Phrase JE ancree dans une force","Phrase JE profonde et liberatrice"]}`
 
     try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch('/.netlify/functions/claude', {
       method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key': 'ANTHROPIC_API_KEY_PLACEHOLDER',
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1200,
-        system: 'Expert Familles Ames. JSON uniquement. Apostrophes = \\u2019. Jamais tirets. Commence {.',
-        messages: [{role:'user', content: prompt}]
-      })
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({prompt})
     });
-    if(!resp.ok){ const e=await resp.json(); throw new Error(e.error?.message||'Erreur API '+resp.status); }
+    if(!resp.ok){ const e=await resp.json(); throw new Error(e.error||'Erreur serveur '+resp.status); }
     const data = await resp.json();
-    const raw = (data.content?.[0]?.text || '').trim();
+    const raw = (data.content?.[0]?.text || data.text || '').trim();
     // Nettoyage robuste du JSON
     let text = raw.replace(/```json/g,'').replace(/```/g,'').trim();
     // Extraire uniquement le bloc JSON
