@@ -674,47 +674,87 @@ async function launchAI(){
     return `Q${i+1}: ${q.txt}\nRéponse: ${chosen?chosen.t:'(non répondu)'}`;
   }).join('\n\n');
 
-  const prompt = `Tu es un assistant expert de Lara Herbinia, Capteuse de Vivant, spécialisée dans les Familles d'Âmes (modèle de Diane LeBlanc).
+  const prompt = `Tu es un expert des Familles d'Âmes, formé par Lara Herbinia, Capteuse de Vivant. Tu analyses en profondeur le profil d'une personne pour lui révéler sa famille d'âme dominante et lui offrir des rituels personnalisés.
 
-PROFIL:
+PROFIL DE LA PERSONNE:
 - Prénom: ${udata.prenom}
 - Âge: ${udata.age||'non précisé'}
 - Ville: ${udata.ville||'non précisée'}
 - Se décrit comme: ${udata.qui||'(non renseigné)'}
-- Motivation: ${udata.pourquoi||'(non renseigné)'}
+- Motivation pour ce questionnaire: ${udata.pourquoi||'(non renseigné)'}
 
-CALCUL MÉCANIQUE (comptage brut des réponses):
+CALCUL MÉCANIQUE DES RÉPONSES:
 ${compStr}
 Famille dominante calculée: ${famNames[pk]}
 
-RÉPONSES AU QUESTIONNAIRE:
+RÉPONSES COMPLÈTES AU QUESTIONNAIRE:
 ${qSummary}
 
-RÉPONSES LIBRES:
+RÉPONSES LIBRES (très importantes pour l'analyse):
 1. Ce qui me rend vivant(e): ${oanswers[0]||'(non renseigné)'}
 2. Mon plus grand défi surmonté: ${oanswers[1]||'(non renseigné)'}
 3. Ce que je changerais dans ma façon d'être: ${oanswers[2]||'(non renseigné)'}
 
-RÉFÉRENTIEL DES FAMILLES:
-- Bâtisseur: corps physique, instinct, résilience, action, construction, blessure trahison. Signes: énergie, courage, leadership, impatience, besoin de concret.
-- Artisan de la Paix: corps émotionnel, empathie, amour, créativité, lien, blessure abandon. Signes: générosité, sensibilité, besoin de connexion, peur de la solitude.
-- Structurant: corps mental, intuition, analyse, organisation, pédagogie, blessure rejet. Signes: curiosité intellectuelle, besoin de comprendre, logique, tendance à s'isoler.
-- Passeur: corps spirituel, connexion subtile, transmission, accompagnement, blessure persécution. Signes: profondeur, intuition émotionnelle, besoin de sens, guide naturel.
+RÉFÉRENTIEL COMPLET DES FAMILLES D'ÂMES:
+
+🧱 BÂTISSEUR — Corps physique
+Sens: matérialiser, construire, créer du concret
+Don: instinct animal, résilience, énergie physique hors du commun
+Blessure: la TRAHISON — méfiance profonde envers ceux qui ne tiennent pas leurs engagements
+Sous stress: devient PERSÉCUTEUR — attaque, domine, intimide
+Désaligné: cherche le conflit, projette sa colère sur les autres
+Aligné: met sa force au service du collectif, ouvre la voie
+Sources d'énergie: action, sport, bricolage, défis physiques
+Expression fétiche: "Quand on veut on peut", "Marche ou crève"
+Célébrités: Rocky Balboa, Erin Brockovich, Belmondo
+Enfant: turbulent, a besoin de se dépenser physiquement
+
+🤍 ARTISAN DE LA PAIX — Corps émotionnel
+Sens: rassembler, harmoniser, célébrer la vie
+Don: empathie, amour inconditionnel, créativité
+Blessure: l'ABANDON — peur viscérale de perdre le lien, mal à clore les relations
+Sous stress: devient VICTIME — se plaint, attire l'attention par la souffrance
+Désaligné: se donne aux autres en s'oubliant complètement
+Aligné: apprend à recevoir autant qu'il donne, choisit ses relations
+Sources d'énergie: art, fête, connexions humaines, créativité
+Expression fétiche: "Sois le bienvenu, fais comme chez toi"
+Célébrités: Mary Poppins, Gandalf, Abbé Pierre
+Enfant: demande des câlins, pleure quand les invités partent
+
+🧠 STRUCTURANT — Corps mental
+Sens: structurer, rationaliser, transmettre la connaissance
+Don: intuition stratégique, pédagogie, analyse fine
+Blessure: le REJET — pas accepté dans sa nature profonde, traité comme une marionnette
+Sous stress: devient INDIFFÉRENT — se fige, fait comme si de rien n'était
+Désaligné: arrogance intellectuelle, prend les gens de haut
+Aligné: met sa clarté au service des autres de façon accessible
+Sources d'énergie: lire, apprendre, réfléchir, solitude ressourçante
+Expression fétiche: "J'ai besoin de comprendre"
+Célébrités: Sherlock Holmes, Hermione Granger, Léonard de Vinci
+Enfant: besoin de solitude, curieux insatiable, pose des questions sans fin
+
+✨ PASSEUR — Corps spirituel
+Sens: éveiller les consciences, accompagner les transitions
+Don: connexion profonde, facultés de guérison, enthousiasme vibrant
+Blessure: la PERSÉCUTION — reçoit des coups quand il exprime ses dons, très sensible à la moquerie
+Sous stress: devient SAUVEUR — s'épuise à régler les problèmes des autres pour fuir les siens
+Désaligné: peut manipuler, créer de la dépendance
+Aligné: guide avec éthique, éveille sans imposer
+Sources d'énergie: méditation, nature, silence, connexion au sens profond
+Expression fétiche: "Pour vivre heureux, vivons cachés"
+Célébrités: Obi-Wan Kenobi, Pocahontas, Nelson Mandela
+Enfant: connecté à l'invisible, terreurs nocturnes, paroles surprenantes
 
 MISSION D'ANALYSE EN 3 ÉTAPES:
-1. Lis toutes les réponses du questionnaire ET les réponses libres ensemble
-2. Vérifie si la famille dominante calculée est cohérente — si les réponses libres révèlent une autre dominante, ajuste
-3. Génère des pourcentages nuancés qui reflètent la vraie complexité de la personne
+1. Compare le calcul mécanique avec les réponses libres — sont-ils cohérents?
+2. Si les réponses libres révèlent une autre dominante, ajuste la famille principale
+3. Génère des pourcentages nuancés qui reflètent la vraie complexité humaine (ils doivent totaliser 100)
+4. Le portrait et les rituels DOIVENT citer des éléments spécifiques tirés des réponses de la personne
 
-Le portrait et les rituels doivent utiliser des éléments SPÉCIFIQUES de ses réponses — pas de texte générique.
+FORMAT JSON STRICT — commence par { et termine par }, apostrophes françaises correctes, accents complets:
+{"famille_confirmee":"Nom exact de la famille","pourcentages":{"batisseur":X,"artisan":X,"structurant":X,"passeur":X},"portrait":"3-4 phrases en TU bienveillantes et précises qui mentionnent des éléments spécifiques de ses réponses","morning":[{"temps":"5 min","titre":"Titre évocateur","contenu":"Description personnalisée avec référence à ses réponses"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"evening":[{"temps":"5 min","titre":"Titre","contenu":"Texte personnalisé"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"eclats":["Éclat en JE personnalisé et poétique","Éclat en JE ancré dans une force","Éclat en JE profond et libérateur"]}`
 
-INSTRUCTIONS JSON: Réponds UNIQUEMENT avec du JSON valide. Pas de markdown, pas de backticks. Commence par { et termine par }.
-Pour les apostrophes françaises utilise le caractère Unicode \u2019. Jamais de tirets à la place des apostrophes.
-
-Format exact:
-{"famille_confirmee":"Nom de la famille après analyse","pourcentages":{"batisseur":X,"artisan":X,"structurant":X,"passeur":X},"portrait":"3-4 phrases en TU bienveillantes qui utilisent des éléments spécifiques de ses réponses","morning":[{"temps":"5 min","titre":"Titre","contenu":"Texte personnalisé"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"evening":[{"temps":"5 min","titre":"Titre","contenu":"Texte personnalisé"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"eclats":["Eclat en JE personnalisé. Ex: Je suis faite pour...","Eclat en JE différent. Ex: Je choisis de...","Eclat en JE profond. Ex: J\u2019ai le droit de..."]}`
-
-  try {
+    try {
     const resp = await fetch('/.netlify/functions/claude', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
