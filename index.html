@@ -674,85 +674,31 @@ async function launchAI(){
     return `Q${i+1}: ${q.txt}\nRéponse: ${chosen?chosen.t:'(non répondu)'}`;
   }).join('\n\n');
 
-  const prompt = `Tu es un expert des Familles d'Âmes, formé par Lara Herbinia, Capteuse de Vivant. Tu analyses en profondeur le profil d'une personne pour lui révéler sa famille d'âme dominante et lui offrir des rituels personnalisés.
+  const prompt = `Tu es expert des Familles d'Ames de Diane LeBlanc. Analyse ce profil et reponds en JSON.
 
-PROFIL DE LA PERSONNE:
-- Prénom: ${udata.prenom}
-- Âge: ${udata.age||'non précisé'}
-- Ville: ${udata.ville||'non précisée'}
-- Se décrit comme: ${udata.qui||'(non renseigné)'}
-- Motivation pour ce questionnaire: ${udata.pourquoi||'(non renseigné)'}
+PERSONNE: ${udata.prenom}, ${udata.age||'?'} ans, ${udata.ville||'?'}
+Description: ${udata.qui||'?'}
+Motivation: ${udata.pourquoi||'?'}
 
-CALCUL MÉCANIQUE DES RÉPONSES:
-${compStr}
-Famille dominante calculée: ${famNames[pk]}
+SCORES MECANIQUES: ${compStr} — Famille calculee: ${famNames[pk]}
 
-RÉPONSES COMPLÈTES AU QUESTIONNAIRE:
+REPONSES QUESTIONNAIRE:
 ${qSummary}
 
-RÉPONSES LIBRES (très importantes pour l'analyse):
-1. Ce qui me rend vivant(e): ${oanswers[0]||'(non renseigné)'}
-2. Mon plus grand défi surmonté: ${oanswers[1]||'(non renseigné)'}
-3. Ce que je changerais dans ma façon d'être: ${oanswers[2]||'(non renseigné)'}
+REPONSES LIBRES:
+1. ${oanswers[0]||'?'}
+2. ${oanswers[1]||'?'}
+3. ${oanswers[2]||'?'}
 
-RÉFÉRENTIEL COMPLET DES FAMILLES D'ÂMES:
+FAMILLES (reference):
+Batisseur: physique, instinct, resilience, blessure=trahison, stress=persecuteur
+Artisan Paix: emotionnel, empathie, amour, blessure=abandon, stress=victime
+Structurant: mental, analyse, pedagogie, blessure=rejet, stress=indifference
+Passeur: spirituel, connexion, transmission, blessure=persecution, stress=sauveur
 
-🧱 BÂTISSEUR — Corps physique
-Sens: matérialiser, construire, créer du concret
-Don: instinct animal, résilience, énergie physique hors du commun
-Blessure: la TRAHISON — méfiance profonde envers ceux qui ne tiennent pas leurs engagements
-Sous stress: devient PERSÉCUTEUR — attaque, domine, intimide
-Désaligné: cherche le conflit, projette sa colère sur les autres
-Aligné: met sa force au service du collectif, ouvre la voie
-Sources d'énergie: action, sport, bricolage, défis physiques
-Expression fétiche: "Quand on veut on peut", "Marche ou crève"
-Célébrités: Rocky Balboa, Erin Brockovich, Belmondo
-Enfant: turbulent, a besoin de se dépenser physiquement
+INSTRUCTIONS: Lis toutes les reponses. Verifie si la famille calculee est coherente avec les reponses libres. Ajuste si necessaire. Utilise \u2019 pour toutes les apostrophes. JSON strict uniquement, commence par {:
 
-🤍 ARTISAN DE LA PAIX — Corps émotionnel
-Sens: rassembler, harmoniser, célébrer la vie
-Don: empathie, amour inconditionnel, créativité
-Blessure: l'ABANDON — peur viscérale de perdre le lien, mal à clore les relations
-Sous stress: devient VICTIME — se plaint, attire l'attention par la souffrance
-Désaligné: se donne aux autres en s'oubliant complètement
-Aligné: apprend à recevoir autant qu'il donne, choisit ses relations
-Sources d'énergie: art, fête, connexions humaines, créativité
-Expression fétiche: "Sois le bienvenu, fais comme chez toi"
-Célébrités: Mary Poppins, Gandalf, Abbé Pierre
-Enfant: demande des câlins, pleure quand les invités partent
-
-🧠 STRUCTURANT — Corps mental
-Sens: structurer, rationaliser, transmettre la connaissance
-Don: intuition stratégique, pédagogie, analyse fine
-Blessure: le REJET — pas accepté dans sa nature profonde, traité comme une marionnette
-Sous stress: devient INDIFFÉRENT — se fige, fait comme si de rien n'était
-Désaligné: arrogance intellectuelle, prend les gens de haut
-Aligné: met sa clarté au service des autres de façon accessible
-Sources d'énergie: lire, apprendre, réfléchir, solitude ressourçante
-Expression fétiche: "J'ai besoin de comprendre"
-Célébrités: Sherlock Holmes, Hermione Granger, Léonard de Vinci
-Enfant: besoin de solitude, curieux insatiable, pose des questions sans fin
-
-✨ PASSEUR — Corps spirituel
-Sens: éveiller les consciences, accompagner les transitions
-Don: connexion profonde, facultés de guérison, enthousiasme vibrant
-Blessure: la PERSÉCUTION — reçoit des coups quand il exprime ses dons, très sensible à la moquerie
-Sous stress: devient SAUVEUR — s'épuise à régler les problèmes des autres pour fuir les siens
-Désaligné: peut manipuler, créer de la dépendance
-Aligné: guide avec éthique, éveille sans imposer
-Sources d'énergie: méditation, nature, silence, connexion au sens profond
-Expression fétiche: "Pour vivre heureux, vivons cachés"
-Célébrités: Obi-Wan Kenobi, Pocahontas, Nelson Mandela
-Enfant: connecté à l'invisible, terreurs nocturnes, paroles surprenantes
-
-MISSION D'ANALYSE EN 3 ÉTAPES:
-1. Compare le calcul mécanique avec les réponses libres — sont-ils cohérents?
-2. Si les réponses libres révèlent une autre dominante, ajuste la famille principale
-3. Génère des pourcentages nuancés qui reflètent la vraie complexité humaine (ils doivent totaliser 100)
-4. Le portrait et les rituels DOIVENT citer des éléments spécifiques tirés des réponses de la personne
-
-FORMAT JSON STRICT — commence par { et termine par }, apostrophes françaises correctes, accents complets:
-{"famille_confirmee":"Nom exact de la famille","pourcentages":{"batisseur":X,"artisan":X,"structurant":X,"passeur":X},"portrait":"3-4 phrases en TU bienveillantes et précises qui mentionnent des éléments spécifiques de ses réponses","morning":[{"temps":"5 min","titre":"Titre évocateur","contenu":"Description personnalisée avec référence à ses réponses"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"evening":[{"temps":"5 min","titre":"Titre","contenu":"Texte personnalisé"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"eclats":["Éclat en JE personnalisé et poétique","Éclat en JE ancré dans une force","Éclat en JE profond et libérateur"]}`
+{"famille_confirmee":"Nom","pourcentages":{"batisseur":X,"artisan":X,"structurant":X,"passeur":X},"portrait":"3-4 phrases en TU utilisant des elements specifiques de ses reponses","morning":[{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"evening":[{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"eclats":["Eclat JE personnel","Eclat JE force","Eclat JE profond"]}`
 
     try {
     const resp = await fetch('/.netlify/functions/claude', {
