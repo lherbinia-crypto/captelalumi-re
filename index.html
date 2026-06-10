@@ -648,30 +648,11 @@ RÉFÉRENTIEL:
 - Structurant: corps mental, intuition, pédagogie, blessure rejet, énergie lire/réfléchir
 - Passeur: corps spirituel, connexion subtile, guérison, blessure persécution, énergie méditation
 
-Génère un profil complet et personnalisé pour ${udata.prenom}.
-Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks:
-{
-  "portrait": "3-4 phrases personnalisées qui parlent directement à ${udata.prenom} en utilisant ses réponses pour dresser un portrait juste et touchant",
-  "morning": [
-    {"temps":"5 min","titre":"Titre","contenu":"Description personnalisée adaptée à ${udata.prenom}"},
-    {"temps":"5 min","titre":"Titre","contenu":"Description"},
-    {"temps":"10 min","titre":"Titre","contenu":"Description"},
-    {"temps":"5 min","titre":"Titre","contenu":"Description"},
-    {"temps":"5 min","titre":"Titre","contenu":"Description"}
-  ],
-  "evening": [
-    {"temps":"5 min","titre":"Titre","contenu":"Description personnalisée"},
-    {"temps":"5 min","titre":"Titre","contenu":"Description"},
-    {"temps":"10 min","titre":"Titre","contenu":"Description"},
-    {"temps":"5 min","titre":"Titre","contenu":"Description"},
-    {"temps":"5 min","titre":"Titre","contenu":"Description"}
-  ],
-  "eclats": [
-    "Premier éclat de lumière — une phrase courte, poétique et personnalisée pour ${udata.prenom}",
-    "Deuxième éclat de lumière — différent du premier, ancré dans une autre facette de sa personnalité",
-    "Troisième éclat de lumière — plus profond, qui touche sa mission ou sa blessure d'âme"
-  ]
-}`;
+INSTRUCTIONS CRITIQUES: Réponds UNIQUEMENT avec du JSON valide. Aucun texte avant ou après. Aucun markdown. Aucun backtick. Commence directement par { et termine par }.
+N'utilise jamais d'apostrophes dans les valeurs — utilise uniquement des guillemets droits et échappe les caractères spéciaux.
+
+Format exact:
+{"portrait":"Texte sans apostrophes ni guillemets internes","morning":[{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"evening":[{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"eclats":["Phrase 1 sans apostrophes","Phrase 2 sans apostrophes","Phrase 3 sans apostrophes"]}`;
 
   try {
     const resp = await fetch('/.netlify/functions/claude', {
@@ -681,8 +662,13 @@ Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks:
     });
     if(!resp.ok){ const e=await resp.json(); throw new Error(e.error||'Erreur serveur '+resp.status); }
     const data = await resp.json();
-    const text = (data.content?.[0]?.text || data.text || '').replace(/```json|```/g,'').trim();
-    const result = JSON.parse(text);
+    const raw = (data.content?.[0]?.text || data.text || '').trim();
+    // Nettoyage robuste du JSON
+    let text = raw.replace(/```json/g,'').replace(/```/g,'').trim();
+    // Extraire uniquement le bloc JSON si du texte parasite existe
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Réponse IA invalide — pas de JSON trouvé');
+    const result = JSON.parse(jsonMatch[0]);
     renderResults(pcts, sorted, pk, result);
   } catch(e){
     console.error(e);
