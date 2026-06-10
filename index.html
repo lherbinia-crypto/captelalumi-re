@@ -669,36 +669,36 @@ async function launchAI(){
   const pk = sorted[0][0];
   const famNames = {batisseur:'Bâtisseur', artisan:'Artisan de la Paix', structurant:'Structurant', passeur:'Passeur'};
   const compStr = sorted.map(([k,v])=>v>0?famNames[k]+' '+v+'%':'').filter(Boolean).join(', ');
-  const qSummary = QQ.map((q,i)=>{
+  // Résumé compact: juste les familles choisies et 3 réponses représentatives
+  const famCounts = {batisseur:0,artisan:0,structurant:0,passeur:0};
+  Object.values(ans).forEach(f=>{if(famCounts[f]!==undefined)famCounts[f]++;});
+  
+  // Trouver les 3 questions les plus discriminantes (où la personne a choisi sa famille dominante)
+  const topChoices = QQ.map((q,i)=>{
     const chosen = q.opts.find(o=>o.f===ans[i]);
-    return `Q${i+1}: ${q.txt}\nRéponse: ${chosen?chosen.t:'(non répondu)'}`;
-  }).join('\n\n');
+    return chosen ? `- ${q.txt.substring(0,60)}... → ${chosen.t.substring(0,80)}` : '';
+  }).filter(Boolean).slice(0,5).join('\n');
+  
+  const qSummary = `Scores: Bâtisseur ${famCounts.batisseur}/20, Artisan ${famCounts.artisan}/20, Structurant ${famCounts.structurant}/20, Passeur ${famCounts.passeur}/20\nExemples de choix:\n${topChoices}`;
 
-  const prompt = `Tu es expert des Familles d'Ames de Diane LeBlanc. Analyse ce profil et reponds en JSON.
+  const prompt = `Tu es expert des Familles d'Ames de Diane LeBlanc. Analyse ce profil.
 
 PERSONNE: ${udata.prenom}, ${udata.age||'?'} ans, ${udata.ville||'?'}
 Description: ${udata.qui||'?'}
 Motivation: ${udata.pourquoi||'?'}
 
-SCORES MECANIQUES: ${compStr} — Famille calculee: ${famNames[pk]}
-
-REPONSES QUESTIONNAIRE:
+ANALYSE DES REPONSES:
 ${qSummary}
 
-REPONSES LIBRES:
-1. ${oanswers[0]||'?'}
-2. ${oanswers[1]||'?'}
-3. ${oanswers[2]||'?'}
+REPONSES LIBRES (tres importantes):
+1. Ce qui me rend vivant(e): ${oanswers[0]||'?'}
+2. Mon plus grand defi: ${oanswers[1]||'?'}
+3. Ce que je changerais: ${oanswers[2]||'?'}
 
-FAMILLES (reference):
-Batisseur: physique, instinct, resilience, blessure=trahison, stress=persecuteur
-Artisan Paix: emotionnel, empathie, amour, blessure=abandon, stress=victime
-Structurant: mental, analyse, pedagogie, blessure=rejet, stress=indifference
-Passeur: spirituel, connexion, transmission, blessure=persecution, stress=sauveur
+FAMILLES: Batisseur=physique/action/trahison | Artisan=emotionnel/empathie/abandon | Structurant=mental/analyse/rejet | Passeur=spirituel/connexion/persecution
 
-INSTRUCTIONS: Lis toutes les reponses. Verifie si la famille calculee est coherente avec les reponses libres. Ajuste si necessaire. Utilise \u2019 pour toutes les apostrophes. JSON strict uniquement, commence par {:
-
-{"famille_confirmee":"Nom","pourcentages":{"batisseur":X,"artisan":X,"structurant":X,"passeur":X},"portrait":"3-4 phrases en TU bienveillantes qui utilisent des elements specifiques de ses reponses","morning":[{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"evening":[{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"eclats":["Eclat JE personnel","Eclat JE force","Eclat JE profond"]}`
+Lis les reponses libres attentivement — elles revelent souvent la vraie famille. Genere un profil personnalise en utilisant des elements specifiques de ses reponses. Utilise \u2019 pour apostrophes. JSON strict:
+{"famille_confirmee":"Nom","pourcentages":{"batisseur":X,"artisan":X,"structurant":X,"passeur":X},"portrait":"3-4 phrases TU bienveillantes avec elements specifiques de ses reponses","morning":[{"temps":"5 min","titre":"Titre evocateur","contenu":"Texte personnalise"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"evening":[{"temps":"5 min","titre":"Titre","contenu":"Texte personnalise"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"eclats":["Phrase JE personnalisee et poetique","Phrase JE ancree dans une force","Phrase JE profonde et liberatrice"]}`
 
     try {
     const resp = await fetch('/.netlify/functions/claude', {
