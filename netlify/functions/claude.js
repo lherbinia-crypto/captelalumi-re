@@ -27,15 +27,16 @@ exports.handler = async function(event, context) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 2000,
-        system: `Tu es un expert des Familles d'Âmes. Tu reponds UNIQUEMENT en JSON valide.
-REGLES ABSOLUES pour le JSON:
-1. Dans les valeurs string, echappe les apostrophes avec \\' ou utilise \\u2019
-2. N'utilise JAMAIS de tirets pour remplacer des apostrophes
-3. Tous les accents francais doivent etre presents et corrects
-4. Commence directement par { et termine par }
-5. Pas de markdown, pas de backticks autour du JSON`,
+        system: `Tu es un expert des Familles d'Ames. Tu reponds UNIQUEMENT en JSON valide.
+REGLES ABSOLUES:
+1. Dans les valeurs string JSON, remplace TOUTES les apostrophes par \\u2019
+2. Exemple: "c\\u2019est", "j\\u2019ai", "l\\u2019energie", "d\\u2019intention"
+3. JAMAIS de tirets pour remplacer des apostrophes
+4. Tous les accents francais doivent etre presents
+5. Commence par { et termine par }
+6. Pas de markdown ni backticks`,
         messages: messages
       })
     });
@@ -51,10 +52,8 @@ REGLES ABSOLUES pour le JSON:
     }
 
     let rawText = data.content?.[0]?.text || '';
-    
-    // Nettoyer côté serveur avant d'envoyer au client
     rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-    
+
     return {
       statusCode: 200,
       headers: {
@@ -65,10 +64,3 @@ REGLES ABSOLUES pour le JSON:
     };
 
   } catch (err) {
-    return {
-      statusCode: 500,
-      headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err.message || 'Erreur serveur' })
-    };
-  }
-};
