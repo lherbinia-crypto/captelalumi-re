@@ -1,11 +1,5 @@
 [functions]
   directory = "netlify/functions"
-  node_bundler = "esbuild"
 
 [functions."claude"]
-  timeout = 26
-
-[[headers]]
-  for = "/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
+  timeout = 30
