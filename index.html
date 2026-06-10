@@ -770,6 +770,18 @@ FORMAT JSON STRICT — commence par { et termine par }, apostrophes françaises 
     if (!jsonMatch) throw new Error('Réponse IA invalide — pas de JSON trouve');
     let jsonStr = jsonMatch[0];
     // Parser avec gestion des apostrophes françaises dans les valeurs
+    // Remplacer les tirets utilisés comme apostrophes par de vraies apostrophes
+    // Pattern: lettre-lettre où le tiret remplace une apostrophe française
+    jsonStr = jsonStr
+      .replace(/([a-zA-ZÀ-ÿ])-([a-zA-ZÀ-ÿ])/g, (match, p1, p2) => {
+        // Cas typiques d'apostrophes françaises
+        const apostrophePatterns = ['d-', 'l-', 'j-', 'n-', 'm-', 'c-', 's-', 'qu-', 't-'];
+        for (const pat of apostrophePatterns) {
+          if (match.toLowerCase().startsWith(pat)) return p1 + "'" + p2;
+        }
+        return match;
+      });
+
     let result;
     try {
       result = JSON.parse(jsonStr);
