@@ -1,7 +1,4 @@
 exports.handler = async function(event, context) {
-  // Augmenter le timeout via callbackWaitsForEmptyEventLoop
-  context.callbackWaitsForEmptyEventLoop = false;
-
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
@@ -22,9 +19,6 @@ exports.handler = async function(event, context) {
     const body = JSON.parse(event.body);
     const messages = body.messages || [{ role: 'user', content: body.prompt }];
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
-
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -32,16 +26,13 @@ exports.handler = async function(event, context) {
         'x-api-key': process.env.ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01'
       },
-      signal: controller.signal,
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1000,
-        system: `Expert Familles Ames. JSON uniquement. Apostrophes = \\u2019. Jamais tirets. Commence {.`,
         messages: messages
       })
     });
 
-    clearTimeout(timeoutId);
     const data = await response.json();
 
     if (!response.ok) {
@@ -52,20 +43,18 @@ exports.handler = async function(event, context) {
       };
     }
 
-    const rawText = data.content?.[0]?.text || '';
-
+    const text = data.content?.[0]?.text || '';
     return {
       statusCode: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ text: rawText })
+      body: JSON.stringify({ text: text })
     };
 
   } catch (err) {
-    const isTimeout = err.name === 'AbortError';
     return {
-      statusCode: isTimeout ? 504 : 500,
+      statusCode: 500,
       headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: isTimeout ? 'Délai dépassé - réessaie' : (err.message || 'Erreur serveur') })
+      body: JSON.stringify({ error: err.message || 'Erreur serveur' })
