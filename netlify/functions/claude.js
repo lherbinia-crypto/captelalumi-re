@@ -1,27 +1,21 @@
 exports.handler = async function(event, context) {
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      },
+      body: ''
+    };
+  }
+
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: 'Method Not Allowed' };
+  }
+
   try {
-    // Reproduire EXACTEMENT claude.js mais avec captures d'erreur
-    
-    if (event.httpMethod === 'OPTIONS') {
-      return {
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS'
-        },
-        body: ''
-      };
-    }
-
-    if (event.httpMethod !== 'POST') {
-      return { 
-        statusCode: 200, 
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ debug: 'method not POST', method: event.httpMethod })
-      };
-    }
-
     const body = JSON.parse(event.body);
     const messages = body.messages || [{ role: 'user', content: body.prompt }];
 
@@ -43,24 +37,27 @@ exports.handler = async function(event, context) {
 
     if (!response.ok) {
       return {
-        statusCode: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ debug: 'anthropic not ok', status: response.status, data: data })
+        statusCode: response.status,
+        headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: data.error?.message || 'Erreur API' })
       };
     }
 
     const text = data.content?.[0]?.text || '';
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ debug: 'success', text: text })
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ text: text })
     };
 
   } catch (err) {
     return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ debug: 'caught error', message: err.message, stack: err.stack, eventBody: event.body })
+      statusCode: 500,
+      headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: err.message || 'Erreur serveur' })
     };
   }
 };
