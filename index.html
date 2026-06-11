@@ -631,24 +631,13 @@ async function launchAI(){
   
   const qSummary = `Scores: Bâtisseur ${famCounts.batisseur}/20, Artisan ${famCounts.artisan}/20, Structurant ${famCounts.structurant}/20, Passeur ${famCounts.passeur}/20\nExemples de choix:\n${topChoices}`;
 
-  const prompt = `Tu es expert des Familles d'Ames de Diane LeBlanc. Analyse ce profil.
+  const prompt = `Familles d'Ames expert. JSON uniquement. Apostrophes = \u2019. Commence {.
 
-PERSONNE: ${udata.prenom}, ${udata.age||'?'} ans, ${udata.ville||'?'}
-Description: ${udata.qui||'?'}
-Motivation: ${udata.pourquoi||'?'}
+${udata.prenom}, ${udata.age||'?'} ans. Famille: ${famNames[pk]} (${compStr}).
+Reponses libres: "${oanswers[0]||'?'}" / "${oanswers[1]||'?'}" / "${oanswers[2]||'?'}"
 
-ANALYSE DES REPONSES:
-${qSummary}
-
-REPONSES LIBRES (tres importantes):
-1. Ce qui me rend vivant(e): ${oanswers[0]||'?'}
-2. Mon plus grand defi: ${oanswers[1]||'?'}
-3. Ce que je changerais: ${oanswers[2]||'?'}
-
-FAMILLES: Batisseur=physique/action/trahison | Artisan=emotionnel/empathie/abandon | Structurant=mental/analyse/rejet | Passeur=spirituel/connexion/persecution
-
-Lis les reponses libres attentivement — elles revelent souvent la vraie famille. Genere un profil personnalise en utilisant des elements specifiques de ses reponses. Utilise \u2019 pour apostrophes. JSON strict:
-{"famille_confirmee":"Nom","pourcentages":{"batisseur":X,"artisan":X,"structurant":X,"passeur":X},"portrait":"3-4 phrases TU bienveillantes avec elements specifiques de ses reponses","morning":[{"temps":"5 min","titre":"Titre evocateur","contenu":"Texte personnalise"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"evening":[{"temps":"5 min","titre":"Titre","contenu":"Texte personnalise"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"eclats":["Phrase JE personnalisee et poetique","Phrase JE ancree dans une force","Phrase JE profonde et liberatrice"]}`
+JSON:
+{"famille_confirmee":"Nom","pourcentages":{"batisseur":X,"artisan":X,"structurant":X,"passeur":X},"portrait":"3 phrases TU bienveillantes","morning":[{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"evening":[{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"10 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"},{"temps":"5 min","titre":"Titre","contenu":"Texte"}],"eclats":["Phrase JE","Phrase JE","Phrase JE"]}`
 
     try {
     const resp = await fetch('/.netlify/functions/claude', {
