@@ -671,28 +671,26 @@ JSON:
     try {
       result = JSON.parse(jsonStr);
     } catch(parseErr) {
-      // Tentative de réparation : remplacer les apostrophes dans les valeurs string
-      // On remplace les apostrophes qui ne sont pas des guillemets d'échappement
-      jsonStr = jsonStr.replace(/"([^"]*?)'/g, (match, p1) => '"' + p1 + '\u2019');
-      jsonStr = jsonStr.replace(/'([^"]*?)"/g, (match, p1) => '\u2019' + p1 + '"');
-      // Deuxième tentative plus agressive : extraire via regex chaque champ
+      // Tentative de réparation : remplacer les apostrophes problématiques
+      jsonStr = jsonStr.replace(/"([^"]*?)'/g, function(match, p1) { return '"' + p1 + '\u2019'; });
+      jsonStr = jsonStr.replace(/'([^"]*?)"/g, function(match, p1) { return '\u2019' + p1 + '"'; });
       try {
         result = JSON.parse(jsonStr);
       } catch(e2) {
-        // Construire manuellement depuis le texte brut
+        // Construction manuelle via regex (chaînes avec double backslash pour \s, \[, \])
         const getVal = (key) => {
-          const rx = new RegExp('"'+key+'"\s*:\s*"([^"]*)"');
+          const rx = new RegExp('"' + key + '"\\s*:\\s*"([^"]*)"');
           const m = jsonStr.match(rx);
           return m ? m[1] : '';
         };
         const getArr = (key) => {
-          const rx = new RegExp('"'+key+'"\s*:\s*\[([^\]]+)\]');
+          const rx = new RegExp('"' + key + '"\\s*:\\s*\\[([^\\]]+)\\]');
           const m = jsonStr.match(rx);
           if(!m) return [];
           return m[1].match(/"([^"]*)"/g)?.map(s=>s.replace(/"/g,''))||[];
         };
         const getObjArr = (key) => {
-          const rx = new RegExp('"'+key+'"\s*:\s*\[([\s\S]*?)\](?=\s*[,}])');
+          const rx = new RegExp('"' + key + '"\\s*:\\s*\\[([\\s\\S]*?)\\](?=\\s*[,}])');
           const m = jsonStr.match(rx);
           if(!m) return [];
           const items = [];
