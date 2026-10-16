@@ -541,6 +541,7 @@ function lessonDates(c, i) {
 // Note cumulée de la période, cours par cours : l'élève démarre la période à 14, chaque cours
 // commence avec la note laissée par le cours précédent, et les icônes du jour s'y ajoutent.
 // Une cote tapée à la main à un cours remplace la note à la fin de ce cours. Retour à 14 à la période suivante.
+// La cote d'un cours = la note à la fin de ce cours.
 function runningNotes(c, sid, i) {
   let run = clampNote(Number(S.settings.cpc.base) || 0);
   return lessonDates(c, i).map(d => {
@@ -552,9 +553,11 @@ function runningNotes(c, sid, i) {
 }
 const dayInfo = (c, sid, d) => runningNotes(c, sid, periodOfDate(d)).find(x => x.d === d) || { d, start: cpcNote(c, sid, periodOfDate(d)), end: cpcNote(c, sid, periodOfDate(d)), abs: false };
 const dayNote = (c, sid, d) => dayInfo(c, sid, d).end;
+// Note de participation de la période : moyenne des cotes de tous les cours de la période
+// (un cours où l'élève était absent, sans icône ni cote tapée, n'est pas compté).
 function cpcNote(c, sid, i) {
-  const r = runningNotes(c, sid, i);
-  return r.length ? r[r.length - 1].end : clampNote(Number(S.settings.cpc.base) || 0);
+  const v = runningNotes(c, sid, i).filter(r => !r.abs).map(r => r.end);
+  return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : clampNote(Number(S.settings.cpc.base) || 0);
 }
 const cpcOn = c => !!c?.cpc?.enabled;
 // Note de période : participation (si activée) + évaluations de la période, selon la part choisie
@@ -1155,16 +1158,16 @@ function viewParticipationSeance(c) {
   const rows = studs.map(s => {
     const info = dayInfo(c, s.id, d), n = info.end, ev = c.cpc.events.filter(e => e.sid === s.id && e.date === d);
     const st = c.attendance[d]?.[s.id]?.s, diff = n - info.start;
-    return `<div class="cpc-row ${info.abs ? 'cpc-abs' : ''}"><button class="who" data-act="cpc-student" data-sid="${s.id}">${avatar(s, 'sm')}<span><span class="nm">${nameHTML(s)}</span><span class="small muted" style="display:block">début du cours : ${fmtNum(info.start)}/${max}${diff ? ` · <b style="color:var(--${diff > 0 ? 'ok' : 'bad'})">${diff > 0 ? '+' : '−'}${fmtNum(Math.abs(diff))}</b>` : ''}${st === 'A' || st === 'J' ? ' · absent ce jour' : st === 'R' ? ' · en retard' : ''}</span></span></button>
+    return `<div class="cpc-row ${info.abs ? 'cpc-abs' : ''}"><button class="who" data-act="cpc-student" data-sid="${s.id}">${avatar(s, 'sm')}<span><span class="nm">${nameHTML(s)}</span><span class="small muted" style="display:block">moy. ${esc(P[pi].name.toLowerCase())} : <b>${fmtNum(cpcNote(c, s.id, pi))}</b> · début du cours : ${fmtNum(info.start)}/${max}${diff ? ` · <b style="color:var(--${diff > 0 ? 'ok' : 'bad'})">${diff > 0 ? '+' : '−'}${fmtNum(Math.abs(diff))}</b>` : ''}${st === 'A' || st === 'J' ? ' · absent ce jour' : st === 'R' ? ' · en retard' : ''}</span></span></button>
       <button class="cpc-note ${pctClass(n / max * 100)}" data-act="cpc-day" data-sid="${s.id}" title="Taper une cote">${fmtNum(n)}<small>/${max}${info.ov ? ' ✎' : ''}</small></button>
       <div class="cpc-icons">${items.map((it, k) => { const cnt = ev.filter(e => e.k === it.key).length;
         return `${k === firstNeg ? '<span class="cpc-sep"></span>' : ''}<button class="cpc-btn ${it.pts < 0 ? 'neg' : 'pos'}" data-act="cpc-add" data-sid="${s.id}" data-k="${it.key}" title="${esc(it.short)} (${fmtPts(it.pts)})" aria-label="${esc(it.short)} ${fmtPts(it.pts)} pour ${esc(studentName(s))}">${cpcIcon(it.key)}<span class="pts">${fmtPts(it.pts)}</span>${cnt ? `<span class="cnt">${cnt}</span>` : ''}</button>`; }).join('')}</div></div>`;
   }).join('');
-  const grid = dates.length ? `<h3 class="section-h">Note après chaque cours — ${esc(P[pi].name)}</h3><div class="gt-wrap" style="max-height:none"><table class="gt"><thead><tr><th class="name">Élève</th><th>Départ</th>${dates.map(x => `<th class="colh ${x === d ? 'cur-day' : ''}" data-act="part-date-goto" data-d="${x}"><div class="ct">${fmtDate(x, { weekday: 'short', day: 'numeric', month: 'short' })}</div></th>`).join('')}<th>Note de la période</th></tr></thead><tbody>
+  const grid = dates.length ? `<h3 class="section-h">Cote de chaque cours — ${esc(P[pi].name)}</h3><div class="gt-wrap" style="max-height:none"><table class="gt"><thead><tr><th class="name">Élève</th><th>Départ</th>${dates.map(x => `<th class="colh ${x === d ? 'cur-day' : ''}" data-act="part-date-goto" data-d="${x}"><div class="ct">${fmtDate(x, { weekday: 'short', day: 'numeric', month: 'short' })}</div></th>`).join('')}<th>Moyenne de la période</th></tr></thead><tbody>
     ${studs.map(s => { const r = runningNotes(c, s.id, pi); return `<tr><td class="name">${esc(studentName(s))}</td><td class="avg muted">${fmtNum(clampNote(Number(base) || 0))}</td>${dates.map(x => { const v = r.find(y => y.d === x); if (!v) return '<td></td>'; const dv = v.end - v.start; return `<td class="avg ${v.abs ? 'g-abs' : dv > 0 ? 'g-ok' : dv < 0 ? 'g-bad' : ''}" style="font-weight:600">${v.abs ? '<small>abs</small> ' : ''}${fmtNum(v.end)}${dv ? `<small>${dv > 0 ? '+' : '−'}${fmtNum(Math.abs(dv))}</small>` : ''}</td>`; }).join('')}<td class="avg ${pctClass(cpcNote(c, s.id, pi) / max * 100)}">${fmtNum(cpcNote(c, s.id, pi))}/${max}</td></tr>`; }).join('')}
     </tbody></table></div>` : '';
   return tb + arBanner(c) + `<h3 class="section-h" style="margin-top:0">Cours du ${fmtDate(d, { weekday: 'long', day: 'numeric', month: 'long' })} <span class="tag">${esc(P[pi].name)}</span></h3>
-    <p class="legend" style="margin:0 0 12px">Chaque élève démarre ${esc(P[pi].name.toLowerCase())} à <b>${base}/${max}</b>. Chaque cours commence avec la note laissée par le cours précédent, et les icônes du jour s’y ajoutent. La note de la période est celle du dernier cours ; elle repart à ${base} à la période suivante. Touchez une note pour la corriger à la main.</p>
+    <p class="legend" style="margin:0 0 12px">Chaque élève démarre ${esc(P[pi].name.toLowerCase())} à <b>${base}/${max}</b>. Chaque cours commence avec la note laissée par le cours précédent, et les icônes du jour s’y ajoutent. La cote du cours est la note à la fin du cours. La note de participation de la période est la <b>moyenne de toutes les cotes de la période</b> (cours où l’élève était absent non comptés) ; on repart à ${base} à la période suivante. Touchez une cote pour la corriger à la main.</p>
     <div class="cpc-list">${rows}</div>${grid}`;
 }
 function cpcDayEdit(sid) {
