@@ -532,29 +532,29 @@ const cpcItem = key => S.settings.cpc.items.find(it => it.key === key);
 const evPts = e => Number.isFinite(e.pts) ? e.pts : (Number(cpcItem(e.k)?.pts) || 0);
 const evShort = e => e.k === 'import' ? 'Importé d’iDoceo' : (cpcItem(e.k)?.short || '?');
 const cpcEvents = (c, sid, i) => c.cpc.events.filter(e => e.sid === sid && periodOfDate(e.date) === i);
-const cpcMode = c => c?.cpc?.mode === 'seance' ? 'seance' : 'periode';
 const clampNote = n => Math.max(0, Math.min(Number(S.settings.cpc.max) || 20, n));
 // Séances d'une période : jours où il y a eu un appel, une icône, une cote ou une entrée au journal
 function lessonDates(c, i) {
   const set = new Set([...Object.keys(c.attendance), ...c.cpc.events.map(e => e.date), ...Object.keys(c.cpc.over || {}), ...c.journal.map(j => j.date)]);
-  return [...set].filter(d => d && periodOfDate(d) === i && d <= todayISO()).sort();
+  return [...set].filter(d => d && periodOfDate(d) === i).sort();
 }
-// Cote d'une séance : cote tapée à la main, sinon départ + icônes du jour ; absent sans icône = non compté
-function dayNote(c, sid, d) {
-  const ov = c.cpc.over?.[d]?.[sid];
-  if (ov != null) return ov;
-  const evs = c.cpc.events.filter(e => e.sid === sid && e.date === d), st = c.attendance[d]?.[sid]?.s;
-  if ((st === 'A' || st === 'J') && !evs.length) return null;
-  return clampNote((Number(S.settings.cpc.base) || 0) + evs.reduce((t, e) => t + evPts(e), 0));
+// Note cumulée de la période, cours par cours : l'élève démarre la période à 14, chaque cours
+// commence avec la note laissée par le cours précédent, et les icônes du jour s'y ajoutent.
+// Une cote tapée à la main à un cours remplace la note à la fin de ce cours. Retour à 14 à la période suivante.
+function runningNotes(c, sid, i) {
+  let run = clampNote(Number(S.settings.cpc.base) || 0);
+  return lessonDates(c, i).map(d => {
+    const start = run, evs = c.cpc.events.filter(e => e.sid === sid && e.date === d), st = c.attendance[d]?.[sid]?.s;
+    const ov = c.cpc.over?.[d]?.[sid];
+    run = ov != null ? ov : clampNote(run + evs.reduce((t, e) => t + evPts(e), 0));
+    return { d, start, end: run, abs: (st === 'A' || st === 'J') && !evs.length && ov == null, ov: ov != null, n: evs.length };
+  });
 }
+const dayInfo = (c, sid, d) => runningNotes(c, sid, periodOfDate(d)).find(x => x.d === d) || { d, start: cpcNote(c, sid, periodOfDate(d)), end: cpcNote(c, sid, periodOfDate(d)), abs: false };
+const dayNote = (c, sid, d) => dayInfo(c, sid, d).end;
 function cpcNote(c, sid, i) {
-  const { base } = S.settings.cpc;
-  if (cpcMode(c) === 'seance') {
-    const v = lessonDates(c, i).map(d => dayNote(c, sid, d)).filter(x => x != null);
-    return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : clampNote(Number(base) || 0);
-  }
-  const sum = cpcEvents(c, sid, i).reduce((t, e) => t + evPts(e), 0);
-  return clampNote((Number(base) || 0) + sum);
+  const r = runningNotes(c, sid, i);
+  return r.length ? r[r.length - 1].end : clampNote(Number(S.settings.cpc.base) || 0);
 }
 const cpcOn = c => !!c?.cpc?.enabled;
 // Note de période : participation (si activée) + évaluations de la période, selon la part choisie
@@ -1137,48 +1137,34 @@ function exportCSV() {
 }
 
 // ---------- Participation (icônes à points) ----------
-const curPartPeriod = () => S.ui.partPeriod === '' ? periodOfDate(todayISO()) : +S.ui.partPeriod;
+const curPartPeriod = () => periodOfDate(S.ui.partDate || todayISO());
 const fmtPts = n => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n);
 function viewParticipation(c) {
-  if (cpcMode(c) === 'seance') return viewParticipationSeance(c);
-  const P = S.settings.periods, pi = curPartPeriod(), { base, max, items } = S.settings.cpc;
-  const studs = sortStudents(c.students);
-  const tb = modeSwitch(c) + `<div class="toolbar">${P.map((p, i) => `<button class="chip ${pi === i ? 'active' : ''}" data-act="part-period" data-p="${i}">${esc(p.name)}${i === periodOfDate(todayISO()) ? ' (en cours)' : ''}</button>`).join('')}
-    <span class="spacer"></span><button class="btn sm" data-act="cpc-legend">Légende</button></div>`;
-  if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2></div>`;
-  const firstNeg = items.findIndex(it => it.pts < 0);
-  return tb + arBanner(c) + `<p class="legend" style="margin:0 0 12px">Chaque élève commence ${esc(P[pi].name.toLowerCase())} à <b>${base}/${max}</b>. Touchez une icône pour l’ajouter à l’élève, touchez son nom pour voir le détail et l’auto-évaluation. ${pi !== periodOfDate(todayISO()) ? `<b>Attention : vous ajoutez des icônes dans ${esc(P[pi].name)}, qui n’est pas la période en cours.</b>` : ''}</p>
-    <div class="cpc-list">${studs.map(s => {
-      const ev = cpcEvents(c, s.id, pi), n = cpcNote(c, s.id, pi);
-      return `<div class="cpc-row"><button class="who" data-act="cpc-student" data-sid="${s.id}">${avatar(s, 'sm')}<span class="nm">${nameHTML(s)}</span></button>
-        <div class="cpc-note ${pctClass(n / max * 100)}">${n}<small>/${max}</small></div>
-        <div class="cpc-icons">${items.map((it, k) => { const cnt = ev.filter(e => e.k === it.key).length;
-          return `${k === firstNeg ? '<span class="cpc-sep"></span>' : ''}<button class="cpc-btn ${it.pts < 0 ? 'neg' : 'pos'}" data-act="cpc-add" data-sid="${s.id}" data-k="${it.key}" title="${esc(it.short)} (${fmtPts(it.pts)})" aria-label="${esc(it.short)} ${fmtPts(it.pts)} pour ${esc(studentName(s))}">${cpcIcon(it.key)}<span class="pts">${fmtPts(it.pts)}</span>${cnt ? `<span class="cnt">${cnt}</span>` : ''}</button>`; }).join('')}</div></div>`;
-    }).join('')}</div>`;
+  return viewParticipationSeance(c);
 }
-const modeSwitch = c => `<div class="toolbar"><div class="seg seg-sm" role="group" aria-label="Mode de calcul"><button class="${cpcMode(c) === 'periode' ? 'on' : ''}" data-act="cpc-mode" data-m="periode">Une cote par période</button><button class="${cpcMode(c) === 'seance' ? 'on' : ''}" data-act="cpc-mode" data-m="seance">Une cote à chaque cours</button></div></div>`;
 function viewParticipationSeance(c) {
   const { base, max, items } = S.settings.cpc, P = S.settings.periods;
   const d = S.ui.partDate || todayISO(), pi = periodOfDate(d), studs = sortStudents(c.students);
   const dates = lessonDates(c, pi); if (!dates.includes(d) && d <= todayISO()) dates.push(d), dates.sort();
-  const tb = modeSwitch(c) + `<div class="toolbar"><div class="att-date"><button class="btn" data-act="part-date-shift" data-n="-1" aria-label="Cours précédent">‹</button>
+  const tb = `<div class="toolbar">${P.map((p, i) => `<button class="chip ${pi === i ? 'active' : ''}" data-act="part-goto-period" data-p="${i}">${esc(p.name)}${i === periodOfDate(todayISO()) ? ' (en cours)' : ''}</button>`).join('')}</div>
+    <div class="toolbar"><div class="att-date"><button class="btn" data-act="part-date-shift" data-n="-1" aria-label="Cours précédent">‹</button>
       <input class="inp" type="date" id="part-date" value="${d}"><button class="btn" data-act="part-date-shift" data-n="1" aria-label="Cours suivant">›</button></div>
       <button class="btn" data-act="part-date-today">Aujourd’hui</button><span class="spacer"></span><button class="btn sm" data-act="cpc-legend">Légende</button></div>`;
   if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2></div>`;
   const firstNeg = items.findIndex(it => it.pts < 0);
   const rows = studs.map(s => {
-    const n = dayNote(c, s.id, d), ov = c.cpc.over?.[d]?.[s.id] != null, ev = c.cpc.events.filter(e => e.sid === s.id && e.date === d), avg = cpcNote(c, s.id, pi);
-    const st = c.attendance[d]?.[s.id]?.s;
-    return `<div class="cpc-row ${n == null ? 'cpc-abs' : ''}"><button class="who" data-act="cpc-student" data-sid="${s.id}">${avatar(s, 'sm')}<span><span class="nm">${nameHTML(s)}</span><span class="small muted" style="display:block">moy. ${esc(P[pi].name.toLowerCase())} : ${fmtNum(avg)}/${max}${st === 'A' || st === 'J' ? ' · absent ce jour' : st === 'R' ? ' · en retard' : ''}</span></span></button>
-      <button class="cpc-note ${n == null ? '' : pctClass(n / max * 100)}" data-act="cpc-day" data-sid="${s.id}" title="Taper une cote">${n == null ? '<small>abs.</small>' : fmtNum(n) + `<small>/${max}${ov ? ' ✎' : ''}</small>`}</button>
+    const info = dayInfo(c, s.id, d), n = info.end, ev = c.cpc.events.filter(e => e.sid === s.id && e.date === d);
+    const st = c.attendance[d]?.[s.id]?.s, diff = n - info.start;
+    return `<div class="cpc-row ${info.abs ? 'cpc-abs' : ''}"><button class="who" data-act="cpc-student" data-sid="${s.id}">${avatar(s, 'sm')}<span><span class="nm">${nameHTML(s)}</span><span class="small muted" style="display:block">début du cours : ${fmtNum(info.start)}/${max}${diff ? ` · <b style="color:var(--${diff > 0 ? 'ok' : 'bad'})">${diff > 0 ? '+' : '−'}${fmtNum(Math.abs(diff))}</b>` : ''}${st === 'A' || st === 'J' ? ' · absent ce jour' : st === 'R' ? ' · en retard' : ''}</span></span></button>
+      <button class="cpc-note ${pctClass(n / max * 100)}" data-act="cpc-day" data-sid="${s.id}" title="Taper une cote">${fmtNum(n)}<small>/${max}${info.ov ? ' ✎' : ''}</small></button>
       <div class="cpc-icons">${items.map((it, k) => { const cnt = ev.filter(e => e.k === it.key).length;
         return `${k === firstNeg ? '<span class="cpc-sep"></span>' : ''}<button class="cpc-btn ${it.pts < 0 ? 'neg' : 'pos'}" data-act="cpc-add" data-sid="${s.id}" data-k="${it.key}" title="${esc(it.short)} (${fmtPts(it.pts)})" aria-label="${esc(it.short)} ${fmtPts(it.pts)} pour ${esc(studentName(s))}">${cpcIcon(it.key)}<span class="pts">${fmtPts(it.pts)}</span>${cnt ? `<span class="cnt">${cnt}</span>` : ''}</button>`; }).join('')}</div></div>`;
   }).join('');
-  const grid = dates.length ? `<h3 class="section-h">Cotes par séance — ${esc(P[pi].name)}</h3><div class="gt-wrap" style="max-height:none"><table class="gt"><thead><tr><th class="name">Élève</th>${dates.map(x => `<th class="colh ${x === d ? 'cur-day' : ''}" data-act="part-date-goto" data-d="${x}"><div class="ct">${fmtDate(x, { weekday: 'short', day: 'numeric', month: 'short' })}</div></th>`).join('')}<th>Moyenne</th></tr></thead><tbody>
-    ${studs.map(s => `<tr><td class="name">${esc(studentName(s))}</td>${dates.map(x => { const v = dayNote(c, s.id, x); return `<td class="avg ${v == null ? 'g-abs' : pctClass(v / max * 100)}" style="font-weight:600">${v == null ? 'abs' : fmtNum(v)}</td>`; }).join('')}<td class="avg ${pctClass(cpcNote(c, s.id, pi) / max * 100)}">${fmtNum(cpcNote(c, s.id, pi))}/${max}</td></tr>`).join('')}
+  const grid = dates.length ? `<h3 class="section-h">Note après chaque cours — ${esc(P[pi].name)}</h3><div class="gt-wrap" style="max-height:none"><table class="gt"><thead><tr><th class="name">Élève</th><th>Départ</th>${dates.map(x => `<th class="colh ${x === d ? 'cur-day' : ''}" data-act="part-date-goto" data-d="${x}"><div class="ct">${fmtDate(x, { weekday: 'short', day: 'numeric', month: 'short' })}</div></th>`).join('')}<th>Note de la période</th></tr></thead><tbody>
+    ${studs.map(s => { const r = runningNotes(c, s.id, pi); return `<tr><td class="name">${esc(studentName(s))}</td><td class="avg muted">${fmtNum(clampNote(Number(base) || 0))}</td>${dates.map(x => { const v = r.find(y => y.d === x); if (!v) return '<td></td>'; const dv = v.end - v.start; return `<td class="avg ${v.abs ? 'g-abs' : dv > 0 ? 'g-ok' : dv < 0 ? 'g-bad' : ''}" style="font-weight:600">${v.abs ? '<small>abs</small> ' : ''}${fmtNum(v.end)}${dv ? `<small>${dv > 0 ? '+' : '−'}${fmtNum(Math.abs(dv))}</small>` : ''}</td>`; }).join('')}<td class="avg ${pctClass(cpcNote(c, s.id, pi) / max * 100)}">${fmtNum(cpcNote(c, s.id, pi))}/${max}</td></tr>`; }).join('')}
     </tbody></table></div>` : '';
   return tb + arBanner(c) + `<h3 class="section-h" style="margin-top:0">Cours du ${fmtDate(d, { weekday: 'long', day: 'numeric', month: 'long' })} <span class="tag">${esc(P[pi].name)}</span></h3>
-    <p class="legend" style="margin:0 0 12px">À chaque cours, l’élève part de <b>${base}/${max}</b> et les icônes du jour s’ajoutent. Touchez la cote pour la taper vous-même. La participation de la période est la <b>moyenne des séances</b> ; un élève absent (sans icône) n’est pas compté ce jour-là.</p>
+    <p class="legend" style="margin:0 0 12px">Chaque élève démarre ${esc(P[pi].name.toLowerCase())} à <b>${base}/${max}</b>. Chaque cours commence avec la note laissée par le cours précédent, et les icônes du jour s’y ajoutent. La note de la période est celle du dernier cours ; elle repart à ${base} à la période suivante. Touchez une note pour la corriger à la main.</p>
     <div class="cpc-list">${rows}</div>${grid}`;
 }
 function cpcDayEdit(sid) {
@@ -1186,8 +1172,8 @@ function cpcDayEdit(sid) {
   const d = S.ui.partDate || todayISO(), max = S.settings.cpc.max, cur = c.cpc.over?.[d]?.[sid];
   modal({
     title: `${studentName(s)} — ${fmtDate(d, { weekday: 'long', day: 'numeric', month: 'long' })}`,
-    body: `<label class="field"><span>Cote de participation pour ce cours (sur ${max})</span><input class="inp" name="v" inputmode="decimal" value="${cur != null ? String(cur).replace('.', ',') : ''}" placeholder="Calcul actuel : ${dayNote(c, sid, d) == null ? 'absent' : fmtNum(dayNote(c, sid, d))}"></label>
-      <p class="small muted">Laissez vide pour revenir au calcul automatique (${S.settings.cpc.base} + icônes du jour).</p>`,
+    body: `<label class="field"><span>Note de participation à la fin de ce cours (sur ${max})</span><input class="inp" name="v" inputmode="decimal" value="${cur != null ? String(cur).replace('.', ',') : ''}" placeholder="Calcul actuel : ${fmtNum(dayInfo(c, sid, d).end)}"></label>
+      <p class="small muted">Les cours suivants repartent de cette note. Laissez vide pour revenir au calcul automatique (note du cours précédent + icônes du jour).</p>`,
     actions: [{ label: 'Annuler' }, { label: 'Enregistrer', cls: 'primary', onClick: el => {
       const raw = formData(el).v.replace(',', '.');
       c.cpc.over ||= {};
@@ -1216,7 +1202,7 @@ function cpcStudent(sid) {
     const self = c.cpc.self?.[pi]?.[sid] || {};
     const choices = [['r', 'rarement'], ['p', 'parfois'], ['s', 'souvent']];
     $('.mbody', el).innerHTML = `<div class="toolbar">${P.map((p, i) => `<button type="button" class="chip ${pi === i ? 'active' : ''}" data-pp="${i}">${esc(p.name)}</button>`).join('')}</div>
-      <div class="kpis" style="margin-bottom:14px"><div class="kpi"><b class="${pctClass(cpcNote(c, sid, pi) / max * 100)}" style="background:none!important">${fmtNum(cpcNote(c, sid, pi))}/${max}</b><span>Participation${cpcMode(c) === 'seance' ? ' (moy. des séances)' : ''}</span></div>
+      <div class="kpis" style="margin-bottom:14px"><div class="kpi"><b class="${pctClass(cpcNote(c, sid, pi) / max * 100)}" style="background:none!important">${fmtNum(cpcNote(c, sid, pi))}/${max}</b><span>Participation</span></div>
         <div class="kpi"><b>${base}</b><span>Départ</span></div><div class="kpi"><b style="color:var(--ok)">+${plus}</b><span>Points gagnés</span></div><div class="kpi"><b style="color:var(--bad)">${minus ? '−' + Math.abs(minus) : '0'}</b><span>Points perdus</span></div></div>
       <h3 class="section-h">Auto-évaluation de mi-période</h3>
       <p class="small muted" style="margin-top:0">Encodez ce que l’élève a coché, puis comparez avec votre relevé.</p>
@@ -1254,13 +1240,13 @@ function cpcAdd(el) {
   const c = cls(), sid = el.dataset.sid, it = cpcItem(el.dataset.k), s = c.students.find(x => x.id === sid);
   if (!it || !s) return;
   const today = todayISO();
-  const seance = cpcMode(c) === 'seance', date0 = seance && S.ui.tab === 'participation' && !el.closest('.draw-box') ? (S.ui.partDate || today) : null;
+  const date0 = S.ui.tab === 'participation' && !el.closest('.draw-box') ? (S.ui.partDate || today) : null;
   const pi = date0 ? periodOfDate(date0) : curPartPeriod();
   const date = date0 || (periodOfDate(today) === pi ? today : (S.settings.periods[pi].end || today));
   const ev = { id: uid(), sid, k: it.key, date, t: Date.now() };
   c.cpc.events.push(ev); save();
   const y = $('#view').scrollTop; renderMain(); $('#view').scrollTop = y;
-  toast(`${s.firstName || s.lastName} : ${it.short} ${fmtPts(it.pts)} → ${fmtNum(cpcMode(c) === 'seance' ? dayNote(c, sid, date) : cpcNote(c, sid, pi))}/${S.settings.cpc.max}${cpcMode(c) === 'seance' ? ' aujourd’hui' : ''}`, {
+  toast(`${s.firstName || s.lastName} : ${it.short} ${fmtPts(it.pts)} → ${fmtNum(dayNote(c, sid, date))}/${S.settings.cpc.max}`, {
     label: 'Annuler', fn: () => { c.cpc.events = c.cpc.events.filter(x => x.id !== ev.id); save(); const y2 = $('#view').scrollTop; renderMain(); $('#view').scrollTop = y2; }
   });
 }
@@ -2385,9 +2371,8 @@ const A = {
   'grade-cat': el => { S.ui.gradeCat = el.dataset.cat; save(); renderMain(); },
   'grade-period': el => { S.ui.gradePeriod = el.dataset.p === String(periodOfDate(todayISO())) ? '' : el.dataset.p; save(); renderMain(); },
   'pick-icon': pickIcon,
-  'part-period': el => { S.ui.partPeriod = el.dataset.p === String(periodOfDate(todayISO())) ? '' : el.dataset.p; save(); renderMain(); },
   'cpc-add': cpcAdd,
-  'cpc-mode': el => { const c = cls(); c.cpc.mode = el.dataset.m; save(); renderMain(); toast(el.dataset.m === 'seance' ? 'Une cote à chaque cours : la période = moyenne des séances' : 'Une cote par période : départ + toutes les icônes de la période'); },
+  'part-goto-period': el => { const i = +el.dataset.p, P = S.settings.periods, end = P[i].end || todayISO(); S.ui.partDate = periodOfDate(todayISO()) === i ? todayISO() : (lessonDates(cls(), i).pop() || (end < todayISO() ? end : (periodStart(i) || todayISO()))); save(); renderMain(); },
   'cpc-day': el => cpcDayEdit(el.dataset.sid),
   'part-date-today': () => { S.ui.partDate = todayISO(); save(); renderMain(); },
   'part-date-goto': el => { S.ui.partDate = el.dataset.d; save(); renderMain(); $('#view').scrollTop = 0; },
