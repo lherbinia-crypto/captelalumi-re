@@ -185,6 +185,15 @@ table.gt{border-collapse:separate;border-spacing:0;min-width:100%}
 .seg-sm button{min-width:0;height:36px;padding:0 10px;font-size:13px;font-weight:600}
 .seg-sm button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 @media (max-width:1050px){.cpc-row{grid-template-columns:1fr 72px}.cpc-icons{grid-column:1/-1;justify-content:flex-start}}
+.ar-tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.04em;padding:1px 5px;border-radius:5px;background:var(--info-soft);color:var(--info);vertical-align:2px;margin-left:4px;text-transform:none}
+.ar-tag.todo{background:var(--warn-soft);color:var(--warn)}
+.ar-card.ok{border-color:var(--info)}
+.ar-card.todo{border-color:var(--warn)}
+.ar-list{margin:0;padding-left:20px;columns:2 280px;column-gap:28px}
+.ar-list li{margin:2px 0;break-inside:avoid}
+.ar-banner{background:var(--info-soft);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px}
+.ar-banner summary{cursor:pointer}
+.ar-banner-list{display:grid;gap:6px;margin-top:8px}
 .pcell{width:100%;height:44px;border:0;background:transparent;font-size:17px;font-weight:700;color:inherit;font-variant-numeric:tabular-nums}
 .pcell small{font-size:11px;font-weight:500;opacity:.8}
 .draw-box{display:grid;justify-items:center;gap:16px;text-align:center;padding:8px 0}
@@ -459,7 +468,32 @@ function avatar(s, size = '') {
   const hue = [...(s.lastName + s.firstName)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 360, 7);
   return `<span class="av ${size}" style="background:hsl(${hue} 45% 48%)" aria-hidden="true">${esc(initials(s).toUpperCase())}</span>`;
 }
-const nameHTML = s => `<span><span class="ln">${esc(s.lastName)}</span> ${esc(s.firstName)}</span>`;
+// Aménagements raisonnables (AR) : s.ar = { motif, liste: [], source, note }
+const hasAR = s => !!(s.ar && ((s.ar.liste || []).length || s.ar.note || s.ar.motif));
+const arTag = s => !hasAR(s) ? '' : (s.ar.liste || []).length
+  ? ` <span class="ar-tag" title="${esc(s.ar.liste.join(' · '))}">AR</span>`
+  : ` <span class="ar-tag todo" title="${esc(s.ar.note || 'Aménagements à compléter')}">AR ?</span>`;
+const nameHTML = s => `<span><span class="ln">${esc(s.lastName)}</span> ${esc(s.firstName)}${arTag(s)}</span>`;
+function arCard(s) {
+  const ar = s.ar || {}, n = (ar.liste || []).length;
+  return `<div class="card pad ar-card ${n ? 'ok' : hasAR(s) ? 'todo' : ''}" style="margin-bottom:16px">
+    <div class="toolbar" style="margin-bottom:8px"><h3 class="section-h" style="margin:0">Aménagements raisonnables</h3>${ar.source ? `<span class="muted small">${esc(ar.source)}</span>` : ''}<span class="spacer"></span>
+      ${n ? `<button class="btn sm" data-act="ar-to-dacce">＋ Note DAccE depuis ses AR</button>` : ''}</div>
+    ${ar.note ? `<div class="hw" style="margin:0 0 10px"><b>À faire :</b> ${esc(ar.note)} <button class="btn sm ghost" data-act="ar-note-done">C’est fait</button></div>` : ''}
+    ${n ? `<ul class="ar-list">${ar.liste.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+    <details ${n ? '' : 'open'}><summary class="small" style="cursor:pointer;font-weight:600;color:var(--accent);margin:6px 0">${n ? 'Modifier' : 'Encoder les aménagements'}</summary>
+      <label class="field"><span>Motif communiqué (confidentiel)</span><input class="inp" data-arfield="motif" value="${esc(ar.motif || '')}" placeholder="Ex. dyslexie, TDAH…"></label>
+      <label class="field"><span>Aménagements (un par ligne)</span><textarea class="inp" data-arfield="liste" rows="${Math.max(4, n + 1)}" placeholder="Recopiez ici la liste reçue de l’école">${esc((ar.liste || []).join('\n'))}</textarea></label>
+      <label class="field"><span>Source</span><input class="inp" data-arfield="source" value="${esc(ar.source || '')}" placeholder="Ex. mail de la direction du 08/09"></label>
+    </details></div>`;
+}
+// Rappel des AR de la classe (carnet de cotes, présences, participation)
+function arBanner(c) {
+  const list = sortStudents(c.students).filter(hasAR);
+  if (!list.length) return '';
+  return `<details class="ar-banner no-print"><summary><span class="ar-tag">AR</span> <b>${list.length} élève${list.length > 1 ? 's' : ''} avec aménagements raisonnables</b> <span class="muted small">— toucher pour voir</span></summary>
+    <div class="ar-banner-list">${list.map(s => `<div><button class="namebtn" style="border:0;background:none;padding:0;display:inline-flex;font-weight:700" data-act="open-student" data-id="${s.id}">${esc(studentName(s))}</button>${(s.ar.liste || []).length ? ` : <span class="small">${s.ar.liste.map(esc).join(' · ')}</span>` : ` : <span class="small muted">${esc(s.ar.note || 'liste à compléter')}</span>`}</div>`).join('')}</div></details>`;
+}
 
 // ---------- Grades ----------
 const sortedCols = c => [...c.columns].sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.created || 0) - (b.created || 0));
@@ -848,11 +882,13 @@ function renderMain() {
 
 // ---------- Élèves ----------
 function viewStudents(c) {
-  const list = sortStudents(c.students);
+  const all = sortStudents(c.students), nAR = all.filter(hasAR).length;
+  if (!nAR) S.ui.onlyAR = false;
+  const list = S.ui.onlyAR ? all.filter(hasAR) : all;
   const tb = `<div class="toolbar"><button class="btn primary" data-act="add-student">＋ Élève</button>
     <button class="btn" data-act="import-students">Importer une liste</button>
-    ${list.length ? `<button class="btn" data-act="photo-session" data-missing="${list.some(s => !s.photo) && list.some(s => s.photo) ? 1 : 0}">📷 Photos des élèves</button>` : ''}<span class="spacer"></span>
-    <span class="muted small">${list.length} élève${list.length > 1 ? 's' : ''}</span></div>`;
+    ${list.length ? `<button class="btn" data-act="photo-session" data-missing="${list.some(s => !s.photo) && list.some(s => s.photo) ? 1 : 0}">📷 Photos des élèves</button>` : ''}${nAR ? `<button class="chip ${S.ui.onlyAR ? 'active' : ''}" data-act="only-ar"><span class="ar-tag">AR</span> ${nAR} élève${nAR > 1 ? 's' : ''}</button>` : ''}<span class="spacer"></span>
+    <span class="muted small">${all.length} élève${all.length > 1 ? 's' : ''}</span></div>`;
   if (!list.length) return tb + `<div class="empty"><h2>Aucun élève</h2><p>Ajoutez vos élèves un par un ou collez une liste (par exemple depuis Excel ou un PDF).</p></div>`;
   return tb + `<div class="st-grid">${list.map(s => {
     const avg = annualAvg(c, s.id), a = attStats(c, s.id), nd = c.dossier.filter(d => d.sid === s.id).length;
@@ -884,6 +920,7 @@ function viewStudent(c, s) {
         <div class="kpi"><b>${a.R || 0}</b><span>Retards</span></div>
       </div>
     </div>
+    ${arCard(s)}
     <div class="grid2">
       <div>
         <div class="card pad">
@@ -934,7 +971,7 @@ function viewGrades(c) {
   const partHead = showPart ? `<th class="colh" data-act="tab" data-tab="participation" title="Voir la participation"><div class="ct">Participation</div><div class="cm">départ ${S.settings.cpc.base}/${pmax}${ppts !== pmax ? ' · compte /' + ppts : ''}</div><div class="cm">icônes</div></th>` : '';
   const partCell = sid => { if (!showPart) return ''; const n = cpcNote(c, sid, sp); return `<td class="cell ${pctClass(n / pmax * 100)}"><button type="button" class="pcell" data-act="cpc-student" data-sid="${sid}">${n}<small>/${pmax}</small></button></td>`; };
   const partFoot = () => { if (!showPart) return ''; const v = studs.map(s => cpcNote(c, s.id, sp)); return `<td>${fmtNum(v.reduce((a, b) => a + b, 0) / v.length)}/${pmax}</td>`; };
-  return tb + `<div class="gt-wrap"><table class="gt">
+  return tb + arBanner(c) + `<div class="gt-wrap"><table class="gt">
     <thead><tr><th class="name">Élève</th>${cols.map(col => `<th class="colh" data-act="edit-col" data-id="${col.id}" title="Modifier"><div class="ct">${esc(col.title)}</div><div class="cm">${fmtShort(col.date)} · ${col.type === 'icons' ? 'icônes' : '/' + fmtNum(col.max, 2)}${Number(col.weight) !== 1 ? ' · ×' + fmtNum(Number(col.weight), 2) : ''}</div><div class="cm">P${colPeriod(col) + 1}${col.category ? ' · ' + esc(col.category) : ''}</div></th>`).join('')}${partHead}<th>${avgTitle}<div class="cm" style="font-weight:400">sur ${bs}</div></th></tr></thead>
     <tbody>${studs.map((s, ri) => { const avg = rowAvg(c, s.id);
       return `<tr><td class="name"><button class="namebtn" data-act="open-student" data-id="${s.id}">${avatar(s, 'sm')}<span>${nameHTML(s)}</span></button></td>
@@ -1058,7 +1095,7 @@ function viewParticipation(c) {
     <span class="spacer"></span><button class="btn sm" data-act="cpc-legend">Légende</button></div>`;
   if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2></div>`;
   const firstNeg = items.findIndex(it => it.pts < 0);
-  return tb + `<p class="legend" style="margin:0 0 12px">Chaque élève commence ${esc(P[pi].name.toLowerCase())} à <b>${base}/${max}</b>. Touchez une icône pour l’ajouter à l’élève, touchez son nom pour voir le détail et l’auto-évaluation. ${pi !== periodOfDate(todayISO()) ? `<b>Attention : vous ajoutez des icônes dans ${esc(P[pi].name)}, qui n’est pas la période en cours.</b>` : ''}</p>
+  return tb + arBanner(c) + `<p class="legend" style="margin:0 0 12px">Chaque élève commence ${esc(P[pi].name.toLowerCase())} à <b>${base}/${max}</b>. Touchez une icône pour l’ajouter à l’élève, touchez son nom pour voir le détail et l’auto-évaluation. ${pi !== periodOfDate(todayISO()) ? `<b>Attention : vous ajoutez des icônes dans ${esc(P[pi].name)}, qui n’est pas la période en cours.</b>` : ''}</p>
     <div class="cpc-list">${studs.map(s => {
       const ev = cpcEvents(c, s.id, pi), n = cpcNote(c, s.id, pi);
       return `<div class="cpc-row"><button class="who" data-act="cpc-student" data-sid="${s.id}">${avatar(s, 'sm')}<span class="nm">${nameHTML(s)}</span></button>
@@ -1130,6 +1167,46 @@ function cpcAdd(el) {
   const y = $('#view').scrollTop; renderMain(); $('#view').scrollTop = y;
   toast(`${s.firstName || s.lastName} : ${it.short} ${fmtPts(it.pts)} → ${cpcNote(c, sid, pi)}/${S.settings.cpc.max}`, {
     label: 'Annuler', fn: () => { c.cpc.events = c.cpc.events.filter(x => x.id !== ev.id); save(); const y2 = $('#view').scrollTop; renderMain(); $('#view').scrollTop = y2; }
+  });
+}
+
+function arToDacce() {
+  const c = cls(), s = studentByUI(); if (!s?.ar?.liste?.length) return;
+  editDacce({ sid: s.id, date: todayISO(), type: 'Aménagement raisonnable', text: 'Aménagements raisonnables appliqués en classe :\n' + s.ar.liste.map(x => '• ' + x).join('\n'), follow: '', attachments: [] }, s.id, true);
+}
+// Import des AR exportés du « Journal de classe CPC » (fichier JSON)
+const normName = x => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+async function importAR() {
+  const [f] = await pickFiles({ accept: '.json,application/json', multiple: false });
+  if (!f) return;
+  let data;
+  try { data = JSON.parse(await f.text()); } catch { return toast('Fichier illisible'); }
+  if (data?.app !== 'journal-cpc-ar' || !Array.isArray(data.eleves)) return toast('Ce fichier ne contient pas d’aménagements raisonnables du Journal CPC');
+  const plan = [], missing = [], noClass = new Set();
+  for (const x of data.eleves) {
+    const c = S.classes.find(k => normName(k.name) === normName(x.classe));
+    if (!c) { noClass.add(x.classe); continue; }
+    const full = normName(`${x.nom} ${x.prenom}`);
+    let s = c.students.find(k => normName(`${k.lastName} ${k.firstName}`) === full);
+    if (!s) { const same = c.students.filter(k => normName(k.lastName) === normName(x.nom)); if (same.length === 1) s = same[0]; }
+    if (!s) { missing.push(`${x.classe} · ${x.nom} ${x.prenom}`); continue; }
+    plan.push({ s, x });
+  }
+  const withList = plan.filter(p => (p.x.liste || []).length).length;
+  modal({
+    title: 'Aménagements raisonnables du Journal CPC', wide: true,
+    body: `<p><b>${plan.length} élève${plan.length > 1 ? 's' : ''}</b> retrouvé${plan.length > 1 ? 's' : ''} dans vos classes, dont <b>${withList}</b> avec la liste complète des aménagements${plan.length - withList ? ` et ${plan.length - withList} marqué${plan.length - withList > 1 ? 's' : ''} « AR à compléter »` : ''}.</p>
+      ${noClass.size ? `<p class="small muted">Classes pas encore dans le Carnet (importez-les depuis iDoceo puis recommencez) : ${[...noClass].sort().map(esc).join(', ')}.</p>` : ''}
+      ${missing.length ? `<p class="small" style="color:var(--warn)">Élèves introuvables (nom différent ?) : ${missing.map(esc).join(' ; ')}</p>` : ''}
+      <p class="small muted">Ce qui est déjà encodé dans le Carnet est remplacé seulement si le Journal contient une liste.</p>`,
+    actions: [{ label: 'Annuler' }, { label: 'Importer', cls: 'primary', onClick: () => {
+      if (!plan.length) return;
+      for (const { s, x } of plan) {
+        const liste = (x.liste || []).filter(Boolean);
+        if (liste.length || !hasAR(s)) s.ar = { motif: x.motif || s.ar?.motif || '', liste: liste.length ? liste : (s.ar?.liste || []), source: x.source || s.ar?.source || 'Journal de classe CPC', note: liste.length ? '' : (x.note || s.ar?.note || '') };
+      }
+      save(); render(); toast(`AR importés pour ${plan.length} élève(s)`);
+    } }]
   });
 }
 
@@ -1303,8 +1380,8 @@ function viewDacce(c) {
   return tb + (list.length ? `<div class="entries">${list.map(n => dacceCard(c, n)).join('')}</div>`
     : `<div class="empty"><h2>Aucune note</h2><p>Le DAccE rassemble les observations, points forts, difficultés, aménagements raisonnables, remédiations et contacts avec les parents de chaque élève.</p></div>`);
 }
-function editDacce(n, presetSid) {
-  const c = cls(), isNew = !n, studs = sortStudents(c.students);
+function editDacce(n, presetSid, prefilled) {
+  const c = cls(), isNew = !n || !!prefilled, studs = sortStudents(c.students);
   n ||= { sid: presetSid || S.ui.dacceStudent || studs[0]?.id, date: todayISO(), type: 'Observation', text: '', follow: '', attachments: [] };
   let ed;
   const actions = [];
@@ -1783,6 +1860,7 @@ function viewSettings() {
       </div>
       <div class="card pad" style="margin-top:16px">
         <h3 class="section-h">Données</h3>
+        <div class="toolbar" style="margin:0 0 10px"><button class="btn" data-act="import-ar">Importer les AR du Journal CPC</button></div>
         <div class="toolbar" style="margin:0"><button class="btn" data-act="load-demo">Ajouter une classe d’exemple</button><button class="btn danger" data-act="wipe-all">Tout effacer</button></div>
       </div>
     </div></div>`;
@@ -1911,6 +1989,10 @@ const A = {
   'edit-dacce': el => editDacce(cls().dossier.find(n => n.id === el.dataset.id)),
   'export-backup': exportBackup,
   'import-backup': importBackup,
+  'import-ar': importAR,
+  'ar-to-dacce': arToDacce,
+  'ar-note-done': () => { const s = studentByUI(); if (s?.ar) { s.ar.note = ''; if (!hasAR(s)) delete s.ar; save(); renderMain(); } },
+  'only-ar': () => { S.ui.onlyAR = !S.ui.onlyAR; renderMain(); },
   'load-demo': () => { const c = demoClass(); S.classes.push(c); S.ui.classId = c.id; S.ui.view = 'class'; S.ui.tab = 'cotes'; save(); render(); toast('Classe d’exemple ajoutée'); },
   'wipe-all': async () => {
     if (!await confirmDlg('Effacer TOUTES les classes, élèves, cotes, présences, journaux et pièces jointes de cet iPad ?\nCette action est irréversible. Faites d’abord une sauvegarde.', 'Tout effacer')) return;
@@ -1928,6 +2010,15 @@ document.addEventListener('change', e => {
   if (t.classList.contains('gin')) return onGradeChange(t);
   if (t.id === 'att-date') { if (t.value) { S.ui.attDate = t.value; save(); renderMain(); } return; }
   if (t.classList.contains('att-note')) { const c = cls(), d = S.ui.attDate || todayISO(); const e2 = c.attendance[d]?.[t.dataset.sid]; if (e2) { e2.n = t.value.trim(); save(); } return; }
+  if (t.dataset.arfield) {
+    const s = studentByUI(); if (!s) return;
+    s.ar ||= { motif: '', liste: [], source: '', note: '' };
+    const f = t.dataset.arfield;
+    s.ar[f] = f === 'liste' ? t.value.split('\n').map(x => x.replace(/^\s*[-•]\s*/, '').trim()).filter(Boolean) : t.value.trim();
+    if (f === 'liste' && s.ar.liste.length && /compl|recopi|attente/i.test(s.ar.note || '')) s.ar.note = '';
+    if (!hasAR(s) && !s.ar.source) delete s.ar;
+    save(); const y = $('#view').scrollTop; renderMain(); $('#view').scrollTop = y; return;
+  }
   if (t.dataset.sfield) {
     const s = studentByUI(); if (!s) return;
     s[t.dataset.sfield] = t.value.trim(); save();

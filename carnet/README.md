@@ -12,6 +12,7 @@ Application de classe pour iPad, inspirée d'iDoceo. Elle fonctionne hors ligne 
 - **Élève au hasard** : bouton 🎲 pour interroger un élève, chacun son tour, sans les absents du jour, avec les icônes de participation à portée de main.
 - **Présences** : présent, absent, retard ou justifié, avec un motif. Bouton « Tous présents » et récapitulatif par élève.
 - **Journal de classe** : matière vue, devoirs avec date de remise et pièces jointes (fichiers, photos du tableau).
+- **Aménagements raisonnables (AR)** : fiche par élève (motif confidentiel, liste, source, « à compléter »), étiquette AR visible partout en classe, rappel des AR de la classe dans le carnet de cotes et la participation, note DAccE créée depuis les AR, import des AR exportés du Journal de classe CPC.
 - **DAccE** (dossier d'accompagnement de l'élève) : observations, points forts, difficultés, aménagements raisonnables, remédiations et contacts avec les parents, avec pièces jointes.
 - **Import iDoceo** : à partir de l'export Excel d'une classe iDoceo, le Carnet reprend les élèves (« Nom, Prénom ») avec leurs photos, les évaluations (titre, maximum, date), les points de participation et les présences encodées. Il compare ses moyennes aux colonnes « Bulletin » et « Participation total » d'iDoceo.
 - **Sauvegarde** : export ou restauration d'un fichier `.json` qui contient tout, pièces jointes comprises, vers Fichiers, iCloud Drive ou un e-mail.
