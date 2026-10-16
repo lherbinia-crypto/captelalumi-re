@@ -1415,13 +1415,25 @@ async function readXlsx(buf) {
     files[dec.decode(u8.subarray(ptr + 46, ptr + 46 + nl))] = { method: dv.getUint16(ptr + 10, true), size: dv.getUint32(ptr + 20, true), off: dv.getUint32(ptr + 42, true) };
     ptr += 46 + nl + xl + cl;
   }
-  const read = async name => {
+  const read = async (name, binary) => {
     const f = files[name]; if (!f) return null;
     const start = f.off + 30 + dv.getUint16(f.off + 26, true) + dv.getUint16(f.off + 28, true);
     const data = u8.subarray(start, start + f.size);
-    if (f.method === 0) return dec.decode(data);
-    const out = await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();
-    return dec.decode(out);
+    const out = f.method === 0 ? data : new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+    return binary ? out : dec.decode(out);
+  };
+  // chemin cible d'une relation (absolu « /xl/... » ou relatif au dossier du fichier)
+  const resolve = (from, target) => {
+    if (target.startsWith('/')) return target.slice(1);
+    const parts = from.split('/').slice(0, -1);
+    for (const seg of target.split('/')) { if (seg === '..') parts.pop(); else if (seg && seg !== '.') parts.push(seg); }
+    return parts.join('/');
+  };
+  const relsOf = async path => {
+    const m = {};
+    const rp = path.replace(/([^/]+)$/, '_rels/$1.rels');
+    for (const r of xml(await read(rp)).getElementsByTagName('Relationship')) m[r.getAttribute('Id')] = { target: resolve(path, r.getAttribute('Target') || ''), type: r.getAttribute('Type') || '' };
+    return m;
   };
   const xml = str => new DOMParser().parseFromString(str || '<x/>', 'application/xml');
   const texts = el => [...el.getElementsByTagName('t')].map(t => t.textContent).join('');
@@ -1436,6 +1448,7 @@ async function readXlsx(buf) {
   const colIdx = ref => [...ref.replace(/\d+/g, '')].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
   const rows = [];
   for (const row of xml(await read(sheetPath)).getElementsByTagName('row')) {
+    const rn = parseInt(row.getAttribute('r'), 10);
     const cells = [];
     for (const cell of row.getElementsByTagName('c')) {
       const t = cell.getAttribute('t'), v = cell.getElementsByTagName('v')[0]?.textContent ?? '';
@@ -1443,8 +1456,29 @@ async function readXlsx(buf) {
       const i = colIdx(cell.getAttribute('r') || '');
       cells[i >= 0 ? i : cells.length] = String(val).trim();
     }
-    rows.push(Array.from(cells, x => x ?? ''));
+    const arr = Array.from(cells, x => x ?? '');
+    if (rn > 0) rows[rn - 1] = arr; else rows.push(arr);
   }
+  for (let i = 0; i < rows.length; i++) rows[i] ||= [];
+  // images ancrées dans la feuille (ex. photos des élèves exportées par iDoceo)
+  rows.images = [];
+  try {
+    for (const rel of Object.values(await relsOf(sheetPath))) {
+      if (!/drawing$/.test(rel.type)) continue;
+      const drels = await relsOf(rel.target), dx = xml(await read(rel.target));
+      for (const a of [...dx.getElementsByTagName('xdr:twoCellAnchor'), ...dx.getElementsByTagName('xdr:oneCellAnchor')]) {
+        const from = a.getElementsByTagName('xdr:from')[0], blip = a.getElementsByTagName('a:blip')[0];
+        if (!from || !blip) continue;
+        const target = drels[blip.getAttribute('r:embed')]?.target; if (!target) continue;
+        const bytes = await read(target, true); if (!bytes) continue;
+        const ext = target.split('.').pop().toLowerCase();
+        rows.images.push({
+          row: +from.getElementsByTagName('xdr:row')[0]?.textContent, col: +from.getElementsByTagName('xdr:col')[0]?.textContent,
+          blob: new Blob([bytes], { type: ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg' })
+        });
+      }
+    }
+  } catch (e) { console.warn('Images non lues', e); }
   return rows;
 }
 function parseCSV(text) {
@@ -1507,15 +1541,22 @@ function idoceoDate(day, month, year) {
 }
 const num = v => { const n = parseFloat(String(v ?? '').replace(',', '.')); return Number.isFinite(n) && /^\s*-?\d+([.,]\d+)?\s*$/.test(String(v)) ? n : null; };
 function analyseIdoceo(rows, fileName) {
-  rows = rows.map(r => r.map(x => x ?? ''));
-  const header = rows[0] || [], data = rows.slice(1).filter(r => r.some(x => String(x).trim()));
+  const images = rows.images || [];
+  rows = rows.map(r => (r || []).map(x => x ?? ''));
+  const header = rows[0] || [];
+  let data = rows.slice(1).filter(r => r.some(x => String(x).trim()));
   // colonne des noms : celle qui contient le plus de textes non numériques
   let nameCol = -1, best = 0;
   for (let j = 0; j < header.length; j++) {
     const n = data.filter(r => String(r[j] || '').trim() && num(r[j]) == null).length;
     if (n > best) { best = n; nameCol = j; }
   }
-  const students = data.map(r => String(r[nameCol] || '').trim()).filter(Boolean).map(n => {
+  // garde uniquement les lignes d'élèves (avec un nom), et leur numéro de ligne pour retrouver les photos
+  const rowIdx = [];
+  data = [];
+  rows.forEach((r, i) => { if (i > 0 && String(r[nameCol] || '').trim()) { data.push(r); rowIdx.push(i); } });
+  const photos = rowIdx.map(i => images.find(im => im.row === i && im.col < Math.max(1, nameCol + 1))?.blob || images.find(im => im.row === i)?.blob || null);
+  const students = data.map(r => String(r[nameCol] || '').trim()).map(n => {
     const [last, ...first] = n.split(',');
     return first.length ? { lastName: last.trim(), firstName: first.join(',').trim() } : parseNameLine(n);
   });
@@ -1535,7 +1576,7 @@ function analyseIdoceo(rows, fileName) {
   // participation : colonnes d'icônes si présentes, sinon « Valeur icône »
   const iconCols = cols.filter(x => x.kind === 'icons').length ? cols.filter(x => x.kind === 'icons') : cols.filter(x => x.kind === 'iconsum');
   const name = (fileName || '').replace(/\.[^.]+$/, '').replace(/^idoceo[_\s-]*/i, '').trim() || 'Classe importée';
-  return { name, students, cols, iconCols, rows: data };
+  return { name, students, cols, iconCols, rows: data, photos };
 }
 function attCode(v) {
   const t = String(v || '').trim().toLowerCase();
@@ -1548,7 +1589,7 @@ function attCode(v) {
 }
 function buildIdoceoClass(an) {
   const c = normalize({ classes: [{ id: uid(), name: an.name, subject: '', color: COLORS[S.classes.length % COLORS.length] }] }).classes[0];
-  c.students = an.students.map(st => ({ id: uid(), ...st, files: [] }));
+  c.students = an.students.map((st, i) => ({ id: uid(), ...st, files: [], ...(an.photoUrls?.[i] ? { photo: an.photoUrls[i] } : {}) }));
   const hasPart = an.cols.some(x => ['parttotal', 'icons', 'iconsum'].includes(x.kind));
   c.cpc = { enabled: hasPart, points: Number(an.cols.find(x => x.kind === 'parttotal')?.max) || 20, events: [], self: {} };
   let created = Date.now();
@@ -1610,8 +1651,9 @@ async function importIdoceo() {
       const rows = u8[0] === 0x50 && u8[1] === 0x4b ? await readXlsx(buf) : parseCSV(new TextDecoder().decode(buf).replace(/^\ufeff/, ''));
       const an = analyseIdoceo(rows, f.name);
       if (!an.students.length) { toast(`Aucun élève trouvé dans « ${f.name} »`); continue; }
+      an.photoUrls = await Promise.all(an.photos.map(b => b ? resizeImage(b).catch(() => null) : null));
       const c = buildIdoceoClass(an);
-      items.push({ an, c, checks: verifyIdoceo(an, c), file: f.name });
+      items.push({ an, c, checks: verifyIdoceo(an, c), file: f.name, existing: S.classes.find(x => collator.compare(x.name, an.name) === 0) });
     } catch (e) { toast(`${f.name} : ${e.message}`); }
   }
   if (!items.length) return;
@@ -1624,19 +1666,37 @@ async function importIdoceo() {
       const presCols = an.cols.filter(x => x.kind === 'presence');
       return `<div class="card pad" style="margin-bottom:12px">
         <label class="field"><span>Nom de la classe (fichier « ${esc(it.file)} »)</span><input class="inp" data-iname="${n}" value="${esc(an.name)}"></label>
-        <p style="margin:0 0 8px"><b>${c.students.length} élèves</b> · ${c.columns.length} évaluation(s) · ${c.cpc.events.length} icône(s) de participation · ${att} présence(s) encodée(s)</p>
+        ${it.existing ? `<label class="check" style="background:var(--accent-soft);border-radius:10px;padding:4px 12px;margin-bottom:10px"><input type="checkbox" data-iupd="${n}" checked> La classe « ${esc(it.existing.name)} » existe déjà : la compléter (photos manquantes et nouveaux élèves) au lieu d’en créer une deuxième. Vos cotes, présences et icônes ne sont pas touchées.</label>` : ''}
+        <div class="files" style="margin:0 0 8px">${c.students.slice(0, 12).map(s => avatar(s, 'sm')).join('')}${c.students.length > 12 ? `<span class="muted small" style="align-self:center">+${c.students.length - 12}</span>` : ''}</div>
+        <p style="margin:0 0 8px"><b>${c.students.length} élèves</b> · ${c.students.filter(s => s.photo).length} photo(s) · ${c.columns.length} évaluation(s) · ${c.cpc.events.length} icône(s) de participation · ${att} présence(s) encodée(s)</p>
         <div class="tbl-scroll"><table class="plain"><thead><tr><th>Colonne iDoceo</th><th>Devient</th></tr></thead><tbody>
         ${an.cols.map(x => `<tr><td>${esc(x.title)}${x.max ? ` <span class="muted">/${fmtNum(x.max, 2)}</span>` : ''}${x.date ? ` <span class="muted">${fmtShort(x.date)}</span>` : ''}</td>
           <td class="small">${x.kind === 'grade' ? `Évaluation /${fmtNum(c.columns.find(g => g.title === x.title)?.max ?? x.max, 2)} en ${esc(S.settings.periods[periodOfDate(x.date || todayISO())]?.name || '')}` : x.kind === 'iconsum' && an.iconCols[0]?.kind === 'icons' ? 'total des icônes, recalculé ici' : label[x.kind]}</td></tr>`).join('')}
         </tbody></table></div>
-        ${presCols.length && !att ? `<p class="small muted">Les ${presCols.length} colonnes « Présence » sont vides dans l’export : aucune absence à reprendre.</p>` : ''}
+        ${presCols.length && !att ? `<p class="small" style="color:var(--warn);font-weight:600">⚠︎ Les ${presCols.length} colonnes « Présence » (${presCols.map(x => fmtShort(x.date)).join(', ')}) sont vides dans le fichier : iDoceo n’y a mis ni absence ni retard. Rien n’est donc repris pour ces dates.</p>` : ''}
         ${it.checks.length ? it.checks.map(ch => `<p class="small" style="color:${ch.ok === ch.total ? 'var(--ok)' : 'var(--warn)'};font-weight:600;margin:8px 0 0">${ch.ok === ch.total ? '✓' : '⚠︎'} ${esc(ch.title)} : ${ch.ok}/${ch.total} élèves identiques à iDoceo${ch.diffs.length ? '<br><span class="muted" style="font-weight:400">' + ch.diffs.slice(0, 5).map(esc).join('<br>') + '</span>' : ''}</p>`).join('') : ''}
       </div>`;
-    }).join('') + `<p class="small muted">Les classes sont ajoutées à côté de vos classes actuelles ; rien n’est effacé. Les photos et les icônes détaillées ne sont pas dans l’export Excel d’iDoceo : la participation est reprise comme un total de points par date.</p>`,
+    }).join('') + `<p class="small muted">Les classes sont ajoutées à côté de vos classes actuelles ; rien n’est effacé. Le détail des icônes n’est pas dans l’export Excel d’iDoceo : la participation est reprise comme un total de points par date.</p>`,
     actions: [{ label: 'Annuler' }, { label: items.length > 1 ? 'Importer les classes' : 'Importer la classe', cls: 'primary', onClick: el => {
-      items.forEach((it, n) => { it.c.name = $(`[data-iname="${n}"]`, el).value.trim() || it.c.name; S.classes.push(it.c); });
-      S.ui.classId = items[0].c.id; S.ui.view = 'class'; S.ui.tab = 'cotes'; S.ui.gradePeriod = ''; S.ui.studentId = null;
-      save(); render(); toast(items.length > 1 ? `${items.length} classes importées` : `Classe « ${items[0].c.name} » importée`);
+      const key = s2 => `${s2.lastName} ${s2.firstName}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+      let firstId = null, msg = [];
+      items.forEach((it, n) => {
+        if (it.existing && $(`[data-iupd="${n}"]`, el)?.checked) {
+          let ph = 0, added = 0;
+          for (const ns of it.c.students) {
+            const old = it.existing.students.find(o => key(o) === key(ns));
+            if (old) { if (!old.photo && ns.photo) { old.photo = ns.photo; ph++; } }
+            else { it.existing.students.push(ns); added++; }
+          }
+          msg.push(`« ${it.existing.name} » : ${ph} photo(s), ${added} nouvel(le)(s) élève(s)`);
+          firstId ||= it.existing.id;
+        } else {
+          it.c.name = $(`[data-iname="${n}"]`, el).value.trim() || it.c.name; S.classes.push(it.c);
+          msg.push(`« ${it.c.name} » importée`); firstId ||= it.c.id;
+        }
+      });
+      S.ui.classId = firstId; S.ui.view = 'class'; S.ui.tab = 'cotes'; S.ui.gradePeriod = ''; S.ui.studentId = null;
+      S.ui.tab = 'eleves'; save(); render(); toast(msg.join(' · '));
     } }]
   });
 }
