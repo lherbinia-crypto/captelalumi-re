@@ -185,6 +185,12 @@ table.gt{border-collapse:separate;border-spacing:0;min-width:100%}
 .seg-sm button{min-width:0;height:36px;padding:0 10px;font-size:13px;font-weight:600}
 .seg-sm button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 @media (max-width:1050px){.cpc-row{grid-template-columns:1fr 72px}.cpc-icons{grid-column:1/-1;justify-content:flex-start}}
+.pcell{width:100%;height:44px;border:0;background:transparent;font-size:17px;font-weight:700;color:inherit;font-variant-numeric:tabular-nums}
+.pcell small{font-size:11px;font-weight:500;opacity:.8}
+.draw-box{display:grid;justify-items:center;gap:16px;text-align:center;padding:8px 0}
+.draw-name{font-size:28px;font-weight:800;min-height:36px}
+.draw-go{min-width:280px;min-height:58px;font-size:19px}
+.draw-opts{display:grid;gap:0;text-align:left}
 .icon-cell{font-size:24px;line-height:1;cursor:pointer;padding:0}
 .icon-pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px}
 .icon-pick button{display:grid;justify-items:center;gap:4px;padding:12px 6px;border:2px solid var(--line);background:var(--surface-2);border-radius:14px;min-height:92px}
@@ -365,7 +371,7 @@ let S;
 const defaultState = () => ({
   version: 1,
   settings: { teacher: '', school: '', year: '', scale: 20, pass: 50, absZero: false, skipWeekend: true, theme: 'auto', lastBackup: null,
-    bulletinScale: 20, periods: defaultPeriods(), icons: defaultIcons(), cpc: defaultCpc() },
+    bulletinScale: 20, drawNoRepeat: true, drawSkipAbsent: true, periods: defaultPeriods(), icons: defaultIcons(), cpc: defaultCpc() },
   classes: [],
   ui: { view: 'class', classId: null, tab: 'eleves', studentId: null, attDate: null, gradeCat: '', gradePeriod: '', partPeriod: '', dacceStudent: '', dacceType: '' }
 });
@@ -428,7 +434,8 @@ function normalize(st) {
   for (const c of st.classes) {
     c.students ||= []; c.columns ||= []; c.grades ||= {}; c.attendance ||= {}; c.journal ||= []; c.dossier ||= [];
     c.color ||= COLORS[0];
-    c.cpc = { enabled: false, share: 50, events: [], self: {}, ...(c.cpc || {}) };
+    c.cpc = { enabled: false, points: 20, events: [], self: {}, ...(c.cpc || {}) };
+    c.drawn ||= [];
     for (const s of c.students) s.files ||= [];
   }
   return st;
@@ -477,15 +484,33 @@ function cpcNote(c, sid, i) {
 }
 const cpcOn = c => !!c?.cpc?.enabled;
 // Note de période : participation (si activée) + évaluations de la période, selon la part choisie
-function periodAvg(c, sid, i) {
-  const g = studentAvg(c, sid, periodCols(c, i));
-  if (!cpcOn(c) || !periodStarted(i)) return g;
-  const p = cpcNote(c, sid, i) / (Number(S.settings.cpc.max) || 20) * 100;
-  if (!Number.isFinite(g)) return p;
-  const sh = Math.max(0, Math.min(100, Number(c.cpc.share))) / 100;
-  return p * sh + g * (1 - sh);
+// Points d'une période : évaluations de la période + participation (comptée comme une évaluation)
+function periodPoints(c, sid, i) {
+  const r = pointsOf(c, sid, periodCols(c, i));
+  if (cpcOn(c) && periodStarted(i)) {
+    const pts = Number(c.cpc.points) || 20;
+    r.got += cpcNote(c, sid, i) / (Number(S.settings.cpc.max) || 20) * pts; r.max += pts;
+  }
+  return r;
 }
-const visibleCols = c => sortedCols(c).filter(col => (!S.ui.gradeCat || col.category === S.ui.gradeCat) && (S.ui.gradePeriod === '' || colPeriod(col) === +S.ui.gradePeriod));
+function periodAvg(c, sid, i) {
+  const r = periodPoints(c, sid, i);
+  return r.max ? r.got / r.max * 100 : NaN;
+}
+const fmtPtsTotal = r => `${fmtNum(r.got, 1)} / ${fmtNum(r.max, 1)} pts`;
+// Période affichée dans le carnet de cotes : '' = période en cours, 'all' = toute l'année
+const selPeriod = () => S.ui.gradePeriod === 'all' ? null : S.ui.gradePeriod === '' ? periodOfDate(todayISO()) : +S.ui.gradePeriod;
+const visibleCols = c => { const sp = selPeriod(); return sortedCols(c).filter(col => (!S.ui.gradeCat || col.category === S.ui.gradeCat) && (sp == null || colPeriod(col) === sp)); };
+const gradeMode = () => S.ui.gradeCat ? 'filter' : selPeriod() == null ? 'year' : 'period';
+function rowAvg(c, sid) {
+  const m = gradeMode();
+  return m === 'filter' ? studentAvg(c, sid, visibleCols(c)) : m === 'year' ? annualAvg(c, sid) : periodAvg(c, sid, selPeriod());
+}
+function avgCellHTML(c, sid) {
+  const avg = rowAvg(c, sid), bs = S.settings.bulletinScale, m = gradeMode();
+  const r = m === 'period' ? periodPoints(c, sid, selPeriod()) : m === 'filter' ? pointsOf(c, sid, visibleCols(c)) : null;
+  return Number.isFinite(avg) ? `${fmtOn(avg, bs)}<span style="font-weight:500;font-size:13px">/${bs}</span>${r ? `<small>${fmtPtsTotal(r)}</small>` : ''}` : '–';
+}
 const periodCols = (c, i) => sortedCols(c).filter(col => colPeriod(col) === i);
 const isIcon = v => typeof v === 'string' && /^I\d+$/.test(v);
 const iconOf = v => isIcon(v) ? S.settings.icons[+v.slice(1)] : null;
@@ -495,16 +520,22 @@ function valuePct(v, col) {
   const ic = iconOf(v);
   return ic ? Number(ic.pct) : NaN;
 }
-function studentAvg(c, sid, cols = visibleCols(c)) {
-  let num = 0, den = 0;
+// Total des points : points obtenus / points possibles (une pondération multiplie les points de la colonne)
+const colPoints = col => col.type === 'icons' ? 20 : Number(col.max) || 0;
+function pointsOf(c, sid, cols) {
+  let got = 0, max = 0;
   for (const col of cols) {
-    const v = c.grades[col.id]?.[sid], w = Number(col.weight) || 0;
-    if (!w || !col.max) continue;
+    const v = c.grades[col.id]?.[sid], w = Number(col.weight) || 0, m = colPoints(col) * w;
+    if (!m) continue;
     const p = valuePct(v, col);
-    if (Number.isFinite(p)) { num += p * w; den += w; }
-    else if (v === 'ABS' && S.settings.absZero) den += w;
+    if (Number.isFinite(p)) { got += p / 100 * m; max += m; }
+    else if (v === 'ABS' && S.settings.absZero) max += m;
   }
-  return den ? num / den : NaN;
+  return { got, max };
+}
+function studentAvg(c, sid, cols = visibleCols(c)) {
+  const r = pointsOf(c, sid, cols);
+  return r.max ? r.got / r.max * 100 : NaN;
 }
 // Moyenne annuelle : moyenne pondérée des périodes qui ont des cotes
 function annualAvg(c, sid) {
@@ -801,7 +832,7 @@ function renderMain() {
   }
   top.innerHTML = `<div class="top-row">${menu}<span class="dot" style="width:12px;height:12px;border-radius:50%;background:${c.color}"></span>
       <h1>${esc(c.name)}${c.subject ? `<small>${esc(c.subject)}</small>` : ''}</h1>
-      <button class="btn sm ghost" data-act="edit-class">Modifier</button></div>
+      ${c.students.length ? '<button class="btn sm" data-act="draw">🎲 Au hasard</button>' : ''}<button class="btn sm ghost" data-act="edit-class">Modifier</button></div>
     <nav class="tabs" role="tablist">${TABS.filter(([k]) => k !== 'participation' || cpcOn(c)).map(([k, l]) => `<button class="tab ${S.ui.tab === k ? 'active' : ''}" role="tab" aria-selected="${S.ui.tab === k}" data-act="tab" data-tab="${k}">${l}</button>`).join('')}</nav>`;
   const st = S.ui.studentId && c.students.find(s => s.id === S.ui.studentId);
   if (st) { view.innerHTML = viewStudent(c, st); return; }
@@ -882,28 +913,33 @@ function viewGrades(c) {
   const studs = sortStudents(c.students), cols = visibleCols(c);
   const cats = [...new Set(c.columns.map(x => x.category).filter(Boolean))].sort(collator.compare);
   if (S.ui.gradeCat && !cats.includes(S.ui.gradeCat)) S.ui.gradeCat = '';
-  const P = S.settings.periods;
-  const tb = `<div class="toolbar"><button class="btn primary" data-act="add-col">＋ Évaluation</button>
+  const P = S.settings.periods, sp = selPeriod(), cur = periodOfDate(todayISO()), bs = S.settings.bulletinScale;
+  const tb = `<div class="toolbar"><button class="btn primary" data-act="add-col">＋ Évaluation${sp != null ? ' en ' + esc(P[sp].name) : ''}</button>
     <span class="spacer"></span><button class="btn sm" data-act="export-csv">Exporter (CSV)</button><button class="btn sm" data-act="print">Imprimer</button></div>
-    <div class="toolbar"><button class="chip ${S.ui.gradePeriod === '' ? 'active' : ''}" data-act="grade-period" data-p="">Toute l’année</button>
-    ${P.map((p, i) => `<button class="chip ${S.ui.gradePeriod === String(i) ? 'active' : ''}" data-act="grade-period" data-p="${i}">${esc(p.name)}</button>`).join('')}
+    <div class="toolbar">${P.map((p, i) => `<button class="chip ${sp === i ? 'active' : ''}" data-act="grade-period" data-p="${i}">${esc(p.name)}${i === cur ? ' (en cours)' : ''}</button>`).join('')}
+    <button class="chip ${sp == null ? 'active' : ''}" data-act="grade-period" data-p="all">Toute l’année</button>
     ${cats.length ? '<span style="width:12px"></span>' : ''}${cats.length ? `<button class="chip ${!S.ui.gradeCat ? 'active' : ''}" data-act="grade-cat" data-cat="">Toutes</button>${cats.map(k => `<button class="chip ${S.ui.gradeCat === k ? 'active' : ''}" data-act="grade-cat" data-cat="${esc(k)}">${esc(k)}</button>`).join('')}` : ''}</div>`;
   if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2><p>Ajoutez des élèves dans l’onglet « Élèves » pour commencer à coter.</p><button class="btn" data-act="tab" data-tab="eleves">Aller aux élèves</button></div>`;
-  if (!c.columns.length) return tb + `<div class="empty"><h2>Aucune évaluation</h2><p>Créez une colonne (interro, contrôle, travail…) avec son maximum et sa pondération, ou une colonne de participation avec des icônes.</p></div>`;
-  if (!cols.length) return tb + `<div class="empty"><h2>Rien à afficher</h2><p>Aucune évaluation pour ce filtre.</p></div>`;
-  const classAvg = () => { const v = studs.map(s => studentAvg(c, s.id, cols)).filter(Number.isFinite); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN; };
+  const showPart = gradeMode() === 'period' && cpcOn(c) && periodStarted(sp);
+  if (!cols.length && !showPart) return tb + `<div class="empty"><h2>Aucune évaluation${sp != null ? ' en ' + esc(P[sp].name) : ''}</h2><p>Touchez « ＋ Évaluation » pour créer une colonne (devoir, recherche, interro…) avec ses points.</p></div>`;
+  const classAvg = () => { const v = studs.map(s => rowAvg(c, s.id)).filter(Number.isFinite); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN; };
   const ca = classAvg();
+  const avgTitle = { period: `Total ${esc(P[sp]?.name || '')}`, year: 'Année', filter: 'Total (filtre)' }[gradeMode()];
+  const pmax = S.settings.cpc.max, ppts = Number(c.cpc.points) || 20;
+  const partHead = showPart ? `<th class="colh" data-act="tab" data-tab="participation" title="Voir la participation"><div class="ct">Participation</div><div class="cm">départ ${S.settings.cpc.base}/${pmax}${ppts !== pmax ? ' · compte /' + ppts : ''}</div><div class="cm">icônes</div></th>` : '';
+  const partCell = sid => { if (!showPart) return ''; const n = cpcNote(c, sid, sp); return `<td class="cell ${pctClass(n / pmax * 100)}"><button type="button" class="pcell" data-act="cpc-student" data-sid="${sid}">${n}<small>/${pmax}</small></button></td>`; };
+  const partFoot = () => { if (!showPart) return ''; const v = studs.map(s => cpcNote(c, s.id, sp)); return `<td>${fmtNum(v.reduce((a, b) => a + b, 0) / v.length)}/${pmax}</td>`; };
   return tb + `<div class="gt-wrap"><table class="gt">
-    <thead><tr><th class="name">Élève</th>${cols.map(col => `<th class="colh" data-act="edit-col" data-id="${col.id}" title="Modifier"><div class="ct">${esc(col.title)}</div><div class="cm">${fmtShort(col.date)} · ${col.type === 'icons' ? 'icônes' : '/' + fmtNum(col.max, 2)}${Number(col.weight) !== 1 ? ' · ×' + fmtNum(Number(col.weight), 2) : ''}</div><div class="cm">P${colPeriod(col) + 1}${col.category ? ' · ' + esc(col.category) : ''}</div></th>`).join('')}<th>Moyenne</th></tr></thead>
-    <tbody>${studs.map((s, ri) => { const avg = studentAvg(c, s.id, cols);
+    <thead><tr><th class="name">Élève</th>${cols.map(col => `<th class="colh" data-act="edit-col" data-id="${col.id}" title="Modifier"><div class="ct">${esc(col.title)}</div><div class="cm">${fmtShort(col.date)} · ${col.type === 'icons' ? 'icônes' : '/' + fmtNum(col.max, 2)}${Number(col.weight) !== 1 ? ' · ×' + fmtNum(Number(col.weight), 2) : ''}</div><div class="cm">P${colPeriod(col) + 1}${col.category ? ' · ' + esc(col.category) : ''}</div></th>`).join('')}${partHead}<th>${avgTitle}<div class="cm" style="font-weight:400">sur ${bs}</div></th></tr></thead>
+    <tbody>${studs.map((s, ri) => { const avg = rowAvg(c, s.id);
       return `<tr><td class="name"><button class="namebtn" data-act="open-student" data-id="${s.id}">${avatar(s, 'sm')}<span>${nameHTML(s)}</span></button></td>
       ${cols.map((col, ci) => { const v = c.grades[col.id]?.[s.id];
         if (col.type === 'icons') return `<td class="cell ${gradeClass(v, col)}"><button type="button" class="gin icon-cell" data-act="pick-icon" data-col="${col.id}" data-sid="${s.id}" data-r="${ri}" data-c="${ci}" aria-label="${esc(studentName(s))} — ${esc(col.title)}">${v == null ? '<span class="muted">＋</span>' : esc(fmtGrade(v))}</button></td>`;
         return `<td class="cell ${gradeClass(v, col)}"><input class="gin" data-col="${col.id}" data-sid="${s.id}" data-r="${ri}" data-c="${ci}" value="${esc(fmtGrade(v))}" inputmode="decimal" enterkeyhint="next" autocomplete="off" autocorrect="off" aria-label="${esc(studentName(s))} — ${esc(col.title)}"></td>`; }).join('')}
-      <td class="avg ${pctClass(avg)}" data-avg="${s.id}">${Number.isFinite(avg) ? fmtNum(avg, 0) + ' %<small>' + fmtScaled(avg) + '</small>' : '–'}</td></tr>`; }).join('')}</tbody>
-    <tfoot><tr><td class="name">Moyenne de classe</td>${cols.map(col => { const p = colAvg(c, col); return `<td data-cavg="${col.id}">${Number.isFinite(p) ? fmtNum(p, 0) + ' %' : '–'}</td>`; }).join('')}<td data-gavg>${Number.isFinite(ca) ? fmtNum(ca, 0) + ' %' : '–'}</td></tr></tfoot>
+      ${partCell(s.id)}<td class="avg ${pctClass(avg)}" data-avg="${s.id}">${avgCellHTML(c, s.id)}</td></tr>`; }).join('')}</tbody>
+    <tfoot><tr><td class="name">Moyenne de classe</td>${cols.map(col => `<td data-cavg="${col.id}">${colAvgText(c, col)}</td>`).join('')}${partFoot()}<td data-gavg>${Number.isFinite(ca) ? fmtOn(ca, bs) + '/' + bs : '–'}</td></tr></tfoot>
   </table></div>
-  <p class="legend">Touchez une case pour coter. Saisie possible : <b>14,5</b> · <b>7/10</b> (converti) · <b>abs</b> (absent) · <b>exc</b> (excusé, non compté) · <b>ne</b> (non évalué). Touchez l’en-tête d’une colonne pour la modifier. ${S.settings.absZero ? 'Les « abs » comptent pour 0.' : 'Les « abs » ne sont pas comptés dans la moyenne.'}</p>`;
+  <p class="legend">Touchez une case pour coter. Saisie possible : <b>14,5</b> · <b>7/10</b> (converti) · <b>abs</b> (absent) · <b>exc</b> (excusé, non compté) · <b>ne</b> (non évalué). Touchez l’en-tête d’une colonne pour la modifier. La note sur ${bs} se calcule sur le <b>total des points</b> (points obtenus ÷ points possibles)${showPart ? `, la participation comptant pour ${ppts} points` : ''}. ${S.settings.absZero ? 'Les « abs » comptent pour 0.' : 'Les « abs » ne sont pas comptés dans la moyenne.'}</p>`;
 }
 function onGradeChange(inp) {
   const c = cls(); if (!c) return;
@@ -919,14 +955,19 @@ function onGradeChange(inp) {
   inp.parentElement.className = 'cell ' + gradeClass(r.v, col);
   refreshGradeTotals(c, col, sid);
 }
+function colAvgText(c, col) {
+  const p = colAvg(c, col);
+  if (!Number.isFinite(p)) return '–';
+  return col.type === 'icons' ? fmtNum(p, 0) + ' %' : `${fmtNum(p / 100 * col.max)}/${fmtNum(col.max, 2)}`;
+}
 function refreshGradeTotals(c, col, sid) {
-  const cols = visibleCols(c), avg = studentAvg(c, sid, cols);
+  const avg = rowAvg(c, sid), bs = S.settings.bulletinScale;
   const ac = $(`[data-avg="${sid}"]`);
-  if (ac) { ac.className = 'avg ' + pctClass(avg); ac.innerHTML = Number.isFinite(avg) ? fmtNum(avg, 0) + ' %<small>' + fmtScaled(avg) + '</small>' : '–'; }
-  const cp = colAvg(c, col), cc = $(`[data-cavg="${col.id}"]`);
-  if (cc) cc.textContent = Number.isFinite(cp) ? fmtNum(cp, 0) + ' %' : '–';
-  const all = c.students.map(s => studentAvg(c, s.id, cols)).filter(Number.isFinite), g = $('[data-gavg]');
-  if (g) g.textContent = all.length ? fmtNum(all.reduce((a, b) => a + b, 0) / all.length, 0) + ' %' : '–';
+  if (ac) { ac.className = 'avg ' + pctClass(avg); ac.innerHTML = avgCellHTML(c, sid); }
+  const cc = $(`[data-cavg="${col.id}"]`);
+  if (cc) cc.textContent = colAvgText(c, col);
+  const all = c.students.map(s => rowAvg(c, s.id)).filter(Number.isFinite), g = $('[data-gavg]');
+  if (g) g.textContent = all.length ? fmtOn(all.reduce((a, b) => a + b, 0) / all.length, bs) + '/' + bs : '–';
   save();
 }
 function pickIcon(btn) {
@@ -954,7 +995,8 @@ function pickIcon(btn) {
 }
 function editColumn(col) {
   const c = cls(), isNew = !col;
-  col ||= { title: '', date: todayISO(), max: S.settings.scale, weight: 1, category: '', type: 'number' };
+  const sp = selPeriod(), today = todayISO();
+  col ||= { title: '', date: sp == null || periodOfDate(today) === sp ? today : (periodStart(sp) || today), max: S.settings.scale, weight: 1, category: '', type: 'number', period: sp };
   const cats = [...new Set(c.columns.map(x => x.category).filter(Boolean))];
   const actions = [];
   if (!isNew) actions.push({ label: 'Supprimer', cls: 'danger left', onClick: async () => {
@@ -982,7 +1024,7 @@ function editColumn(col) {
       <label class="field"><span>Période du bulletin</span><select class="inp" name="period"><option value="">Selon la date</option>${S.settings.periods.map((p, i) => `<option value="${i}" ${col.period === i ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label></div>
       <div class="row3"><label class="field"><span>Date</span><input class="inp" type="date" name="date" value="${esc(col.date)}"></label>
       <label class="field" id="max-field"><span>Sur (maximum)</span><input class="inp" name="max" inputmode="decimal" value="${esc(String(col.max).replace('.', ','))}"></label>
-      <label class="field"><span>Pondération</span><input class="inp" name="weight" inputmode="decimal" value="${esc(String(col.weight).replace('.', ','))}"></label></div>
+      <label class="field"><span>Pondération (× points)</span><input class="inp" name="weight" inputmode="decimal" value="${esc(String(col.weight).replace('.', ','))}"></label></div>
       <label class="field"><span>Catégorie / compétence (facultatif)</span><input class="inp" name="category" list="cat-list" value="${esc(col.category || '')}" placeholder="Ex. Lire, Écrire, Formatif, Certificatif…">
       <datalist id="cat-list">${cats.map(k => `<option value="${esc(k)}">`).join('')}</datalist></label>`
   });
@@ -1086,20 +1128,77 @@ function cpcAdd(el) {
   });
 }
 
+// ---------- Tirage au sort ----------
+function drawStudent() {
+  const c = cls(); if (!c?.students.length) return;
+  const today = todayISO(), st = S.settings;
+  const absent = sid => ['A', 'J'].includes(c.attendance[today]?.[sid]?.s);
+  let picked = null, rolling = false;
+  const eligible = () => c.students.filter(s => !(st.drawSkipAbsent && absent(s.id)));
+  const draw = el => {
+    const el2 = $('.mbody', el), elig = eligible(), done = elig.filter(s => c.drawn.includes(s.id)).length;
+    el2.innerHTML = `<div class="draw-box">
+      <div class="draw-face">${picked ? avatar(picked, 'xl') : '<span class="av xl" style="background:var(--neutral-soft);color:var(--muted)">?</span>'}</div>
+      <div class="draw-name">${picked ? nameHTML(picked) : 'Touchez « Tirer au sort »'}</div>
+      ${picked && cpcOn(c) && !rolling ? `<div class="cpc-icons" style="justify-content:center">${S.settings.cpc.items.map(it => `<button class="cpc-btn ${it.pts < 0 ? 'neg' : 'pos'}" data-act="cpc-add" data-sid="${picked.id}" data-k="${it.key}" title="${esc(it.short)}">${cpcIcon(it.key)}<span class="pts">${fmtPts(it.pts)}</span></button>`).join('')}</div>` : ''}
+      <button type="button" class="btn primary draw-go" data-draw ${rolling ? 'disabled' : ''}>🎲 ${picked ? 'Un autre élève' : 'Tirer au sort'}</button>
+      <div class="draw-opts">
+        <label class="check"><input type="checkbox" data-opt="drawNoRepeat" ${st.drawNoRepeat ? 'checked' : ''}> Chacun son tour (pas deux fois le même avant que tout le monde soit passé)</label>
+        <label class="check"><input type="checkbox" data-opt="drawSkipAbsent" ${st.drawSkipAbsent ? 'checked' : ''}> Ignorer les élèves notés absents aujourd’hui</label>
+      </div>
+      ${st.drawNoRepeat ? `<div class="small muted">Déjà passés : ${done} / ${elig.length} <button type="button" class="btn sm ghost" data-reset>Recommencer le tour</button></div>` : ''}
+    </div>`;
+  };
+  const roll = el => {
+    let pool = eligible();
+    if (!pool.length) return toast('Aucun élève disponible');
+    if (st.drawNoRepeat) {
+      let left = pool.filter(s => !c.drawn.includes(s.id));
+      if (!left.length) { c.drawn = c.drawn.filter(id => !pool.some(s => s.id === id)); left = pool; toast('Tout le monde est passé : nouveau tour'); }
+      pool = left;
+    }
+    const final = pool[Math.floor(Math.random() * pool.length)];
+    const show = s => { $('.draw-face', el).innerHTML = avatar(s, 'xl'); $('.draw-name', el).innerHTML = nameHTML(s); };
+    const finish = () => { rolling = false; picked = final; if (!c.drawn.includes(final.id)) c.drawn.push(final.id); save(); draw(el); };
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || pool.length === 1) return finish();
+    rolling = true; draw(el);
+    const all = eligible(); let k = 0;
+    const step = () => {
+      if (!el.isConnected) return;
+      if (k++ >= 14) return finish();
+      show(all[Math.floor(Math.random() * all.length)]);
+      setTimeout(step, 40 + k * k * 0.9);
+    };
+    step();
+  };
+  modal({
+    title: 'Élève au hasard', wide: true,
+    onOpen: el => {
+      draw(el);
+      el.addEventListener('click', e => {
+        if (e.target.closest('[data-draw]')) roll(el);
+        if (e.target.closest('[data-reset]')) { c.drawn = []; save(); draw(el); }
+      });
+      el.addEventListener('change', e => { const o = e.target.dataset.opt; if (o) { st[o] = e.target.checked; save(); draw(el); } });
+      roll(el);
+    }
+  });
+}
+
 // ---------- Bulletins ----------
 function viewBulletins(c) {
   const P = S.settings.periods, bs = S.settings.bulletinScale, studs = sortStudents(c.students);
-  const tb = `<div class="toolbar"><span class="muted small">${cpcOn(c) ? `Note de période = participation (départ ${S.settings.cpc.base}/${S.settings.cpc.max}) pour ${c.cpc.share} %${Number(c.cpc.share) < 100 ? ` + évaluations (devoirs, recherches) pour ${100 - c.cpc.share} %` : ''}. ` : ''}Moyennes pondérées de chaque période, sur ${bs}. L’année est la moyenne des périodes${P.some(p => Number(p.weight) !== 1) ? ' (pondérées : ' + P.map(p => '×' + fmtNum(Number(p.weight), 2)).join(', ') + ')' : ''}. Dates et pondérations dans Réglages.</span>
+  const tb = `<div class="toolbar"><span class="muted small">Note de période sur ${bs} = total des points de la période (points obtenus ÷ points possibles)${cpcOn(c) ? `, participation comprise (elle compte pour ${Number(c.cpc.points) || 20} points)` : ''}. L’année est la moyenne des périodes${P.some(p => Number(p.weight) !== 1) ? ' (pondérées : ' + P.map(p => '×' + fmtNum(Number(p.weight), 2)).join(', ') + ')' : ''}. Dates et pondérations dans Réglages.</span>
     <span class="spacer"></span><button class="btn sm" data-act="export-csv">Exporter (CSV)</button><button class="btn sm" data-act="print">Imprimer</button></div>`;
   if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2></div>`;
   const cell = (p, sub = '') => `<td class="num ${pctClass(p)}"><b>${fmtOn(p, bs)}</b>${Number.isFinite(p) ? `<small class="muted"> /${bs}</small>` : ''}${sub}</td>`;
   const rows = studs.map(s => ({ s, per: P.map((p, i) => periodAvg(c, s.id, i)), part: P.map((p, i) => cpcOn(c) && periodStarted(i) ? cpcNote(c, s.id, i) : null), year: annualAvg(c, s.id) }));
-  const partSub = n => n == null ? '' : `<div class="small muted">participation ${n}/${S.settings.cpc.max}</div>`;
+  const partSub = (n, i, s) => { const r = periodPoints(c, s.id, i); return r.max ? `<div class="small muted">${fmtPtsTotal(r)}${n == null ? '' : ` · particip. ${n}/${S.settings.cpc.max}`}</div>` : ''; };
   const mean = arr => { const v = arr.filter(Number.isFinite); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN; };
   let start = '';
   const head = P.map((p, i) => { const r = `${start ? 'du ' + fmtShort(start) + ' ' : ''}au ${fmtShort(p.end)}`; start = p.end ? addDays(p.end, 1) : ''; return `<th class="num">${esc(p.name)}<div class="small muted" style="font-weight:400">${r} · ${periodCols(c, i).length} éval.</div></th>`; }).join('');
   return tb + `<div class="tbl-scroll"><table class="plain bull"><thead><tr><th>Élève</th>${head}<th class="num">Année</th></tr></thead><tbody>
-    ${rows.map(r => `<tr><td><button class="namebtn" style="border:0;background:none;padding:0" data-act="open-student" data-id="${r.s.id}">${avatar(r.s, 'sm')}${nameHTML(r.s)}</button></td>${r.per.map((p, i) => cell(p, partSub(r.part[i]))).join('')}${cell(r.year)}</tr>`).join('')}
+    ${rows.map(r => `<tr><td><button class="namebtn" style="border:0;background:none;padding:0" data-act="open-student" data-id="${r.s.id}">${avatar(r.s, 'sm')}${nameHTML(r.s)}</button></td>${r.per.map((p, i) => cell(p, partSub(r.part[i], i, r.s))).join('')}${cell(r.year)}</tr>`).join('')}
     </tbody><tfoot><tr><td><b>Moyenne de classe</b></td>${P.map((p, i) => cell(mean(rows.map(r => r.per[i])))).join('')}${cell(mean(rows.map(r => r.year)))}</tr></tfoot></table></div>`;
 }
 
@@ -1231,7 +1330,7 @@ function editDacce(n, presetSid) {
 // ---------- Classes & élèves ----------
 function editClass(c) {
   const isNew = !c;
-  c ||= { name: '', subject: '', color: COLORS[S.classes.length % COLORS.length], cpc: { enabled: true, share: 50, events: [], self: {} } };
+  c ||= { name: '', subject: '', color: COLORS[S.classes.length % COLORS.length], cpc: { enabled: true, points: 20, events: [], self: {} } };
   const actions = [];
   if (!isNew) actions.push({ label: 'Supprimer la classe', cls: 'danger left', onClick: async () => {
     if (!await confirmDlg(`Supprimer définitivement la classe « ${c.name} » avec ses élèves, cotes, présences, journal et DAccE ?`)) return false;
@@ -1241,9 +1340,9 @@ function editClass(c) {
   actions.push({ label: 'Annuler' }, { label: isNew ? 'Créer' : 'Enregistrer', cls: 'primary', onClick: el => {
     const d = formData(el), color = $('input[name=color]:checked', el)?.value || c.color;
     if (!d.name) { toast('Donnez un nom à la classe'); return false; }
-    const share = Number(d.share);
+    const pts = parseFloat(String(d.points).replace(',', '.'));
     Object.assign(c, { name: d.name, subject: d.subject, color });
-    c.cpc = { ...c.cpc, enabled: !!d.cpcOn, share: Number.isFinite(share) ? Math.max(0, Math.min(100, share)) : 50 };
+    c.cpc = { ...c.cpc, enabled: !!d.cpcOn, points: pts > 0 ? pts : 20 };
     if (isNew) { Object.assign(c, normalize({ classes: [{ ...c, id: uid() }] }).classes[0]); S.classes.push(c); S.ui.classId = c.id; S.ui.tab = 'eleves'; S.ui.view = 'class'; }
     save(); render();
   } });
@@ -1253,8 +1352,8 @@ function editClass(c) {
       <label class="field"><span>Cours / matière</span><input class="inp" name="subject" value="${esc(c.subject)}" placeholder="Ex. Français"></label>
       <div class="field"><span>Couleur</span><div class="swatches">${COLORS.map(col => `<label><input type="radio" name="color" value="${col}" ${col === c.color ? 'checked' : ''}><span style="background:${col}"></span></label>`).join('')}</div></div>
       <label class="check"><input type="checkbox" name="cpcOn" ${c.cpc?.enabled ? 'checked' : ''}> Coter la participation avec les icônes (départ à ${S.settings.cpc.base}/${S.settings.cpc.max} à chaque période)</label>
-      <label class="field"><span>Part de la participation dans la note de période (%)</span><input class="inp" name="share" inputmode="numeric" value="${esc(c.cpc?.share ?? 50)}"></label>
-      <p class="small muted" style="margin-top:-4px">Le reste vient des évaluations du carnet de cotes (devoirs, recherches). S’il n’y a aucune évaluation dans la période, la participation compte pour 100 %.</p>`
+      <label class="field"><span>La participation compte pour … points dans le total de la période</span><input class="inp" name="points" inputmode="decimal" value="${esc(c.cpc?.points ?? 20)}"></label>
+      <p class="small muted" style="margin-top:-4px">Exemple : participation 16/20, devoir 7/10 et recherche 15/20 → (16 + 7 + 15) / (20 + 10 + 20) = 38/50 = 15,2/20.</p>`
   });
 }
 function addStudent() {
@@ -1509,7 +1608,7 @@ function demoClass() {
     c.columns.push(col); c.grades[col.id] = {};
     c.students.forEach((s, i) => { c.grades[col.id][s.id] = i === 3 && off === -7 ? 'ABS' : Math.round(max * (0.35 + ((((i * 37 + off * 13) % 60) + 60) % 60) / 100) * 2) / 2; });
   }
-  c.cpc = { enabled: true, share: 50, events: [], self: {} };
+  c.cpc = { enabled: true, points: 20, events: [], self: {} };
   const keys = ['bulb', 'speech', 'ear', 'rings', 'pencil', 'book', 'nospeak', 'stop'];
   c.students.forEach((s, i) => { for (let k = 0; k < (i * 5) % 7; k++) c.cpc.events.push({ id: uid(), sid: s.id, k: keys[(i * 3 + k * 5) % (k % 3 === 2 ? 8 : 5)], date: addDays(t, -((i + k) % 10), true), t: k }); });
   for (let k = 1; k <= 4; k++) {
@@ -1560,12 +1659,13 @@ const A = {
   'add-col': () => editColumn(),
   'edit-col': el => editColumn(cls().columns.find(x => x.id === el.dataset.id)),
   'grade-cat': el => { S.ui.gradeCat = el.dataset.cat; save(); renderMain(); },
-  'grade-period': el => { S.ui.gradePeriod = el.dataset.p; save(); renderMain(); },
+  'grade-period': el => { S.ui.gradePeriod = el.dataset.p === String(periodOfDate(todayISO())) ? '' : el.dataset.p; save(); renderMain(); },
   'pick-icon': pickIcon,
   'part-period': el => { S.ui.partPeriod = el.dataset.p === String(periodOfDate(todayISO())) ? '' : el.dataset.p; save(); renderMain(); },
   'cpc-add': cpcAdd,
   'cpc-student': el => cpcStudent(el.dataset.sid),
   'cpc-legend': cpcLegend,
+  'draw': drawStudent,
   'cpc-reset': async () => { if (await confirmDlg('Remettre les noms et les points des icônes comme sur la fiche d’origine (départ 14/20) ?', 'Rétablir', false)) { S.settings.cpc = defaultCpc(); save(); renderMain(); } },
   'export-csv': exportCSV,
   'print': () => window.print(),
