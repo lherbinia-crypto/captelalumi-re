@@ -185,6 +185,15 @@ table.gt{border-collapse:separate;border-spacing:0;min-width:100%}
 .seg-sm button{min-width:0;height:36px;padding:0 10px;font-size:13px;font-weight:600}
 .seg-sm button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 @media (max-width:1050px){.cpc-row{grid-template-columns:1fr 72px}.cpc-icons{grid-column:1/-1;justify-content:flex-start}}
+.dx-q{background:var(--accent-soft);border-radius:10px;padding:10px 12px;display:grid;gap:4px;margin-top:8px}
+.dx-h{font-size:15px;margin:18px 0 8px}
+.dx-box{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:8px;margin-bottom:10px;background:var(--surface-2)}
+.dx-box .inp{background:var(--surface)}
+.dx-action{border-left:3px solid var(--accent);padding-left:10px;display:grid;gap:6px}
+.dx-bilans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.dx-bilan{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:6px}
+.dx-bilan.current{border-color:var(--accent);box-shadow:inset 0 3px 0 var(--accent)}
+@media (max-width:640px){.dx-bilans{grid-template-columns:1fr}}
 .ar-tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.04em;padding:1px 5px;border-radius:5px;background:var(--info-soft);color:var(--info);vertical-align:2px;margin-left:4px;text-transform:none}
 .ar-tag.todo{background:var(--warn-soft);color:var(--warn)}
 .ar-card.ok{border-color:var(--info)}
@@ -380,7 +389,7 @@ let S;
 const defaultState = () => ({
   version: 1,
   settings: { teacher: '', school: '', year: '', scale: 20, pass: 50, absZero: false, skipWeekend: true, theme: 'auto', lastBackup: null,
-    bulletinScale: 20, drawNoRepeat: true, drawSkipAbsent: true, periods: defaultPeriods(), icons: defaultIcons(), cpc: defaultCpc() },
+    bulletinScale: 20, drawNoRepeat: true, drawSkipAbsent: true, daccePeriods: defaultDaccePeriods(), periods: defaultPeriods(), icons: defaultIcons(), cpc: defaultCpc() },
   classes: [],
   ui: { view: 'class', classId: null, tab: 'eleves', studentId: null, attDate: null, gradeCat: '', gradePeriod: '', partPeriod: '', dacceStudent: '', dacceType: '' }
 });
@@ -439,6 +448,7 @@ function normalize(st) {
   if (!Array.isArray(st.settings.periods) || !st.settings.periods.length) st.settings.periods = defaultPeriods();
   if (!Array.isArray(st.settings.icons) || !st.settings.icons.length) st.settings.icons = defaultIcons();
   if (!st.settings.cpc?.items?.length) st.settings.cpc = defaultCpc();
+  if (!Array.isArray(st.settings.daccePeriods) || st.settings.daccePeriods.length !== 3) st.settings.daccePeriods = defaultDaccePeriods();
   st.ui = { ...d.ui, ...(st.ui || {}) };
   st.classes = Array.isArray(st.classes) ? st.classes : [];
   for (const c of st.classes) {
@@ -896,7 +906,8 @@ function viewStudents(c) {
     if (Number.isFinite(avg)) bits.push(`<span class="tag ${pctClass(avg).replace('g-', '')}">${fmtOn(avg, S.settings.bulletinScale)}/${S.settings.bulletinScale}</span>`);
     if (a.A) bits.push(`${a.A} abs.`);
     if (a.R) bits.push(`${a.R} ret.`);
-    if (nd) bits.push(`${nd} note${nd > 1 ? 's' : ''} DAccE`);
+    if (s.dacc?.suivi) bits.push('<span class="tag bad">DAccE</span>');
+    if (nd) bits.push(`${nd} obs.`);
     return `<button class="st-card" data-act="open-student" data-id="${s.id}">${avatar(s)}<span><span class="nm">${nameHTML(s)}</span><span class="meta" style="display:block">${bits.join(' · ') || '&nbsp;'}</span></span></button>`;
   }).join('')}</div>`;
 }
@@ -911,7 +922,7 @@ function viewStudent(c, s) {
       <button class="btn danger" data-act="delete-student" data-id="${s.id}">Supprimer l’élève</button></div>
     <div class="card profile-head">
       <button class="photo-btn" data-act="student-photo" aria-label="Changer la photo">${avatar(s, 'lg')}</button>
-      <div style="flex:1;min-width:200px"><div class="nm">${nameHTML(s)}</div><div class="muted">${esc(c.name)}${s.birth ? ' · né(e) le ' + fmtDate(s.birth, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}</div></div>
+      <div style="flex:1;min-width:200px"><div class="nm">${nameHTML(s)}${s.dacc?.suivi ? ' <span class="tag bad">DAccE</span>' : ''}</div><div class="muted">${esc(c.name)}${s.birth ? ' · né(e) le ' + fmtDate(s.birth, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}</div></div>
       <div class="kpis">
         ${S.settings.periods.map((p, i) => { const a2 = periodAvg(c, s.id, i); return `<div class="kpi"><b class="${pctClass(a2)}" style="background:none!important">${fmtOn(a2, S.settings.bulletinScale)}<small style="font-size:12px;font-weight:400">/${S.settings.bulletinScale}</small></b><span>${esc(p.name)}</span></div>`; }).join('')}
         <div class="kpi"><b class="${pctClass(annualAvg(c, s.id))}" style="background:none!important">${fmtOn(annualAvg(c, s.id), S.settings.bulletinScale)}<small style="font-size:12px;font-weight:400">/${S.settings.bulletinScale}</small></b><span>Année</span></div>
@@ -943,11 +954,12 @@ function viewStudent(c, s) {
           </tbody></table></div>` : '<p class="muted">Aucune évaluation encodée.</p>'}
           <h3 class="section-h">Absences et retards</h3>
           ${absences.length ? `<ul>${absences.map(([d, e]) => `<li><b>${fmtDate(d)}</b> — ${STATUS[e.s].label}${e.n ? ` <span class="muted">(${esc(e.n)})</span>` : ''}</li>`).join('')}</ul>` : '<p class="muted">Aucune absence ni retard.</p>'}
-          <h3 class="section-h">DAccE <span class="spacer" style="flex:1"></span><button class="btn sm" data-act="new-dacce" data-sid="${s.id}">＋ Note</button></h3>
-          ${notes.length ? `<div class="entries">${notes.map(n => dacceCard(c, n, false)).join('')}</div>` : '<p class="muted">Aucune note dans le dossier d’accompagnement.</p>'}
+          <h3 class="section-h">Observations <span class="spacer" style="flex:1"></span><button class="btn sm" data-act="new-dacce" data-sid="${s.id}">＋ Observation</button></h3>
+          ${notes.length ? `<div class="entries">${notes.map(n => dacceCard(c, n, false)).join('')}</div>` : '<p class="muted">Aucune observation pour l’instant.</p>'}
         </div>
       </div>
-    </div>`;
+    </div>
+    ${dacceSection(c, s)}`;
 }
 
 // ---------- Carnet de cotes ----------
@@ -1369,16 +1381,42 @@ function dacceCard(c, n, showName = true) {
 }
 function viewDacce(c) {
   const studs = sortStudents(c.students);
+  const P = bsCourant(), j = joursAvant(P.au), ouvert = todayISO() >= P.du && todayISO() <= P.au;
+  const suivis = studs.filter(s => s.dacc?.suivi);
+  const st = s => (dget(s).bilans[P.k] || {}).statut || '';
+  const prets = suivis.filter(s => verifDacc(s).pret).length, encodes = suivis.filter(s => st(s) === 'encode').length;
+  const lab = { memo: '<span class="tag warn">Mémo prêt</span>', transmis: '<span class="tag accent">Transmis</span>', encode: '<span class="tag ok">Encodé</span>' };
+  const cand = studs.filter(s => !s.dacc?.suivi && c.dossier.filter(n => n.sid === s.id).length >= 2);
+  const arNo = studs.filter(s => hasAR(s) && !s.dacc?.suivi);
+  const synth = `<div class="hw" style="background:${ouvert && j <= 14 ? 'var(--bad-soft)' : 'var(--accent-soft)'};margin:0 0 12px"><b style="color:${ouvert && j <= 14 ? 'var(--bad)' : 'var(--accent)'}">${esc(P.bs)} · ${esc(P.l)}</b> — ${ouvert ? `période d’encodage ouverte jusqu’au ${fmtDate(P.au, { weekday: 'long', day: 'numeric', month: 'long' })} (<b>J-${j}</b>)` : `ouverture le ${fmtDate(P.du, { weekday: 'long', day: 'numeric', month: 'long' })}`}. À minuit le dernier jour, le bilan est validé automatiquement et devient visible par les parents.</div>
+    <details class="card pad" style="margin-bottom:12px"><summary style="cursor:pointer;font-weight:700">Rappel : comment fonctionne le DAccE</summary>
+      <ul style="margin:.6em 0 0;padding-left:1.2em;display:grid;gap:4px;max-width:75ch">
+        <li>Le bilan ne concerne que les élèves aux <b>difficultés persistantes</b> : celles qui perdurent malgré la différenciation habituelle et demandent un soutien spécifique.</li>
+        <li>Minimum obligatoire : <b>une difficulté</b> (axe + sous-axe + suivi) et, pour chacune, <b>au moins une action de soutien</b> (catégorie + type + état). Points d’appui et commentaire sont facultatifs.</li>
+        <li>Le bilan est <b>collégial</b> et encodé par la personne désignée par la direction. Votre contribution passe par un <b>mémo</b> (non visible par les parents) et par la concertation.</li>
+        <li>Au bilan suivant, chaque action déjà encodée doit être <b>évaluée</b> (poursuivie, ajustée, clôturée) : elle ne peut plus être supprimée.</li>
+        <li>Commentaire : 1000 caractères max., factuel, sans cause supposée, sans jugement, sans information médicale ou familiale, sans prescription aux parents.</li>
+        <li>Le DAccE ne contient ni points ni sanctions disciplinaires.</li>
+      </ul></details>
+    <div class="kpis" style="margin-bottom:12px"><div class="kpi"><b>${suivis.length}</b><span>élèves en suivi</span></div><div class="kpi"><b>${prets}/${suivis.length}</b><span>fiches complètes (minimum)</span></div><div class="kpi"><b>${encodes}/${suivis.length}</b><span>${esc(P.bs)} encodés</span></div>
+      <span class="spacer" style="flex:1"></span>${suivis.length ? '<button class="btn sm" data-act="export-dacce">Exporter la synthèse (CSV)</button>' : ''}</div>
+    ${suivis.length ? `<div class="tbl-scroll" style="margin-bottom:16px"><table class="plain"><thead><tr><th>Élève</th><th>Difficultés</th><th class="num">Actions</th><th>Minimum</th>${BS().map(p => `<th style="white-space:nowrap">${esc(p.bs)}</th>`).join('')}</tr></thead><tbody>
+      ${suivis.map(s => { const d = dget(s), nA = d.difficultes.reduce((t, x) => t + (x.actions || []).length, 0);
+        return `<tr><td><button class="namebtn" style="border:0;background:none;padding:0;display:flex;gap:8px;align-items:center" data-act="open-dacce" data-id="${s.id}">${avatar(s, 'sm')}${nameHTML(s)}</button></td><td>${d.difficultes.map(x => esc(x.sousAxe && x.sousAxe !== 'Global' ? x.sousAxe : x.axe || '?')).join(', ') || '<span class="muted">—</span>'}</td><td class="num">${nA || ''}</td><td>${verifDacc(s).pret ? '<span class="tag ok">OK</span>' : '<span class="tag bad">Incomplet</span>'}</td>${BS().map(p => { const v = (d.bilans[p.k] || {}).statut; return `<td>${lab[v] || (p.k === P.k ? '<span class="tag bad">À faire</span>' : '<span class="muted">—</span>')}</td>`; }).join('')}</tr>`; }).join('')}
+      </tbody></table></div>` : `<div class="empty" style="padding:20px">Aucun élève en suivi DAccE. Ouvrez la fiche d’un élève et cochez « Suivi DAccE ».</div>`}
+    ${cand.length ? `<h3 class="section-h">À discuter en concertation ? <span class="muted small" style="font-weight:400">au moins 2 observations, pas encore en suivi</span></h3><div class="files">${cand.map(s => `<button class="chip" data-act="open-dacce" data-id="${s.id}">${esc(studentName(s))} <span class="tag">${c.dossier.filter(n => n.sid === s.id).length} obs.</span></button>`).join('')}</div>` : ''}
+    ${arNo.length ? `<h3 class="section-h">Élèves avec aménagements raisonnables <span class="muted small" style="font-weight:400">${arNo.length} pas en suivi (un AR n’implique pas forcément un bilan)</span></h3><div class="files">${arNo.map(s => `<button class="chip" data-act="open-dacce" data-id="${s.id}">${esc(studentName(s))}</button>`).join('')}</div>` : ''}
+    <h3 class="section-h" style="margin-top:24px">Observations</h3>`;
   let list = [...c.dossier].sort((a, b) => b.date.localeCompare(a.date));
   if (S.ui.dacceStudent) list = list.filter(n => n.sid === S.ui.dacceStudent);
   if (S.ui.dacceType) list = list.filter(n => n.type === S.ui.dacceType);
-  const tb = `<div class="toolbar"><button class="btn primary" data-act="new-dacce" ${studs.length ? '' : 'disabled'}>＋ Nouvelle note</button>
+  const tb = `<div class="toolbar"><button class="btn primary" data-act="new-dacce" ${studs.length ? '' : 'disabled'}>＋ Observation</button>
     <select class="inp" style="width:auto" data-filter="dacceStudent"><option value="">Tous les élèves</option>${studs.map(s => `<option value="${s.id}" ${S.ui.dacceStudent === s.id ? 'selected' : ''}>${esc(studentName(s))}</option>`).join('')}</select>
     <select class="inp" style="width:auto" data-filter="dacceType"><option value="">Tous les types</option>${DACCE_TYPES.map(t => `<option ${S.ui.dacceType === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
     <span class="spacer"></span><button class="btn sm" data-act="print">Imprimer</button></div>`;
-  if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2></div>`;
-  return tb + (list.length ? `<div class="entries">${list.map(n => dacceCard(c, n)).join('')}</div>`
-    : `<div class="empty"><h2>Aucune note</h2><p>Le DAccE rassemble les observations, points forts, difficultés, aménagements raisonnables, remédiations et contacts avec les parents de chaque élève.</p></div>`);
+  if (!studs.length) return `<div class="empty"><h2>Pas encore d’élèves</h2></div>`;
+  return synth + tb + (list.length ? `<div class="entries">${list.map(n => dacceCard(c, n)).join('')}</div>`
+    : `<div class="empty" style="padding:20px"><p>Aucune observation. Notez ici ce que vous observez au fil des cours (difficultés, points forts, contacts…) : cela alimente le mémo et aide à décider d’un suivi DAccE.</p></div>`);
 }
 function editDacce(n, presetSid, prefilled) {
   const c = cls(), isNew = !n || !!prefilled, studs = sortStudents(c.students);
@@ -1407,6 +1445,215 @@ function editDacce(n, presetSid, prefilled) {
       <label class="field"><span>Suivi / action prévue</span><textarea class="inp" name="follow" rows="2" style="min-height:60px">${esc(n.follow)}</textarea></label>
       <div class="field"><span>Pièces jointes</span><div id="d-files"></div></div>`
   });
+}
+
+// ---------- DAccE complet (structure officielle FWB, comme le Journal de classe CPC) ----------
+const DX = {
+  axes: {
+    'Socioaffectif': ['Global', 'Rapport à soi', 'Rapport aux autres', 'Rapport au monde'],
+    'Corporel': ['Global', 'Physiologique', 'Moteur', 'Psychomoteur'],
+    'Cognitif': ['Global', 'Français', 'Éducation culturelle et artistique', 'Langues modernes', 'Mathématiques', 'Sciences', 'Formation manuelle, technique, technologique et numérique', 'Formation historique, géographique, économique et sociale', 'Éducation à la philosophie et à la citoyenneté', 'Éducation physique et à la santé', 'Créativité, engagement et esprit d’entreprendre', 'Apprendre à apprendre et poser des choix', 'Apprendre à s’orienter'],
+    'Langages': ['Global', 'Verbal', 'Non verbal']
+  },
+  exDiff: {
+    'Rapport à soi': 'Anxiété, faible estime de soi, manque de confiance, repli sur soi, impulsivité, frustrations excessives, découragement systématique…',
+    'Rapport aux autres': 'Difficulté à s’engager ou à entretenir des relations, comportements agressifs, évite les interactions…',
+    'Rapport au monde': 'Manque de curiosité, apathie, crainte à l’égard de l’école…',
+    'Physiologique': 'Manque de souplesse, de force, d’endurance en lien avec la condition physique…',
+    'Moteur': 'Difficulté à s’organiser avec ses effets personnels, posture en classe, utilisation des outils scolaires, geste d’écriture coûteux…',
+    'Psychomoteur': 'Difficulté à réaliser une activité en séquence, confusion gauche-droite, difficulté à interagir dans l’espace avec d’autres…',
+    'Verbal': 'N’ose pas prendre l’initiative d’un échange, vocabulaire pauvre, difficulté à formuler ou reformuler une idée, parle trop vite…',
+    'Non verbal': 'Difficulté à décoder les émotions, le langage corporel ; à percevoir l’effet de ses comportements sur les autres…',
+    'Éducation à la philosophie et à la citoyenneté': 'Se référer au référentiel EPC du tronc commun : questionner, argumenter, se décentrer, débattre…'
+  },
+  exAppui: {
+    'Rapport à soi': 'Exprime ses ressentis, fait preuve de curiosité, est conscient de ses besoins, gère ses émotions…',
+    'Rapport aux autres': 'Empathique, ose s’affirmer, fédérateur, joue le rôle de médiateur…',
+    'Rapport au monde': 'S’intéresse aux nouvelles matières, se questionne, s’engage dans des projets…',
+    'Verbal': 'Prend l’initiative d’un échange, reformule, argumente sa position, vocabulaire adéquat…',
+    'Non verbal': 'Se fait comprendre par gestes, parle avec expression…'
+  },
+  suiviDiff: ['À mettre en place', 'Poursuivi', 'Clôturé'],
+  categories: {
+    'Différenciation dans la classe': ['Actions d’un co-intervenant', 'Appui sur une ressource de l’élève', 'Variation/adaptation de l’espace', 'Variation/adaptation du temps', 'Variation/adaptation des ressources et des supports', 'Variation/adaptation des productions de l’élève', 'Autre'],
+    'Actions des intervenants spécifiques': ['Action(s) du maître de philosophie et de citoyenneté', 'Action(s) du maître de morale ou de religion', 'Action(s) du maître d’éducation physique', 'Action(s) du maître de seconde langue', 'Action(s) du personnel paramédical', 'Action(s) de la direction d’école', 'Suivi du PMS', 'Autre']
+  },
+  etatsAction: ['À mettre en place', 'Mise en place', 'Poursuivie', 'À compléter', 'Non pertinente', 'Clôturée'],
+  motsSensibles: /\b(tdah|dys\w*|diagnos\w*|trouble\w*|autis\w*|hpi|haut potentiel|m[ée]dica\w*|m[ée]decin|psy\w*|logop[eè]\w*|divorc\w*|s[ée]par[ée]s?|parents?|m[èe]re|p[èe]re|famill\w*|prison|incarc[ée]r\w*|paresseu\w*|insolent\w*|fain[ée]ant\w*|cours particuliers)\b/gi
+};
+const BILAN_STATUTS = [['', 'Rien encore'], ['memo', 'Mémo prêt'], ['transmis', 'Transmis à l’équipe / titulaire'], ['encode', 'Encodé dans le DAccE']];
+function defaultDaccePeriods() {
+  const now = new Date(), y = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+  return [
+    { k: 'nov', l: 'Novembre', bs: 'BS 1', du: `${y}-09-22`, au: `${y}-11-07` },
+    { k: 'mars', l: 'Mars', bs: 'BS 2', du: `${y + 1}-01-26`, au: `${y + 1}-03-06` },
+    { k: 'fin', l: 'Juin', bs: 'BS 3', du: `${y + 1}-06-01`, au: `${y + 1}-06-30` }
+  ];
+}
+const BS = () => S.settings.daccePeriods;
+const bsCourant = (d = todayISO()) => (BS().find(p => d <= p.au) || BS()[BS().length - 1]);
+const joursAvant = d => Math.round((dateOf(d) - dateOf(todayISO())) / 864e5);
+const dget = s => s.dacc || { suivi: false, difficultes: [], appuis: [], commentaire: '', memo: '', bilans: {} };
+const dset = s => (s.dacc ||= { suivi: false, difficultes: [], appuis: [], commentaire: '', memo: '', bilans: {} });
+// Aménagement raisonnable → type d'action « Différenciation dans la classe »
+function arVersType(t) {
+  const x = t.toLowerCase();
+  if (/temps|exercice|time.?timer|lenteur|vitesse|horaire|retard|fractionn/.test(x)) return 'Variation/adaptation du temps';
+  if (/place|rang|tableau|espace|distract|casier|calmer|éducateur/.test(x)) return 'Variation/adaptation de l’espace';
+  if (/oral|répond|réponse|présentation|copie|production|interrog|graphie|orthograph/.test(x)) return 'Variation/adaptation des productions de l’élève';
+  return 'Variation/adaptation des ressources et des supports';
+}
+function verifDacc(s) {
+  const d = dget(s), out = [];
+  out.push({ ok: d.difficultes.length > 0, txt: 'Au moins une difficulté persistante encodée (axe + sous-axe)' });
+  const sansAction = d.difficultes.filter(x => !(x.actions || []).length);
+  out.push({ ok: d.difficultes.length > 0 && !sansAction.length, txt: sansAction.length ? `${sansAction.length} difficulté(s) sans action de soutien (obligatoire)` : 'Chaque difficulté a au moins une action de soutien' });
+  const incompletes = d.difficultes.some(x => !x.axe || !x.sousAxe || (x.actions || []).some(a => !a.type || (a.type === 'Autre' && !(a.autre || '').trim())));
+  out.push({ ok: d.difficultes.length > 0 && !incompletes, txt: incompletes ? 'Un axe, un sous-axe ou un type d’action n’est pas choisi (ou « Autre » sans précision)' : 'Listes déroulantes complètes' });
+  out.push({ ok: d.appuis.length > 0, opt: true, txt: d.appuis.length ? `${d.appuis.length} point(s) d’appui` : 'Point d’appui (facultatif) : sur quelle force vous appuyer ?' });
+  const cm = (d.commentaire || '').trim(), mots = cm.match(DX.motsSensibles);
+  out.push({ ok: !cm || (cm.length <= 1000 && !mots), opt: !cm, txt: !cm ? 'Commentaire (facultatif, visible par les parents)' : cm.length > 1000 ? `Commentaire trop long : ${cm.length}/1000 caractères` : mots ? `Commentaire à relire : « ${[...new Set(mots.map(m => m.toLowerCase()))].join(', ')} » (pas de diagnostic, d’info familiale, de jugement ni de prescription aux parents)` : `Commentaire factuel · ${cm.length}/1000` });
+  return { items: out, pret: out.filter(x => !x.opt).every(x => x.ok) };
+}
+function daccQuestions(c, s) {
+  const d = dget(s), q = [], P = bsCourant();
+  const nObs = c.dossier.filter(n => n.sid === s.id).length, ar = s.ar?.liste || [];
+  if (!d.suivi) {
+    if (nObs >= 2) q.push(`Vous avez noté ${nObs} observations. Est-ce une difficulté qui <b>persiste malgré votre différenciation habituelle</b> ? Si oui, activez le suivi DAccE et parlez-en au titulaire.`);
+    if (ar.length) q.push('Cet élève a des aménagements raisonnables. Sont-ils suffisants dans votre cours, ou observez-vous une difficulté qui persiste malgré eux ?');
+    return q;
+  }
+  if (!d.difficultes.length) q.push('Dans quel <b>axe</b> se situe la difficulté que vous observez ? (socioaffectif, corporel, cognitif, langages) Et depuis quand ?');
+  for (const x of d.difficultes) {
+    const nom = x.sousAxe ? `${x.axe} – ${x.sousAxe}` : (x.axe || 'cette difficulté');
+    if (!(x.actions || []).length) q.push(`Quelle <b>action de soutien</b> mettez-vous en place pour « ${esc(nom)} » ? Sans action, le bilan ne peut pas être validé.`);
+    for (const a of (x.actions || [])) if (a.depuis && a.depuis < P.du && !a.evalue) q.push(`L’action « ${esc(a.type || '?')} » date d’un bilan précédent : faut-il la <b>poursuivre, l’ajuster ou la clôturer</b> ? Mettez à jour son état.`);
+  }
+  if (d.difficultes.length && ar.length && !d.difficultes.some(x => (x.actions || []).some(a => a.ar))) q.push('Ses AR peuvent être renseignés comme actions de « Différenciation dans la classe » : utilisez « ＋ depuis ses AR » sur la difficulté concernée.');
+  if (!d.appuis.length) q.push('Sur quelle <b>force</b> de l’élève pouvez-vous vous appuyer ? (facultatif, mais utile pour choisir les actions)');
+  if (!(d.memo || '').trim()) q.push('Avez-vous rédigé votre <b>mémo</b> pour l’équipe ? C’est votre contribution au bilan, il n’est pas visible par les parents.');
+  return q;
+}
+function genMemo(c, s) {
+  const d = dget(s), a = attStats(c, s.id), L = [];
+  L.push(`Mémo ${c.subject || 'CPC'} – ${S.settings.teacher || ''} – ${fmtDate(todayISO(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`.replace(' –  –', ' –'));
+  L.push(`${s.firstName} ${s.lastName} (${c.name})`);
+  if (d.difficultes.length) {
+    L.push('', `Difficulté(s) observée(s) au cours${c.subject ? ' de ' + c.subject : ''} :`);
+    for (const x of d.difficultes) {
+      L.push(`- ${x.axe || '?'} › ${x.sousAxe || '?'} (suivi : ${x.suivi || 'À mettre en place'})${x.obs ? ` : ${x.obs.trim()}` : ''}`);
+      for (const ac of (x.actions || [])) L.push(`   • ${ac.cat || '?'} › ${ac.type === 'Autre' ? `Autre : ${ac.autre || '?'}` : ac.type || '?'} [${ac.etat || 'À mettre en place'}]${ac.note ? ` – ${ac.note.trim()}` : ''}`);
+    }
+  }
+  if (d.appuis.length) { L.push('', 'Points d’appui :'); for (const x of d.appuis) L.push(`- ${x.axe || '?'} › ${x.sousAxe || '?'}${x.note ? ` : ${x.note.trim()}` : ''}`); }
+  const obs = c.dossier.filter(n => n.sid === s.id).sort((x, y) => x.date.localeCompare(y.date)).slice(-5);
+  if (obs.length) { L.push('', 'Observations récentes :'); for (const o of obs) L.push(`- ${fmtShort(o.date)} : ${(o.text || '').replace(/\s+/g, ' ').trim()}`); }
+  if (a.A || a.R) L.push('', `Au cours : ${a.A || 0} absence(s), ${a.R || 0} retard(s).`);
+  if (s.ar?.liste?.length) L.push('', `AR appliqués au cours : ${s.ar.liste.join(' ; ')}.`);
+  return L.join('\n');
+}
+const opts = (list, cur, ph) => (ph ? `<option value="">${ph}</option>` : '') + list.map(x => `<option ${x === cur ? 'selected' : ''}>${esc(x)}</option>`).join('');
+function dacceSection(c, s) {
+  const d = dget(s), P = bsCourant(), v = verifDacc(s), q = daccQuestions(c, s), hasAr = (s.ar?.liste || []).length;
+  let h = `<div class="card pad dx" id="dacce-card" style="margin-top:16px">
+    <div class="toolbar" style="margin-bottom:6px"><h3 class="section-h" style="margin:0">DAccE · ${esc(P.bs)}</h3><span class="muted small">encodage du ${fmtShort(P.du)} au ${fmtShort(P.au)}</span></div>
+    <label class="check"><input type="checkbox" data-dx="suivi" ${d.suivi ? 'checked' : ''}> <b>Suivi DAccE</b> <span class="muted small">(difficulté persistante malgré la différenciation habituelle)</span></label>`;
+  if (q.length) h += `<div class="dx-q"><div class="small" style="font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em">Questions à vous poser</div>${q.map(x => `<div>• ${x}</div>`).join('')}</div>`;
+  if (!d.suivi) return h + '</div>';
+  h += `<div class="files" style="margin:10px 0">${v.items.map(i => `<span class="tag ${i.ok ? 'ok' : i.opt ? '' : 'bad'}" style="white-space:normal">${i.ok ? '✓' : i.opt ? '○' : '!'} ${i.txt}</span>`).join('')}</div>`;
+  h += `<h4 class="dx-h">Difficultés et actions de soutien</h4>`;
+  d.difficultes.forEach((x, i) => {
+    const sous = DX.axes[x.axe] || [];
+    const ex = DX.exDiff[x.sousAxe] || (x.axe === 'Cognitif' && x.sousAxe && x.sousAxe !== 'Global' ? 'Se référer au référentiel du tronc commun pour ce domaine.' : '');
+    h += `<div class="dx-box">
+      <div class="row2"><select class="inp" data-dx="d-axe" data-i="${i}" aria-label="Axe">${opts(Object.keys(DX.axes), x.axe, 'Axe…')}</select><select class="inp" data-dx="d-sous" data-i="${i}" aria-label="Sous-axe" ${sous.length ? '' : 'disabled'}>${opts(sous, x.sousAxe, 'Sous-axe…')}</select></div>
+      ${ex ? `<div class="muted small">Exemples : ${esc(ex)}</div>` : ''}
+      <div class="toolbar" style="margin:0"><span class="small" style="font-weight:600">Suivi en cours</span><select class="inp" style="width:auto" data-dx="d-suivi" data-i="${i}">${opts(DX.suiviDiff, x.suivi || 'À mettre en place')}</select><span class="spacer"></span><button class="btn sm ghost danger" data-act="dx" data-op="del-diff" data-i="${i}">Supprimer la difficulté</button></div>
+      <textarea class="inp" data-dx="d-obs" data-i="${i}" placeholder="Ce que vous observez concrètement (pour vous et votre mémo)" style="min-height:60px">${esc(x.obs || '')}</textarea>
+      <div class="small" style="font-weight:600">Actions de soutien ${(x.actions || []).length ? '' : '<span class="tag bad">obligatoire</span>'}</div>
+      ${(x.actions || []).map((a, j) => `<div class="dx-action">
+        <div class="row2"><select class="inp" data-dx="a-cat" data-i="${i}" data-j="${j}" aria-label="Catégorie">${opts(Object.keys(DX.categories), a.cat, 'Catégorie…')}</select><select class="inp" data-dx="a-type" data-i="${i}" data-j="${j}" aria-label="Type" ${a.cat ? '' : 'disabled'}>${opts(DX.categories[a.cat] || [], a.type, 'Type d’action…')}</select></div>
+        <div class="toolbar" style="margin:0">${a.type === 'Autre' ? `<input class="inp" style="flex:1 1 160px;width:auto" data-dx="a-autre" data-i="${i}" data-j="${j}" maxlength="50" value="${esc(a.autre || '')}" placeholder="Précisez (quelques mots)">` : ''}<input class="inp" style="flex:2 1 180px;width:auto" data-dx="a-note" data-i="${i}" data-j="${j}" value="${esc(a.note || '')}" placeholder="Mise en œuvre (pour vous)"><select class="inp" style="width:auto" data-dx="a-etat" data-i="${i}" data-j="${j}" aria-label="État">${opts(DX.etatsAction, a.etat || 'À mettre en place')}</select><button class="icon-btn" data-act="dx" data-op="del-action" data-i="${i}" data-j="${j}" aria-label="Supprimer l’action">✕</button></div>
+      </div>`).join('')}
+      <div class="toolbar" style="margin:0"><button class="btn sm" data-act="dx" data-op="add-action" data-i="${i}">＋ Action</button>${hasAr ? `<button class="btn sm" data-act="dx" data-op="from-ar" data-i="${i}">＋ depuis ses AR</button>` : ''}<button class="btn sm" data-act="dx" data-op="add-cpc" data-i="${i}">＋ Action du maître de CPC</button></div>
+    </div>`;
+  });
+  h += `<div class="toolbar"><button class="btn sm primary" data-act="dx" data-op="add-diff">＋ Difficulté persistante</button><span class="muted small">Max. 15 difficultés, 15 actions par difficulté.</span></div>`;
+  h += `<h4 class="dx-h">Points d’appui <span class="muted small" style="font-weight:400">(facultatif)</span></h4>`;
+  d.appuis.forEach((x, i) => {
+    const sous = DX.axes[x.axe] || [], ex = DX.exAppui[x.sousAxe];
+    h += `<div class="dx-box"><div class="row2"><select class="inp" data-dx="p-axe" data-i="${i}" aria-label="Axe">${opts(Object.keys(DX.axes), x.axe, 'Axe…')}</select><select class="inp" data-dx="p-sous" data-i="${i}" aria-label="Sous-axe" ${sous.length ? '' : 'disabled'}>${opts(sous, x.sousAxe, 'Sous-axe…')}</select></div>
+      ${ex ? `<div class="muted small">Exemples : ${esc(ex)}</div>` : ''}
+      <div class="toolbar" style="margin:0"><input class="inp" style="flex:1 1 200px;width:auto" data-dx="p-note" data-i="${i}" value="${esc(x.note || '')}" placeholder="Ce que vous observez (pour vous)"><select class="inp" style="width:auto" data-dx="p-etat" data-i="${i}">${opts(['En cours', 'Clôturé'], x.etat || 'En cours')}</select><button class="icon-btn" data-act="dx" data-op="del-appui" data-i="${i}" aria-label="Supprimer">✕</button></div></div>`;
+  });
+  h += `<div class="toolbar"><button class="btn sm" data-act="dx" data-op="add-appui">＋ Point d’appui</button></div>`;
+  const cm = d.commentaire || '';
+  h += `<label class="field"><span>Commentaire du bilan — visible par les parents · <span id="dx-count">${cm.length}</span>/1000</span><textarea class="inp" data-dx="com" maxlength="1000" placeholder="Factuel, sur les difficultés, actions et points d’appui encodés uniquement.">${esc(cm)}</textarea></label>
+    <label class="field"><span>Votre mémo pour l’équipe — non visible par les parents</span><textarea class="inp" data-dx="memo" id="dx-memo" style="min-height:140px">${esc(d.memo || '')}</textarea></label>
+    <div class="toolbar"><button class="btn sm" data-act="dx" data-op="gen-memo">Générer le mémo depuis la fiche</button><button class="btn sm" data-act="dx" data-op="copy-memo">Copier le mémo</button></div>
+    <div class="field"><span>Où en est le bilan ?</span><div class="dx-bilans">${BS().map(p => { const st = (d.bilans[p.k] || {}).statut || ''; return `<div class="dx-bilan ${p.k === P.k ? 'current' : ''}"><b>${esc(p.bs)} · ${esc(p.l)}</b><span class="muted small">jusqu’au ${fmtShort(p.au)}</span><select class="inp" data-dx="bilan" data-p="${p.k}">${BILAN_STATUTS.map(([k, l]) => `<option value="${k}" ${st === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`; }).join('')}</div></div>
+  </div>`;
+  return h;
+}
+function dxRerender() { const y = $('#view').scrollTop; renderMain(); $('#view').scrollTop = y; }
+function dxChange(t) {
+  const s = studentByUI(); if (!s) return;
+  const d = dset(s), f = t.dataset.dx, i = +t.dataset.i, j = +t.dataset.j, val = t.type === 'checkbox' ? t.checked : t.value;
+  const x = d.difficultes[i], a = x?.actions?.[j], p = d.appuis[i];
+  let re = true;
+  switch (f) {
+    case 'suivi': d.suivi = val; break;
+    case 'd-axe': if (x) { x.axe = val; x.sousAxe = ''; } break;
+    case 'd-sous': if (x) x.sousAxe = val; break;
+    case 'd-suivi': if (x) x.suivi = val; break;
+    case 'd-obs': if (x) x.obs = val; re = false; break;
+    case 'a-cat': if (a) { a.cat = val; a.type = ''; } break;
+    case 'a-type': if (a) a.type = val; break;
+    case 'a-autre': if (a) a.autre = val; break;
+    case 'a-note': if (a) a.note = val; re = false; break;
+    case 'a-etat': if (a) { if (a.etat !== val) a.evalue = todayISO(); a.etat = val; } break;
+    case 'p-axe': if (p) { p.axe = val; p.sousAxe = ''; } break;
+    case 'p-sous': if (p) p.sousAxe = val; break;
+    case 'p-note': if (p) p.note = val; re = false; break;
+    case 'p-etat': if (p) p.etat = val; break;
+    case 'com': d.commentaire = val; break;
+    case 'memo': d.memo = val; re = false; break;
+    case 'bilan': d.bilans[t.dataset.p] = { ...(d.bilans[t.dataset.p] || {}), statut: val, ...(val ? { maj: todayISO() } : {}) }; break;
+  }
+  save(); if (re) dxRerender();
+}
+async function dxAction(el) {
+  const c = cls(), s = studentByUI(); if (!s) return;
+  const d = dset(s), op = el.dataset.op, i = +el.dataset.i, x = d.difficultes[i];
+  const uidd = () => Math.random().toString(36).slice(2, 9);
+  if (op === 'add-diff') { if (d.difficultes.length >= 15) return toast('Maximum 15 difficultés'); d.difficultes.push({ id: uidd(), axe: '', sousAxe: '', suivi: 'À mettre en place', depuis: todayISO(), obs: '', actions: [] }); }
+  else if (op === 'del-diff') { if (!await confirmDlg('Supprimer cette difficulté et ses actions ?')) return; d.difficultes.splice(i, 1); }
+  else if (op === 'add-action') { if (x.actions.length >= 15) return toast('Maximum 15 actions'); x.actions.push({ id: uidd(), cat: '', type: '', etat: 'À mettre en place', depuis: todayISO() }); }
+  else if (op === 'add-cpc') x.actions.push({ id: uidd(), cat: 'Actions des intervenants spécifiques', type: 'Action(s) du maître de philosophie et de citoyenneté', etat: 'À mettre en place', depuis: todayISO() });
+  else if (op === 'del-action') { const ac = x.actions[+el.dataset.j]; if (ac?.depuis && ac.depuis < bsCourant().du) return toast('Action d’un bilan précédent : changez son état plutôt que de la supprimer'); x.actions.splice(+el.dataset.j, 1); }
+  else if (op === 'from-ar') {
+    const L = s.ar?.liste || [], types = [...new Set(L.map(arVersType))]; let n = 0;
+    for (const t of types) if (!x.actions.some(y => y.type === t)) { x.actions.push({ id: uidd(), cat: 'Différenciation dans la classe', type: t, etat: 'Mise en place', depuis: todayISO(), ar: true, note: L.filter(l => arVersType(l) === t).join(' ; ') }); n++; }
+    toast(n ? `${n} action(s) ajoutée(s) depuis ses AR` : 'Ses AR sont déjà repris');
+  }
+  else if (op === 'add-appui') d.appuis.push({ id: uidd(), axe: '', sousAxe: '', note: '', etat: 'En cours', depuis: todayISO() });
+  else if (op === 'del-appui') d.appuis.splice(i, 1);
+  else if (op === 'gen-memo') { const m = genMemo(c, s); d.memo = d.memo?.trim() ? d.memo.trim() + '\n\n' + m : m; toast('Mémo généré : relisez-le'); }
+  else if (op === 'copy-memo') { const t = $('#dx-memo'); try { await navigator.clipboard.writeText(t.value); toast('Mémo copié'); } catch { t.focus(); t.select(); toast('Texte sélectionné : copiez-le'); } return; }
+  save(); dxRerender();
+}
+function exportDacceCSV() {
+  const c = cls(), q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const lab = { memo: 'Mémo prêt', transmis: 'Transmis', encode: 'Encodé' };
+  const rows = [['Classe', 'Nom', 'Prénom', 'Axe', 'Sous-axe', 'Suivi en cours', 'Catégorie d’action', 'Type d’action', 'État de l’action', 'Points d’appui', 'Commentaire', 'Minimum OK', ...BS().map(p => p.bs)]];
+  for (const s of sortStudents(c.students).filter(x => x.dacc?.suivi)) {
+    const d = dget(s), ok = verifDacc(s).pret ? 'oui' : 'non', ap = d.appuis.map(p => `${p.axe} › ${p.sousAxe}`).join(' | '), st = BS().map(p => lab[(d.bilans[p.k] || {}).statut] || '');
+    const lignes = [];
+    for (const x of d.difficultes) for (const ac of ((x.actions || []).length ? x.actions : [{}])) lignes.push([x.axe, x.sousAxe, x.suivi, ac.cat || '', ac.type === 'Autre' ? `Autre : ${ac.autre || ''}` : (ac.type || ''), ac.etat || '']);
+    if (!lignes.length) lignes.push(['', '', '', '', '', '']);
+    lignes.forEach((l, i) => rows.push([c.name, s.lastName, s.firstName, ...l, i ? '' : ap, i ? '' : d.commentaire, i ? '' : ok, ...(i ? BS().map(() => '') : st)]));
+  }
+  saveBlob(new Blob(['\ufeff' + rows.map(r => r.map(q).join(';')).join('\r\n')], { type: 'text/csv' }), `synthese-dacce-${c.name.replace(/[^\w-]+/g, '_')}.csv`);
 }
 
 // ---------- Classes & élèves ----------
@@ -1835,6 +2082,9 @@ function viewSettings() {
         <label class="field"><span>Se termine le</span><input class="inp" type="date" data-period="${i}" data-pf="end" value="${esc(p.end)}"></label>
         <label class="field"><span>Poids dans l’année</span><input class="inp" inputmode="decimal" data-period="${i}" data-pf="weight" value="${esc(String(p.weight).replace('.', ','))}"></label></div>`).join('')}
       <p class="small muted">Chaque évaluation va dans la période qui contient sa date. On peut aussi la forcer dans une autre période depuis l’en-tête de la colonne.</p>
+      <h3 class="section-h">DAccE : périodes d’encodage</h3>
+      ${st.daccePeriods.map((p, i) => `<div class="row3" style="grid-template-columns:70px 1fr 1fr;align-items:end"><b style="padding-bottom:22px">${esc(p.bs)}</b><label class="field"><span>Du</span><input class="inp" type="date" data-bsp="${i}" data-bf="du" value="${esc(p.du)}"></label><label class="field"><span>Au</span><input class="inp" type="date" data-bsp="${i}" data-bf="au" value="${esc(p.au)}"></label></div>`).join('')}
+      <p class="small muted">Dates de votre école (à vérifier chaque année).</p>
       <h3 class="section-h">Participation à icônes</h3>
       <div class="row2"><label class="field"><span>Note de départ à chaque période</span><input class="inp" inputmode="decimal" data-cpc="base" value="${esc(st.cpc.base)}"></label>
       <label class="field"><span>Sur</span><input class="inp" inputmode="decimal" data-cpc="max" value="${esc(st.cpc.max)}"></label></div>
@@ -1990,6 +2240,9 @@ const A = {
   'export-backup': exportBackup,
   'import-backup': importBackup,
   'import-ar': importAR,
+  'dx': dxAction,
+  'export-dacce': exportDacceCSV,
+  'open-dacce': el => { S.ui.studentId = el.dataset.id; renderMain(); setTimeout(() => $('#dacce-card')?.scrollIntoView({ block: 'start' }), 30); },
   'ar-to-dacce': arToDacce,
   'ar-note-done': () => { const s = studentByUI(); if (s?.ar) { s.ar.note = ''; if (!hasAR(s)) delete s.ar; save(); renderMain(); } },
   'only-ar': () => { S.ui.onlyAR = !S.ui.onlyAR; renderMain(); },
@@ -2010,6 +2263,8 @@ document.addEventListener('change', e => {
   if (t.classList.contains('gin')) return onGradeChange(t);
   if (t.id === 'att-date') { if (t.value) { S.ui.attDate = t.value; save(); renderMain(); } return; }
   if (t.classList.contains('att-note')) { const c = cls(), d = S.ui.attDate || todayISO(); const e2 = c.attendance[d]?.[t.dataset.sid]; if (e2) { e2.n = t.value.trim(); save(); } return; }
+  if (t.dataset.dx) return dxChange(t);
+  if (t.dataset.bsp) { if (t.value) { S.settings.daccePeriods[+t.dataset.bsp][t.dataset.bf] = t.value; save(); } return; }
   if (t.dataset.arfield) {
     const s = studentByUI(); if (!s) return;
     s.ar ||= { motif: '', liste: [], source: '', note: '' };
@@ -2054,6 +2309,7 @@ document.addEventListener('change', e => {
   }
   if (t.dataset.filter) { S.ui[t.dataset.filter] = t.value; save(); renderMain(); }
 });
+document.addEventListener('input', e => { if (e.target.dataset?.dx === 'com') { const n = $('#dx-count'); if (n) n.textContent = e.target.value.length; } });
 document.addEventListener('focusin', e => { if (e.target.tagName === 'INPUT' && e.target.classList.contains('gin')) setTimeout(() => e.target.select(), 0); });
 document.addEventListener('keydown', e => {
   const t = e.target;
