@@ -448,7 +448,9 @@ function normalize(st) {
   if (!Array.isArray(st.settings.periods) || !st.settings.periods.length) st.settings.periods = defaultPeriods();
   if (!Array.isArray(st.settings.icons) || !st.settings.icons.length) st.settings.icons = defaultIcons();
   if (!st.settings.cpc?.items?.length) st.settings.cpc = defaultCpc();
-  if (!Array.isArray(st.settings.daccePeriods) || st.settings.daccePeriods.length !== 3) st.settings.daccePeriods = defaultDaccePeriods();
+  const dp = st.settings.daccePeriods;
+  // remplace les anciennes dates par défaut (reprises du Journal CPC) par celles du guide officiel
+  if (!Array.isArray(dp) || dp.length !== 3 || (/-11-07$/.test(dp[0].au) && /-03-06$/.test(dp[1].au) && /-06-30$/.test(dp[2].au))) st.settings.daccePeriods = defaultDaccePeriods();
   st.ui = { ...d.ui, ...(st.ui || {}) };
   st.classes = Array.isArray(st.classes) ? st.classes : [];
   for (const c of st.classes) {
@@ -1391,13 +1393,26 @@ function viewDacce(c) {
   const synth = `<div class="hw" style="background:${ouvert && j <= 14 ? 'var(--bad-soft)' : 'var(--accent-soft)'};margin:0 0 12px"><b style="color:${ouvert && j <= 14 ? 'var(--bad)' : 'var(--accent)'}">${esc(P.bs)} · ${esc(P.l)}</b> — ${ouvert ? `période d’encodage ouverte jusqu’au ${fmtDate(P.au, { weekday: 'long', day: 'numeric', month: 'long' })} (<b>J-${j}</b>)` : `ouverture le ${fmtDate(P.du, { weekday: 'long', day: 'numeric', month: 'long' })}`}. À minuit le dernier jour, le bilan est validé automatiquement et devient visible par les parents.</div>
     <details class="card pad" style="margin-bottom:12px"><summary style="cursor:pointer;font-weight:700">Rappel : comment fonctionne le DAccE</summary>
       <ul style="margin:.6em 0 0;padding-left:1.2em;display:grid;gap:4px;max-width:75ch">
-        <li>Le bilan ne concerne que les élèves aux <b>difficultés persistantes</b> : celles qui perdurent malgré la différenciation habituelle et demandent un soutien spécifique.</li>
+        <li>Le bilan ne concerne que les élèves aux <b>difficultés persistantes</b> : celles qui perdurent malgré la différenciation habituelle et demandent un dispositif « spécifique et complémentaire ». Une difficulté passagère, ou un AR qui suffit, ne demande pas de bilan.</li>
+        <li>Trois échéances au plus par an : <b>vendredi après le congé d’automne</b>, <b>vendredi après le congé de détente</b>, <b>dernier mardi de l’année</b>. À minuit, le bilan est finalisé, ne peut plus être modifié et devient visible par les parents.</li>
         <li>Minimum obligatoire : <b>une difficulté</b> (axe + sous-axe + suivi) et, pour chacune, <b>au moins une action de soutien</b> (catégorie + type + état). Points d’appui et commentaire sont facultatifs.</li>
-        <li>Le bilan est <b>collégial</b> et encodé par la personne désignée par la direction. Votre contribution passe par un <b>mémo</b> (non visible par les parents) et par la concertation.</li>
-        <li>Au bilan suivant, chaque action déjà encodée doit être <b>évaluée</b> (poursuivie, ajustée, clôturée) : elle ne peut plus être supprimée.</li>
-        <li>Commentaire : 1000 caractères max., factuel, sans cause supposée, sans jugement, sans information médicale ou familiale, sans prescription aux parents.</li>
-        <li>Le DAccE ne contient ni points ni sanctions disciplinaires.</li>
+        <li>Les listes suffisent : le DAccE ne demande <b>ni de justifier</b> comment la difficulté a été observée, <b>ni de détailler</b> la mise en œuvre des actions. Il en mentionne l’existence et en évalue l’efficacité.</li>
+        <li>Le bilan est <b>collégial</b> ; il est encodé par un membre de l’équipe pédagogique. Votre contribution passe par la concertation et par un <b>mémo</b> (point de vue personnel, non visible par les parents, supprimé à l’échéance suivante).</li>
+        <li>Au bilan suivant, chaque action déjà encodée doit être <b>évaluée</b> (poursuivie, ajustée, clôturée) : elle ne peut plus être supprimée. Quand le soutien a porté ses fruits, on encode la clôture.</li>
+        <li>Le DAccE ne contient <b>ni points ni sanctions disciplinaires</b> : vos icônes de participation n’y ont pas leur place.</li>
       </ul></details>
+    <details class="card pad" style="margin-bottom:12px"><summary style="cursor:pointer;font-weight:700">Que noter en philosophie et citoyenneté ?</summary>
+      <div style="display:grid;gap:8px;margin-top:8px;max-width:80ch">
+        <div><b>Où situer la difficulté</b> (selon ce que vous observez) :</div>
+        <ul style="margin:0;padding-left:1.2em;display:grid;gap:4px">
+          <li><b>Cognitif › Éducation à la philosophie et à la citoyenneté</b> : questionner, conceptualiser, argumenter, distinguer opinion et argument, se décentrer, débattre selon des règles.</li>
+          <li><b>Langages › Verbal</b> : n’ose pas prendre la parole, n’arrive pas à formuler ou reformuler une idée, vocabulaire trop pauvre pour exprimer un avis.</li>
+          <li><b>Socioaffectif › Rapport aux autres</b> : difficulté à écouter, à accepter un avis différent, à coopérer dans un groupe.</li>
+          <li><b>Socioaffectif › Rapport à soi</b> : n’ose jamais donner son avis par manque de confiance, se décourage dès qu’on le contredit.</li>
+        </ul>
+        <div><b>Actions de soutien typiques en CPC</b> : « Actions des intervenants spécifiques › Action(s) du maître de philosophie et de citoyenneté » (amorces de phrases, rôle défini dans le débat, prise de parole d’abord en petit groupe…) et « Différenciation dans la classe » (temps, place, supports, réponse orale…). Vous n’avez pas à détailler la mise en œuvre dans le DAccE : notez-la pour vous ou dans votre mémo.</div>
+        <div><b>Ce qui n’y va pas</b> : les points et icônes de participation, un retard ou un oubli de matériel isolé, un diagnostic, une information familiale, un jugement.</div>
+      </div></details>
     <div class="kpis" style="margin-bottom:12px"><div class="kpi"><b>${suivis.length}</b><span>élèves en suivi</span></div><div class="kpi"><b>${prets}/${suivis.length}</b><span>fiches complètes (minimum)</span></div><div class="kpi"><b>${encodes}/${suivis.length}</b><span>${esc(P.bs)} encodés</span></div>
       <span class="spacer" style="flex:1"></span>${suivis.length ? '<button class="btn sm" data-act="export-dacce">Exporter la synthèse (CSV)</button>' : ''}</div>
     ${suivis.length ? `<div class="tbl-scroll" style="margin-bottom:16px"><table class="plain"><thead><tr><th>Élève</th><th>Difficultés</th><th class="num">Actions</th><th>Minimum</th>${BS().map(p => `<th style="white-space:nowrap">${esc(p.bs)}</th>`).join('')}</tr></thead><tbody>
@@ -1464,14 +1479,15 @@ const DX = {
     'Psychomoteur': 'Difficulté à réaliser une activité en séquence, confusion gauche-droite, difficulté à interagir dans l’espace avec d’autres…',
     'Verbal': 'N’ose pas prendre l’initiative d’un échange, vocabulaire pauvre, difficulté à formuler ou reformuler une idée, parle trop vite…',
     'Non verbal': 'Difficulté à décoder les émotions, le langage corporel ; à percevoir l’effet de ses comportements sur les autres…',
-    'Éducation à la philosophie et à la citoyenneté': 'Se référer au référentiel EPC du tronc commun : questionner, argumenter, se décentrer, débattre…'
+    'Éducation à la philosophie et à la citoyenneté': 'Selon le référentiel EPC du tronc commun. Ex. : n’arrive pas à formuler une question à partir d’une situation, donne un avis sans pouvoir le justifier, confond opinion et argument, ne parvient pas à envisager un autre point de vue, ne respecte pas les règles du débat malgré les rappels…'
   },
   exAppui: {
     'Rapport à soi': 'Exprime ses ressentis, fait preuve de curiosité, est conscient de ses besoins, gère ses émotions…',
     'Rapport aux autres': 'Empathique, ose s’affirmer, fédérateur, joue le rôle de médiateur…',
     'Rapport au monde': 'S’intéresse aux nouvelles matières, se questionne, s’engage dans des projets…',
     'Verbal': 'Prend l’initiative d’un échange, reformule, argumente sa position, vocabulaire adéquat…',
-    'Non verbal': 'Se fait comprendre par gestes, parle avec expression…'
+    'Non verbal': 'Se fait comprendre par gestes, parle avec expression…',
+    'Éducation à la philosophie et à la citoyenneté': 'Ex. : pose des questions pertinentes, argumente sa position, reformule l’idée d’un camarade, accepte de changer d’avis en expliquant pourquoi, s’engage dans un projet de classe…'
   },
   suiviDiff: ['À mettre en place', 'Poursuivi', 'Clôturé'],
   categories: {
@@ -1479,15 +1495,21 @@ const DX = {
     'Actions des intervenants spécifiques': ['Action(s) du maître de philosophie et de citoyenneté', 'Action(s) du maître de morale ou de religion', 'Action(s) du maître d’éducation physique', 'Action(s) du maître de seconde langue', 'Action(s) du personnel paramédical', 'Action(s) de la direction d’école', 'Suivi du PMS', 'Autre']
   },
   etatsAction: ['À mettre en place', 'Mise en place', 'Poursuivie', 'À compléter', 'Non pertinente', 'Clôturée'],
+  causes: /\b(car|parce qu\w*|à cause|en raison|semble\w*|il semblerait|sans doute|probablement)\b/gi,
   motsSensibles: /\b(tdah|dys\w*|diagnos\w*|trouble\w*|autis\w*|hpi|haut potentiel|m[ée]dica\w*|m[ée]decin|psy\w*|logop[eè]\w*|divorc\w*|s[ée]par[ée]s?|parents?|m[èe]re|p[èe]re|famill\w*|prison|incarc[ée]r\w*|paresseu\w*|insolent\w*|fain[ée]ant\w*|cours particuliers)\b/gi
 };
 const BILAN_STATUTS = [['', 'Rien encore'], ['memo', 'Mémo prêt'], ['transmis', 'Transmis à l’équipe / titulaire'], ['encode', 'Encodé dans le DAccE']];
+// Échéances du guide officiel (juin 2026) : BS 1 = vendredi qui suit les vacances d'automne,
+// BS 2 = vendredi qui suit les vacances de détente, BS 3 = dernier mardi de l'année scolaire.
+// Le bilan est finalisé à minuit ce jour-là et devient visible par les parents.
 function defaultDaccePeriods() {
   const now = new Date(), y = now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+  const known = { 2026: ['2026-11-06', '2027-03-12', '2027-06-29'] }; // calendrier FWB 2026-2027
+  const [a, b, c] = known[y] || [`${y}-11-06`, `${y + 1}-03-12`, `${y + 1}-06-29`];
   return [
-    { k: 'nov', l: 'Novembre', bs: 'BS 1', du: `${y}-09-22`, au: `${y}-11-07` },
-    { k: 'mars', l: 'Mars', bs: 'BS 2', du: `${y + 1}-01-26`, au: `${y + 1}-03-06` },
-    { k: 'fin', l: 'Juin', bs: 'BS 3', du: `${y + 1}-06-01`, au: `${y + 1}-06-30` }
+    { k: 'nov', l: 'Novembre', bs: 'BS 1', du: `${y}-09-01`, au: a },
+    { k: 'mars', l: 'Mars', bs: 'BS 2', du: addDays(a, 1), au: b },
+    { k: 'fin', l: 'Juin', bs: 'BS 3', du: addDays(b, 1), au: c }
   ];
 }
 const BS = () => S.settings.daccePeriods;
@@ -1511,8 +1533,8 @@ function verifDacc(s) {
   const incompletes = d.difficultes.some(x => !x.axe || !x.sousAxe || (x.actions || []).some(a => !a.type || (a.type === 'Autre' && !(a.autre || '').trim())));
   out.push({ ok: d.difficultes.length > 0 && !incompletes, txt: incompletes ? 'Un axe, un sous-axe ou un type d’action n’est pas choisi (ou « Autre » sans précision)' : 'Listes déroulantes complètes' });
   out.push({ ok: d.appuis.length > 0, opt: true, txt: d.appuis.length ? `${d.appuis.length} point(s) d’appui` : 'Point d’appui (facultatif) : sur quelle force vous appuyer ?' });
-  const cm = (d.commentaire || '').trim(), mots = cm.match(DX.motsSensibles);
-  out.push({ ok: !cm || (cm.length <= 1000 && !mots), opt: !cm, txt: !cm ? 'Commentaire (facultatif, visible par les parents)' : cm.length > 1000 ? `Commentaire trop long : ${cm.length}/1000 caractères` : mots ? `Commentaire à relire : « ${[...new Set(mots.map(m => m.toLowerCase()))].join(', ')} » (pas de diagnostic, d’info familiale, de jugement ni de prescription aux parents)` : `Commentaire factuel · ${cm.length}/1000` });
+  const cm = (d.commentaire || '').trim(), mots = cm.match(DX.motsSensibles), causes = cm.match(DX.causes);
+  out.push({ ok: !cm || (cm.length <= 1000 && !mots && !causes), opt: !cm, txt: !cm ? 'Commentaire (facultatif, visible par les parents)' : cm.length > 1000 ? `Commentaire trop long : ${cm.length}/1000 caractères` : mots ? `Commentaire à relire : « ${[...new Set(mots.map(m => m.toLowerCase()))].join(', ')} » (pas de diagnostic, d’info familiale, de jugement ni de prescription aux parents)` : causes ? `Commentaire à relire : « ${[...new Set(causes.map(m => m.toLowerCase()))].join(', ')} » — le commentaire décrit des faits, il n’explique pas les causes` : `Commentaire factuel · ${cm.length}/1000` });
   return { items: out, pret: out.filter(x => !x.opt).every(x => x.ok) };
 }
 function daccQuestions(c, s) {
@@ -1573,7 +1595,7 @@ function dacceSection(c, s) {
       <div class="small" style="font-weight:600">Actions de soutien ${(x.actions || []).length ? '' : '<span class="tag bad">obligatoire</span>'}</div>
       ${(x.actions || []).map((a, j) => `<div class="dx-action">
         <div class="row2"><select class="inp" data-dx="a-cat" data-i="${i}" data-j="${j}" aria-label="Catégorie">${opts(Object.keys(DX.categories), a.cat, 'Catégorie…')}</select><select class="inp" data-dx="a-type" data-i="${i}" data-j="${j}" aria-label="Type" ${a.cat ? '' : 'disabled'}>${opts(DX.categories[a.cat] || [], a.type, 'Type d’action…')}</select></div>
-        <div class="toolbar" style="margin:0">${a.type === 'Autre' ? `<input class="inp" style="flex:1 1 160px;width:auto" data-dx="a-autre" data-i="${i}" data-j="${j}" maxlength="50" value="${esc(a.autre || '')}" placeholder="Précisez (quelques mots)">` : ''}<input class="inp" style="flex:2 1 180px;width:auto" data-dx="a-note" data-i="${i}" data-j="${j}" value="${esc(a.note || '')}" placeholder="Mise en œuvre (pour vous)"><select class="inp" style="width:auto" data-dx="a-etat" data-i="${i}" data-j="${j}" aria-label="État">${opts(DX.etatsAction, a.etat || 'À mettre en place')}</select><button class="icon-btn" data-act="dx" data-op="del-action" data-i="${i}" data-j="${j}" aria-label="Supprimer l’action">✕</button></div>
+        <div class="toolbar" style="margin:0">${a.type === 'Autre' ? `<input class="inp" style="flex:1 1 160px;width:auto" data-dx="a-autre" data-i="${i}" data-j="${j}" maxlength="50" value="${esc(a.autre || '')}" placeholder="Précisez (quelques mots)">` : ''}<input class="inp" style="flex:2 1 180px;width:auto" data-dx="a-note" data-i="${i}" data-j="${j}" value="${esc(a.note || '')}" placeholder="Mise en œuvre (pour vous, pas dans le DAccE)"><select class="inp" style="width:auto" data-dx="a-etat" data-i="${i}" data-j="${j}" aria-label="État">${opts(DX.etatsAction, a.etat || 'À mettre en place')}</select><button class="icon-btn" data-act="dx" data-op="del-action" data-i="${i}" data-j="${j}" aria-label="Supprimer l’action">✕</button></div>
       </div>`).join('')}
       <div class="toolbar" style="margin:0"><button class="btn sm" data-act="dx" data-op="add-action" data-i="${i}">＋ Action</button>${hasAr ? `<button class="btn sm" data-act="dx" data-op="from-ar" data-i="${i}">＋ depuis ses AR</button>` : ''}<button class="btn sm" data-act="dx" data-op="add-cpc" data-i="${i}">＋ Action du maître de CPC</button></div>
     </div>`;
@@ -1587,9 +1609,22 @@ function dacceSection(c, s) {
       <div class="toolbar" style="margin:0"><input class="inp" style="flex:1 1 200px;width:auto" data-dx="p-note" data-i="${i}" value="${esc(x.note || '')}" placeholder="Ce que vous observez (pour vous)"><select class="inp" style="width:auto" data-dx="p-etat" data-i="${i}">${opts(['En cours', 'Clôturé'], x.etat || 'En cours')}</select><button class="icon-btn" data-act="dx" data-op="del-appui" data-i="${i}" aria-label="Supprimer">✕</button></div></div>`;
   });
   h += `<div class="toolbar"><button class="btn sm" data-act="dx" data-op="add-appui">＋ Point d’appui</button></div>`;
+  h += `<h4 class="dx-h">Actions des parents <span class="muted small" style="font-weight:400">(facultatif — encodées par la personne désignée, avec l’accord des parents)</span></h4>`;
+  (d.parents || []).forEach((x, i) => {
+    h += `<div class="toolbar" style="margin:0 0 6px"><input class="inp" style="flex:1 1 220px;width:auto" maxlength="50" data-dx="pa-type" data-i="${i}" value="${esc(x.type || '')}" placeholder="Ex. suivi logopédique, école de devoirs (50 car. max.)"><select class="inp" style="width:auto" data-dx="pa-etat" data-i="${i}">${opts(['En cours', 'Clôturée'], x.etat || 'En cours')}</select><button class="icon-btn" data-act="dx" data-op="del-parent" data-i="${i}" aria-label="Supprimer">✕</button></div>`;
+  });
+  h += `<div class="toolbar"><button class="btn sm" data-act="dx" data-op="add-parent">＋ Action des parents</button></div>`;
   const cm = d.commentaire || '';
-  h += `<label class="field"><span>Commentaire du bilan — visible par les parents · <span id="dx-count">${cm.length}</span>/1000</span><textarea class="inp" data-dx="com" maxlength="1000" placeholder="Factuel, sur les difficultés, actions et points d’appui encodés uniquement.">${esc(cm)}</textarea></label>
-    <label class="field"><span>Votre mémo pour l’équipe — non visible par les parents</span><textarea class="inp" data-dx="memo" id="dx-memo" style="min-height:140px">${esc(d.memo || '')}</textarea></label>
+  h += `<label class="field"><span>Commentaire du bilan — visible par les parents · <span id="dx-count">${cm.length}</span>/1000</span><textarea class="inp" data-dx="com" maxlength="1000" placeholder="Factuel, uniquement sur les difficultés, actions et points d’appui encodés.">${esc(cm)}</textarea></label>
+    <details class="small" style="margin:-4px 0 12px"><summary style="cursor:pointer;color:var(--accent);font-weight:600">Les 4 règles du commentaire (guide officiel)</summary>
+      <ul style="margin:6px 0 0;padding-left:18px;display:grid;gap:4px">
+        <li><b>Factuel, pas interprétatif</b> : il complète les listes, il n’explique pas les causes. ✓ « Il reformule plus souvent l’idée d’un camarade. Il a encore besoin d’amorces pour justifier son avis. » ✗ « …car il semblerait qu’il soit mieux suivi à la maison. »</li>
+        <li><b>Aucun jugement</b> ni propos dénigrant sur l’élève ou sa famille. ✗ « Les parents ne s’impliquent pas. »</li>
+        <li><b>Aucune prescription aux parents</b>. ✗ « Des cours particuliers seraient nécessaires. »</li>
+        <li><b>Rien de confidentiel</b> : ni information médicale ou familiale confiée, ni contenu d’un suivi PMS (seule son existence peut être indiquée). ✗ « Les parents sont divorcés. »</li>
+      </ul></details>
+    <label class="field"><span>Titre de votre mémo</span><input class="inp" data-dx="memo-titre" value="${esc(d.memoTitre || '')}" placeholder="Ex. Observations en ${esc(c.subject || 'CPC')} — ${esc(P.bs)}"></label>
+    <label class="field"><span>Votre mémo pour l’équipe — non visible par les parents · supprimé du DAccE à l’échéance du ${esc(P.bs)} (${fmtShort(P.au)})</span><textarea class="inp" data-dx="memo" id="dx-memo" style="min-height:140px">${esc(d.memo || '')}</textarea></label>
     <div class="toolbar"><button class="btn sm" data-act="dx" data-op="gen-memo">Générer le mémo depuis la fiche</button><button class="btn sm" data-act="dx" data-op="copy-memo">Copier le mémo</button></div>
     <div class="field"><span>Où en est le bilan ?</span><div class="dx-bilans">${BS().map(p => { const st = (d.bilans[p.k] || {}).statut || ''; return `<div class="dx-bilan ${p.k === P.k ? 'current' : ''}"><b>${esc(p.bs)} · ${esc(p.l)}</b><span class="muted small">jusqu’au ${fmtShort(p.au)}</span><select class="inp" data-dx="bilan" data-p="${p.k}">${BILAN_STATUTS.map(([k, l]) => `<option value="${k}" ${st === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`; }).join('')}</div></div>
   </div>`;
@@ -1618,6 +1653,9 @@ function dxChange(t) {
     case 'p-etat': if (p) p.etat = val; break;
     case 'com': d.commentaire = val; break;
     case 'memo': d.memo = val; re = false; break;
+    case 'memo-titre': d.memoTitre = val; re = false; break;
+    case 'pa-type': if (d.parents?.[i]) d.parents[i].type = val; re = false; break;
+    case 'pa-etat': if (d.parents?.[i]) d.parents[i].etat = val; break;
     case 'bilan': d.bilans[t.dataset.p] = { ...(d.bilans[t.dataset.p] || {}), statut: val, ...(val ? { maj: todayISO() } : {}) }; break;
   }
   save(); if (re) dxRerender();
@@ -1636,10 +1674,12 @@ async function dxAction(el) {
     for (const t of types) if (!x.actions.some(y => y.type === t)) { x.actions.push({ id: uidd(), cat: 'Différenciation dans la classe', type: t, etat: 'Mise en place', depuis: todayISO(), ar: true, note: L.filter(l => arVersType(l) === t).join(' ; ') }); n++; }
     toast(n ? `${n} action(s) ajoutée(s) depuis ses AR` : 'Ses AR sont déjà repris');
   }
+  else if (op === 'add-parent') (d.parents ||= []).push({ id: uidd(), type: '', etat: 'En cours', depuis: todayISO() });
+  else if (op === 'del-parent') d.parents.splice(i, 1);
   else if (op === 'add-appui') d.appuis.push({ id: uidd(), axe: '', sousAxe: '', note: '', etat: 'En cours', depuis: todayISO() });
   else if (op === 'del-appui') d.appuis.splice(i, 1);
-  else if (op === 'gen-memo') { const m = genMemo(c, s); d.memo = d.memo?.trim() ? d.memo.trim() + '\n\n' + m : m; toast('Mémo généré : relisez-le'); }
-  else if (op === 'copy-memo') { const t = $('#dx-memo'); try { await navigator.clipboard.writeText(t.value); toast('Mémo copié'); } catch { t.focus(); t.select(); toast('Texte sélectionné : copiez-le'); } return; }
+  else if (op === 'gen-memo') { d.memoTitre ||= `Observations en ${c.subject || 'CPC'} — ${bsCourant().bs}`; const m = genMemo(c, s); d.memo = d.memo?.trim() ? d.memo.trim() + '\n\n' + m : m; toast('Mémo généré : relisez-le'); }
+  else if (op === 'copy-memo') { const t = $('#dx-memo'); try { await navigator.clipboard.writeText((d.memoTitre ? d.memoTitre + '\n\n' : '') + t.value); toast('Mémo copié'); } catch { t.focus(); t.select(); toast('Texte sélectionné : copiez-le'); } return; }
   save(); dxRerender();
 }
 function exportDacceCSV() {

@@ -1,5 +1,5 @@
 // Service worker : met l'application en cache pour un usage hors ligne.
-const CACHE = 'carnet-prof-v9';
+const CACHE = 'carnet-prof-v10';
 const ASSETS = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
