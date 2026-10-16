@@ -4,7 +4,8 @@ Application de classe pour iPad, inspirée d'iDoceo. Elle fonctionne hors ligne 
 
 ## Fonctions
 
-- **Élèves** : fiche par élève (photo, coordonnées, remarques, pièces jointes). Import d'une liste par copier-coller.
+- **Élèves** : fiche par élève (coordonnées, remarques, pièces jointes). Import d'une liste par copier-coller.
+- **Photos des élèves** : prises avec l'appareil photo de l'iPad ou choisies dans Photos, depuis la fiche de l'élève, à l'ajout d'un élève, ou avec le bouton « Photos des élèves » qui fait passer toute la classe à la suite. La photo apparaît partout : liste, carnet de cotes, présences, DAccE.
 - **Carnet de cotes** : colonnes d'évaluation avec date, maximum, pondération et catégorie (compétence). Les moyennes sont pondérées et colorées selon le seuil de réussite. On peut aussi saisir `abs`, `exc`, `ne` ou `7/10`. Export CSV et impression.
 - **Présences** : présent, absent, retard ou justifié, avec un motif. Bouton « Tous présents » et récapitulatif par élève.
 - **Journal de classe** : matière vue, devoirs avec date de remise et pièces jointes (fichiers, photos du tableau).

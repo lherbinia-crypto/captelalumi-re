@@ -131,6 +131,7 @@ textarea.inp{min-height:96px;resize:vertical}
 /* Avatars & students */
 .av{width:44px;height:44px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:700;color:#fff;font-size:15px;object-fit:cover;background:#8892a6}
 .av.lg{width:96px;height:96px;font-size:30px}
+.av.xl{width:180px;height:180px;font-size:54px;max-width:100%}
 .av.sm{width:32px;height:32px;font-size:12px}
 .st-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
 .st-card{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);background:var(--surface);border-radius:var(--radius);text-align:left;box-shadow:var(--shadow);min-height:68px}
@@ -475,7 +476,7 @@ async function saveBlob(blob, name) {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
   return true;
 }
-function resizeImage(file, size = 256) {
+function resizeImage(file, size = 400) {
   return new Promise((res, rej) => {
     const img = new Image(), url = URL.createObjectURL(file);
     img.onload = () => {
@@ -488,6 +489,68 @@ function resizeImage(file, size = 256) {
     img.src = url;
   });
 }
+// Photo d'élève : appareil photo de l'iPad ou photothèque, recadrée en carré
+async function takePhoto(fromLibrary = false) {
+  const [f] = await pickFiles(fromLibrary ? { accept: 'image/*', multiple: false } : { accept: 'image/*', capture: 'environment', multiple: false });
+  if (!f) return null;
+  try { return await resizeImage(f); } catch (e) { toast(e.message); return null; }
+}
+function photoMenu(s) {
+  modal({
+    title: `Photo de ${studentName(s)}`,
+    body: `<div style="display:grid;justify-items:center;gap:16px">${avatar(s, 'xl')}
+      <div style="display:grid;gap:8px;width:100%;max-width:320px">
+        <button type="button" class="btn primary" data-ph="cam">📷 Prendre une photo</button>
+        <button type="button" class="btn" data-ph="lib">🖼️ Choisir dans Photos</button>
+        ${s.photo ? '<button type="button" class="btn danger" data-ph="del">Supprimer la photo</button>' : ''}
+      </div></div>`,
+    onOpen: el => el.addEventListener('click', async e => {
+      const b = e.target.closest('[data-ph]'); if (!b) return;
+      if (b.dataset.ph === 'del') delete s.photo;
+      else { const ph = await takePhoto(b.dataset.ph === 'lib'); if (!ph) return; s.photo = ph; }
+      save(); el._close(); render(); toast(b.dataset.ph === 'del' ? 'Photo supprimée' : 'Photo enregistrée');
+    })
+  });
+}
+// Séance photo : on photographie toute la classe à la suite, comme dans iDoceo
+function photoSession(onlyMissing) {
+  const c = cls();
+  const list = sortStudents(c.students).filter(s => !onlyMissing || !s.photo);
+  if (!list.length) return toast(onlyMissing ? 'Tous les élèves ont déjà une photo' : 'Aucun élève');
+  let i = 0;
+  const draw = el => {
+    const s = list[i];
+    $('.mbody', el).innerHTML = `<div style="display:grid;justify-items:center;gap:14px;text-align:center">
+      <div class="muted small">Élève ${i + 1} sur ${list.length}</div>${avatar(s, 'xl')}
+      <div style="font-size:22px;font-weight:700">${nameHTML(s)}</div>
+      <button type="button" class="btn primary" data-ps="cam" style="min-width:260px;min-height:56px;font-size:18px">📷 Prendre la photo</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+        <button type="button" class="btn" data-ps="prev" ${i ? '' : 'disabled'}>‹ Précédent</button>
+        <button type="button" class="btn" data-ps="lib">🖼️ Photothèque</button>
+        <button type="button" class="btn" data-ps="next">${i < list.length - 1 ? 'Passer ›' : 'Terminer'}</button>
+      </div></div>`;
+  };
+  modal({
+    title: 'Photos des élèves',
+    body: '',
+    onClose: () => render(),
+    onOpen: el => {
+      draw(el);
+      el.addEventListener('click', async e => {
+        const b = e.target.closest('[data-ps]'); if (!b || b.disabled) return;
+        const a = b.dataset.ps;
+        if (a === 'prev') { i--; return draw(el); }
+        if (a === 'cam' || a === 'lib') {
+          const ph = await takePhoto(a === 'lib'); if (!ph) return;
+          list[i].photo = ph; save();
+        }
+        if (i < list.length - 1) { i++; draw(el); }
+        else { el._close(); toast('Séance photo terminée'); }
+      });
+    }
+  });
+}
+
 // Éditeur de pièces jointes utilisé dans les fenêtres (journal, DAccE)
 function attachEditor(box, list) {
   const added = [], removed = [];
@@ -607,7 +670,8 @@ function renderMain() {
 function viewStudents(c) {
   const list = sortStudents(c.students);
   const tb = `<div class="toolbar"><button class="btn primary" data-act="add-student">＋ Élève</button>
-    <button class="btn" data-act="import-students">Importer une liste</button><span class="spacer"></span>
+    <button class="btn" data-act="import-students">Importer une liste</button>
+    ${list.length ? `<button class="btn" data-act="photo-session" data-missing="${list.some(s => !s.photo) && list.some(s => s.photo) ? 1 : 0}">📷 Photos des élèves</button>` : ''}<span class="spacer"></span>
     <span class="muted small">${list.length} élève${list.length > 1 ? 's' : ''}</span></div>`;
   if (!list.length) return tb + `<div class="empty"><h2>Aucun élève</h2><p>Ajoutez vos élèves un par un ou collez une liste (par exemple depuis Excel ou un PDF).</p></div>`;
   return tb + `<div class="st-grid">${list.map(s => {
@@ -901,21 +965,29 @@ function editClass(c) {
 }
 function addStudent() {
   const c = cls();
+  let photo = null;
   modal({
     title: 'Ajouter un élève',
-    body: `<div class="row2"><label class="field"><span>Nom</span><input class="inp" name="lastName" autocapitalize="words"></label>
-      <label class="field"><span>Prénom</span><input class="inp" name="firstName" autocapitalize="words"></label></div>
+    body: `<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+      <button type="button" class="photo-btn" id="new-photo" aria-label="Prendre une photo"><span class="av lg" style="background:var(--neutral-soft);color:var(--muted);font-size:13px">Photo</span></button>
+      <div style="flex:1;min-width:220px"><div class="row2"><label class="field"><span>Nom</span><input class="inp" name="lastName" autocapitalize="words"></label>
+      <label class="field"><span>Prénom</span><input class="inp" name="firstName" autocapitalize="words"></label></div></div></div>
       <p class="muted small" id="added-info"></p>`,
+    onOpen: el => $('#new-photo', el).addEventListener('click', async () => {
+      const ph = await takePhoto(); if (!ph) return;
+      photo = ph; $('#new-photo', el).innerHTML = `<img class="av lg" src="${ph}" alt="">`;
+    }),
     actions: [
       { label: 'Fermer' },
-      { label: 'Ajouter et continuer', onClick: el => { if (doAdd(el)) { $$('input', el).forEach(i => i.value = ''); $('input', el).focus(); } return false; } },
+      { label: 'Ajouter et continuer', onClick: el => { if (doAdd(el)) { $$('input', el).forEach(i => i.value = ''); $('#new-photo', el).innerHTML = '<span class="av lg" style="background:var(--neutral-soft);color:var(--muted);font-size:13px">Photo</span>'; $('input', el).focus(); } return false; } },
       { label: 'Ajouter', cls: 'primary', onClick: el => doAdd(el) ? undefined : false }
     ]
   });
   function doAdd(el) {
     const d = formData(el);
     if (!d.lastName && !d.firstName) { toast('Indiquez au moins un nom'); return false; }
-    c.students.push({ id: uid(), lastName: d.lastName, firstName: d.firstName, files: [] });
+    c.students.push({ id: uid(), lastName: d.lastName, firstName: d.firstName, files: [], ...(photo ? { photo } : {}) });
+    photo = null;
     $('#added-info', el).textContent = `${studentName(d)} ajouté(e).`;
     save(); render(); return true;
   }
@@ -1058,12 +1130,8 @@ const A = {
     Object.values(c.attendance).forEach(g => delete g[s.id]);
     S.ui.studentId = null; save(); render();
   },
-  'student-photo': async () => {
-    const s = studentByUI(); if (!s) return;
-    const [f] = await pickFiles({ accept: 'image/*', multiple: false });
-    if (!f) return;
-    try { s.photo = await resizeImage(f); save(); render(); } catch (e) { toast(e.message); }
-  },
+  'student-photo': () => { const s = studentByUI(); if (s) photoMenu(s); },
+  'photo-session': el => photoSession(el.dataset.missing === '1'),
   'student-add-file': async () => { const s = studentByUI(); const fs = await pickFiles(); if (s && fs.length) { s.files.push(...await storeFiles(fs)); save(); renderMain(); } },
   'student-add-photo': async () => { const s = studentByUI(); const fs = await pickFiles({ accept: 'image/*', capture: 'environment', multiple: false }); if (s && fs.length) { s.files.push(...await storeFiles(fs)); save(); renderMain(); } },
   'del-sfile': async el => {
