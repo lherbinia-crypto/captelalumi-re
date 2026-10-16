@@ -4,10 +4,11 @@ Application de classe pour iPad, inspirée d'iDoceo. Elle fonctionne hors ligne 
 
 ## Fonctions
 
-- **Élèves** : fiche par élève (coordonnées, remarques, pièces jointes). Import d'une liste depuis un **fichier Excel (.xlsx) ou CSV**, ou par copier-coller.
+- **Élèves** : fiche par élève (coordonnées, remarques, pièces jointes). Photos affichées en grand (taille réglable). Import d'une liste depuis un **fichier Excel (.xlsx) ou CSV**, ou par copier-coller.
 - **Photos des élèves** : prises avec l'appareil photo de l'iPad ou choisies dans Photos, depuis la fiche de l'élève, à l'ajout d'un élève, ou avec le bouton « Photos des élèves » qui fait passer toute la classe à la suite. La photo apparaît partout : liste, carnet de cotes, présences, DAccE.
 - **Carnet de cotes** : par période (la période en cours s'ouvre d'office), colonnes d'évaluation avec date, maximum, pondération et catégorie (compétence). Les moyennes sont pondérées et colorées selon le seuil de réussite. On peut aussi saisir `abs`, `exc`, `ne` ou `7/10`. Export CSV et impression.
 - **Participation (fiche « Comment je suis coté(e) »)** : chaque élève démarre chaque période à 14/20. Les icônes ajoutent ou retirent des points en un geste (💡 +2, avis expliqué +1, écoute +1, coopération +1, travail soigné +1, pas en ordre −1, dérange −1, manque de respect −2), avec un bouton Annuler. La note reste entre 0 et 20. L'auto-évaluation de mi-période (rarement / parfois / souvent) se met à côté du relevé du professeur. La participation compte comme une évaluation sur 20 dans le total des points de la période.
+- **Une cote à chaque cours** (au choix par classe) : à chaque séance, 14 + icônes du jour (ou cote tapée à la main), absents non comptés ; la participation de la période est la moyenne des séances, avec un tableau des cotes par séance.
 - **Bulletins** : 3 périodes (dates de fin et poids réglables). La note de période sur 20 = total des points obtenus ÷ total des points possibles (participation comprise). L'année est la moyenne des périodes.
 - **Élève au hasard** : bouton 🎲 pour interroger un élève, chacun son tour, sans les absents du jour, avec les icônes de participation à portée de main.
 - **Présences** : présent, absent, retard ou justifié, avec un motif. Bouton « Tous présents » et récapitulatif par élève.
