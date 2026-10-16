@@ -13,6 +13,7 @@ Application de classe pour iPad, inspirée d'iDoceo. Elle fonctionne hors ligne 
 - **Présences** : présent, absent, retard ou justifié, avec un motif. Bouton « Tous présents » et récapitulatif par élève.
 - **Journal de classe** : matière vue, devoirs avec date de remise et pièces jointes (fichiers, photos du tableau).
 - **DAccE** (dossier d'accompagnement de l'élève) : observations, points forts, difficultés, aménagements raisonnables, remédiations et contacts avec les parents, avec pièces jointes.
+- **Import iDoceo** : à partir de l'export Excel d'une classe iDoceo, le Carnet reprend les élèves (« Nom, Prénom »), les évaluations (titre, maximum, date), les points de participation et les présences encodées. Il compare ses moyennes aux colonnes « Bulletin » et « Participation total » d'iDoceo.
 - **Sauvegarde** : export ou restauration d'un fichier `.json` qui contient tout, pièces jointes comprises, vers Fichiers, iCloud Drive ou un e-mail.
 
 ## Installation sur iPad

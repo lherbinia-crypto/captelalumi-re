@@ -394,7 +394,8 @@ const CPC_SVG = {
   pencil: '<path d="M4 20l1.2-4.8L16 4.4 19.6 8 8.8 18.8z"/><path d="M13.8 6.6l3.6 3.6"/>',
   book: '<rect x="5.5" y="3" width="13" height="18" rx="1"/><path d="M9 3v18M12.5 7.5h3"/>',
   nospeak: '<path d="M4 5h16v10h-9l-5 4v-4H4z"/><path d="M3 21L21 3"/>',
-  stop: '<path d="M8.5 3h7L21 8.5v7L15.5 21h-7L3 15.5v-7z"/><path d="M8 12h8"/>'
+  stop: '<path d="M8.5 3h7L21 8.5v7L15.5 21h-7L3 15.5v-7z"/><path d="M8 12h8"/>',
+  import: '<path d="M12 3v11M7.5 9.5L12 14l4.5-4.5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>'
 };
 const cpcIcon = key => `<svg class="cpc-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CPC_SVG[key] || ''}</svg>`;
 function defaultCpc() {
@@ -476,10 +477,12 @@ const periodStart = i => i > 0 && S.settings.periods[i - 1].end ? addDays(S.sett
 const periodStarted = i => !periodStart(i) || todayISO() >= periodStart(i);
 // ---- Participation à points ----
 const cpcItem = key => S.settings.cpc.items.find(it => it.key === key);
+const evPts = e => Number.isFinite(e.pts) ? e.pts : (Number(cpcItem(e.k)?.pts) || 0);
+const evShort = e => e.k === 'import' ? 'Importé d’iDoceo' : (cpcItem(e.k)?.short || '?');
 const cpcEvents = (c, sid, i) => c.cpc.events.filter(e => e.sid === sid && periodOfDate(e.date) === i);
 function cpcNote(c, sid, i) {
   const { base, max } = S.settings.cpc;
-  const sum = cpcEvents(c, sid, i).reduce((t, e) => t + (Number(cpcItem(e.k)?.pts) || 0), 0);
+  const sum = cpcEvents(c, sid, i).reduce((t, e) => t + evPts(e), 0);
   return Math.max(0, Math.min(Number(max) || 20, (Number(base) || 0) + sum));
 }
 const cpcOn = c => !!c?.cpc?.enabled;
@@ -805,6 +808,7 @@ function renderSidebar() {
     ${S.classes.map(c => `<button class="cls-item ${S.ui.view === 'class' && c.id === S.ui.classId ? 'active' : ''}" style="--dot:${c.color}" data-act="select-class" data-id="${c.id}">
       <span class="dot"></span><span><span class="nm">${esc(c.name)}</span><span class="sub">${esc(c.subject || '')}${c.subject ? ' · ' : ''}${c.students.length} élève${c.students.length > 1 ? 's' : ''}</span></span></button>`).join('')}
     <button class="side-btn" data-act="new-class">＋ Nouvelle classe</button>
+    <button class="side-btn" data-act="import-idoceo">⬇︎ Importer depuis iDoceo</button>
     <div class="side-foot">
       ${warn ? `<div class="backup-warn">⚠︎ Pensez à faire une sauvegarde${Number.isFinite(days) ? ` (dernière il y a ${Math.floor(days)} j)` : ''}.</div>` : ''}
       <button class="side-btn ${S.ui.view === 'settings' ? 'active' : ''}" data-act="settings">⚙︎ Réglages &amp; sauvegarde</button>
@@ -827,6 +831,7 @@ function renderMain() {
     view.innerHTML = `<div class="empty"><h2>Bienvenue dans votre carnet</h2>
       <p>Créez une première classe pour y ajouter vos élèves, vos cotes, les présences, le journal de classe et le DAccE.<br>Toutes les données restent sur cet iPad.</p>
       <button class="btn primary" data-act="new-class">＋ Créer une classe</button>
+      <button class="btn" data-act="import-idoceo">⬇︎ Importer mes classes iDoceo</button>
       <button class="btn" data-act="load-demo">Essayer avec une classe d’exemple</button></div>`;
     return;
   }
@@ -1077,7 +1082,7 @@ function cpcStudent(sid) {
   let pi = curPartPeriod();
   const draw = el => {
     const ev = cpcEvents(c, sid, pi).sort((a, b) => b.date.localeCompare(a.date) || (b.t || 0) - (a.t || 0));
-    const plus = ev.reduce((t, e) => t + Math.max(0, cpcItem(e.k)?.pts || 0), 0), minus = ev.reduce((t, e) => t + Math.min(0, cpcItem(e.k)?.pts || 0), 0);
+    const plus = ev.reduce((t, e) => t + Math.max(0, evPts(e)), 0), minus = ev.reduce((t, e) => t + Math.min(0, evPts(e)), 0);
     const self = c.cpc.self?.[pi]?.[sid] || {};
     const choices = [['r', 'rarement'], ['p', 'parfois'], ['s', 'souvent']];
     $('.mbody', el).innerHTML = `<div class="toolbar">${P.map((p, i) => `<button type="button" class="chip ${pi === i ? 'active' : ''}" data-pp="${i}">${esc(p.name)}</button>`).join('')}</div>
@@ -1092,7 +1097,7 @@ function cpcStudent(sid) {
         <td class="num"><b>${n}</b> fois</td></tr>`; }).join('')}
       </tbody></table></div>
       <h3 class="section-h">Relevé de la période (${ev.length})</h3>
-      ${ev.length ? `<div class="cpc-log">${ev.map(e => { const it = cpcItem(e.k) || { short: '?', pts: 0 };
+      ${ev.length ? `<div class="cpc-log">${ev.map(e => { const it = { short: evShort(e), pts: evPts(e) };
         return `<div class="cpc-log-row"><span class="${it.pts < 0 ? 'neg-ic' : 'pos-ic'}">${cpcIcon(e.k)}</span><span class="small muted" style="min-width:110px">${fmtDate(e.date, { weekday: 'short', day: 'numeric', month: 'short' })}</span><span style="flex:1">${esc(it.short)}</span><b>${fmtPts(it.pts)}</b><button type="button" class="icon-btn" data-del="${e.id}" aria-label="Retirer">✕</button></div>`; }).join('')}</div>`
         : `<p class="muted">Aucune icône pour l’instant : ${base}/${max}.</p>`}`;
   };
@@ -1482,6 +1487,159 @@ function rowsToStudents(rows) {
   }
   return out.filter(Boolean);
 }
+// ---------- Import iDoceo (export Excel d'une classe) ----------
+// En-têtes iDoceo : « Titre\nMaximum\nJJ/MM ». Colonne des élèves : « Nom, Prénom ».
+function parseIdoceoHeader(h) {
+  const lines = String(h || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  const out = { title: lines[0] || '', max: null, date: '' };
+  for (const l of lines.slice(1)) {
+    const d = l.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+    if (d) out.date = idoceoDate(+d[1], +d[2], d[3]);
+    else if (/^\d+([.,]\d+)?$/.test(l)) out.max = parseFloat(l.replace(',', '.'));
+  }
+  return out;
+}
+function idoceoDate(day, month, year) {
+  let y = year ? +year : null;
+  if (y && y < 100) y += 2000;
+  if (!y) { const start = +(S.settings.periods[0]?.end || '').slice(0, 4) || new Date().getFullYear(); y = month >= 8 ? start : start + 1; }
+  return `${y}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+const num = v => { const n = parseFloat(String(v ?? '').replace(',', '.')); return Number.isFinite(n) && /^\s*-?\d+([.,]\d+)?\s*$/.test(String(v)) ? n : null; };
+function analyseIdoceo(rows, fileName) {
+  rows = rows.map(r => r.map(x => x ?? ''));
+  const header = rows[0] || [], data = rows.slice(1).filter(r => r.some(x => String(x).trim()));
+  // colonne des noms : celle qui contient le plus de textes non numériques
+  let nameCol = -1, best = 0;
+  for (let j = 0; j < header.length; j++) {
+    const n = data.filter(r => String(r[j] || '').trim() && num(r[j]) == null).length;
+    if (n > best) { best = n; nameCol = j; }
+  }
+  const students = data.map(r => String(r[nameCol] || '').trim()).filter(Boolean).map(n => {
+    const [last, ...first] = n.split(',');
+    return first.length ? { lastName: last.trim(), firstName: first.join(',').trim() } : parseNameLine(n);
+  });
+  const cols = [];
+  header.forEach((h, j) => {
+    if (j === nameCol || !String(h).trim()) return;
+    const hd = parseIdoceoHeader(h), t = hd.title.toLowerCase();
+    const values = data.map(r => r[j]);
+    const kind = /^bulletin/.test(t) ? 'bulletin'
+      : /participation total/.test(t) ? 'parttotal'
+      : /valeur ic/.test(t) ? 'iconsum'
+      : /^pr[ée]sences?$|^absences?$|^appel$/.test(t) ? 'presence'
+      : /^participation$/.test(t) && hd.max == null ? 'icons'
+      : values.some(v => num(v) != null || String(v).trim()) ? 'grade' : 'empty';
+    cols.push({ j, ...hd, kind, values });
+  });
+  // participation : colonnes d'icônes si présentes, sinon « Valeur icône »
+  const iconCols = cols.filter(x => x.kind === 'icons').length ? cols.filter(x => x.kind === 'icons') : cols.filter(x => x.kind === 'iconsum');
+  const name = (fileName || '').replace(/\.[^.]+$/, '').replace(/^idoceo[_\s-]*/i, '').trim() || 'Classe importée';
+  return { name, students, cols, iconCols, rows: data };
+}
+function attCode(v) {
+  const t = String(v || '').trim().toLowerCase();
+  if (!t) return null;
+  if (/^(a|abs)/.test(t)) return 'A';
+  if (/^(r|ret)/.test(t)) return 'R';
+  if (/^(j|e|exc|m|just)/.test(t)) return 'J';
+  if (/^(p|pr|x|✓|✔)/.test(t)) return 'P';
+  return null;
+}
+function buildIdoceoClass(an) {
+  const c = normalize({ classes: [{ id: uid(), name: an.name, subject: '', color: COLORS[S.classes.length % COLORS.length] }] }).classes[0];
+  c.students = an.students.map(st => ({ id: uid(), ...st, files: [] }));
+  const hasPart = an.cols.some(x => ['parttotal', 'icons', 'iconsum'].includes(x.kind));
+  c.cpc = { enabled: hasPart, points: Number(an.cols.find(x => x.kind === 'parttotal')?.max) || 20, events: [], self: {} };
+  let created = Date.now();
+  for (const col of an.cols) {
+    if (col.kind === 'grade') {
+      const vals = col.values.map(num).filter(v => v != null);
+      const max = col.max || (vals.length ? Math.max(20, ...vals) : 20);
+      const g = { id: uid(), title: col.title, date: col.date || todayISO(), max, weight: 1, category: '', type: 'number', created: created++ };
+      c.columns.push(g); c.grades[g.id] = {};
+      col.values.forEach((v, i) => {
+        const s = c.students[i]; if (!s) return;
+        const n = num(v), t = String(v || '').trim().toLowerCase();
+        if (n != null) c.grades[g.id][s.id] = n;
+        else if (/^abs/.test(t)) c.grades[g.id][s.id] = 'ABS';
+        else if (/^(exc|ex|m)$/.test(t)) c.grades[g.id][s.id] = 'EXC';
+        else if (t === 'ne' || t === 'nr') c.grades[g.id][s.id] = 'NE';
+      });
+    } else if (col.kind === 'presence') {
+      const d = col.date || todayISO();
+      col.values.forEach((v, i) => {
+        const s = c.students[i], code = attCode(v); if (!s || !code) return;
+        (c.attendance[d] ||= {})[s.id] = { s: code, n: '' };
+      });
+    }
+  }
+  for (const col of an.iconCols) {
+    col.values.forEach((v, i) => {
+      const s = c.students[i], n = num(v); if (!s || !n) return;
+      c.cpc.events.push({ id: uid(), sid: s.id, k: 'import', pts: n, date: col.date || todayISO(), t: 0 });
+    });
+  }
+  return c;
+}
+// Compare nos calculs aux colonnes calculées par iDoceo (« Bulletin N », « Participation total »)
+function verifyIdoceo(an, c) {
+  const checks = [];
+  for (const col of an.cols) {
+    if (col.kind !== 'bulletin' && col.kind !== 'parttotal') continue;
+    const pi = col.kind === 'bulletin' ? Math.max(0, (parseInt(col.title.replace(/\D+/g, ''), 10) || 1) - 1) : periodOfDate(col.date || todayISO());
+    if (pi >= S.settings.periods.length) continue;
+    let ok = 0, total = 0; const diffs = [];
+    col.values.forEach((v, i) => {
+      const s = c.students[i], ref = num(v); if (!s || ref == null) return;
+      total++;
+      const mine = col.kind === 'bulletin' ? periodAvg(c, s.id, pi) / 100 * (col.max || 20) : cpcNote(c, s.id, pi);
+      if (Number.isFinite(mine) && Math.abs(mine - ref) < 0.051) ok++; else diffs.push(`${studentName(s)} : iDoceo ${fmtNum(ref)}, Carnet ${fmtNum(mine)}`);
+    });
+    if (total) checks.push({ title: col.title, ok, total, diffs });
+  }
+  return checks;
+}
+async function importIdoceo() {
+  const files = await pickFiles({ accept: '.xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv', multiple: true });
+  if (!files.length) return;
+  const items = [];
+  for (const f of files) {
+    try {
+      const buf = await f.arrayBuffer(), u8 = new Uint8Array(buf, 0, 2);
+      const rows = u8[0] === 0x50 && u8[1] === 0x4b ? await readXlsx(buf) : parseCSV(new TextDecoder().decode(buf).replace(/^\ufeff/, ''));
+      const an = analyseIdoceo(rows, f.name);
+      if (!an.students.length) { toast(`Aucun élève trouvé dans « ${f.name} »`); continue; }
+      const c = buildIdoceoClass(an);
+      items.push({ an, c, checks: verifyIdoceo(an, c), file: f.name });
+    } catch (e) { toast(`${f.name} : ${e.message}`); }
+  }
+  if (!items.length) return;
+  const label = { grade: 'évaluation', presence: 'présence', icons: 'participation (icônes)', iconsum: 'participation (icônes)', bulletin: 'calcul iDoceo, recalculé ici', parttotal: 'calcul iDoceo, recalculé ici', empty: 'vide, ignorée' };
+  const kept = k => k === 'grade' || k === 'presence' || k === 'icons' || (k === 'iconsum' && false);
+  modal({
+    title: items.length > 1 ? `Importer ${items.length} classes depuis iDoceo` : 'Importer depuis iDoceo', wide: true,
+    body: items.map((it, n) => {
+      const { an, c } = it, att = Object.values(c.attendance).reduce((t, d) => t + Object.keys(d).length, 0);
+      const presCols = an.cols.filter(x => x.kind === 'presence');
+      return `<div class="card pad" style="margin-bottom:12px">
+        <label class="field"><span>Nom de la classe (fichier « ${esc(it.file)} »)</span><input class="inp" data-iname="${n}" value="${esc(an.name)}"></label>
+        <p style="margin:0 0 8px"><b>${c.students.length} élèves</b> · ${c.columns.length} évaluation(s) · ${c.cpc.events.length} icône(s) de participation · ${att} présence(s) encodée(s)</p>
+        <div class="tbl-scroll"><table class="plain"><thead><tr><th>Colonne iDoceo</th><th>Devient</th></tr></thead><tbody>
+        ${an.cols.map(x => `<tr><td>${esc(x.title)}${x.max ? ` <span class="muted">/${fmtNum(x.max, 2)}</span>` : ''}${x.date ? ` <span class="muted">${fmtShort(x.date)}</span>` : ''}</td>
+          <td class="small">${x.kind === 'grade' ? `Évaluation /${fmtNum(c.columns.find(g => g.title === x.title)?.max ?? x.max, 2)} en ${esc(S.settings.periods[periodOfDate(x.date || todayISO())]?.name || '')}` : x.kind === 'iconsum' && an.iconCols[0]?.kind === 'icons' ? 'total des icônes, recalculé ici' : label[x.kind]}</td></tr>`).join('')}
+        </tbody></table></div>
+        ${presCols.length && !att ? `<p class="small muted">Les ${presCols.length} colonnes « Présence » sont vides dans l’export : aucune absence à reprendre.</p>` : ''}
+        ${it.checks.length ? it.checks.map(ch => `<p class="small" style="color:${ch.ok === ch.total ? 'var(--ok)' : 'var(--warn)'};font-weight:600;margin:8px 0 0">${ch.ok === ch.total ? '✓' : '⚠︎'} ${esc(ch.title)} : ${ch.ok}/${ch.total} élèves identiques à iDoceo${ch.diffs.length ? '<br><span class="muted" style="font-weight:400">' + ch.diffs.slice(0, 5).map(esc).join('<br>') + '</span>' : ''}</p>`).join('') : ''}
+      </div>`;
+    }).join('') + `<p class="small muted">Les classes sont ajoutées à côté de vos classes actuelles ; rien n’est effacé. Les photos et les icônes détaillées ne sont pas dans l’export Excel d’iDoceo : la participation est reprise comme un total de points par date.</p>`,
+    actions: [{ label: 'Annuler' }, { label: items.length > 1 ? 'Importer les classes' : 'Importer la classe', cls: 'primary', onClick: el => {
+      items.forEach((it, n) => { it.c.name = $(`[data-iname="${n}"]`, el).value.trim() || it.c.name; S.classes.push(it.c); });
+      S.ui.classId = items[0].c.id; S.ui.view = 'class'; S.ui.tab = 'cotes'; S.ui.gradePeriod = ''; S.ui.studentId = null;
+      save(); render(); toast(items.length > 1 ? `${items.length} classes importées` : `Classe « ${items[0].c.name} » importée`);
+    } }]
+  });
+}
 async function readStudentFile(file) {
   const name = file.name.toLowerCase();
   if (name.endsWith('.xls')) throw new Error('Ancien format .xls : dans Excel ou Numbers, enregistrez le fichier en .xlsx ou .csv');
@@ -1629,6 +1787,7 @@ const A = {
   'toggle-side': () => document.body.classList.toggle('side-open'),
   'select-class': el => { S.ui.view = 'class'; S.ui.classId = el.dataset.id; S.ui.studentId = null; document.body.classList.remove('side-open'); save(); render(); $('#view').scrollTop = 0; },
   'new-class': () => { document.body.classList.remove('side-open'); editClass(); },
+  'import-idoceo': () => { document.body.classList.remove('side-open'); importIdoceo(); },
   'edit-class': () => editClass(cls()),
   'settings': () => { S.ui.view = 'settings'; document.body.classList.remove('side-open'); save(); render(); showStorageEstimate(); },
   'tab': el => { S.ui.tab = el.dataset.tab; S.ui.studentId = null; save(); renderMain(); $('#view').scrollTop = 0; },
