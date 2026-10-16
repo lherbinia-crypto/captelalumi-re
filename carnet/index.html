@@ -954,6 +954,8 @@ function viewStudent(c, s) {
           ${cols.map(col => { const v = c.grades[col.id]?.[s.id]; const p = valuePct(v, col);
             return `<tr><td>${esc(col.title)} <span class="tag">P${colPeriod(col) + 1}</span>${col.category ? ` <span class="tag">${esc(col.category)}</span>` : ''}</td><td class="small muted">${fmtShort(col.date)}</td><td class="num">${v == null ? '–' : esc(fmtGrade(v)) + (typeof v === 'number' ? ' / ' + col.max : isIcon(v) ? ' ' + esc(iconOf(v)?.label || '') : '')}</td><td class="num ${pctClass(p)}">${Number.isFinite(p) ? fmtNum(p, 0) + ' %' : ''}</td></tr>`; }).join('')}
           </tbody></table></div>` : '<p class="muted">Aucune évaluation encodée.</p>'}
+          ${(() => { const rows = EPC.comps.map(k => { const kc = c.columns.filter(col => compOfCol(col) === k.n); const p = kc.length ? studentAvg(c, s.id, kc) : NaN; return { k, n: kc.length, p }; }).filter(r => r.n);
+            return rows.length ? `<h3 class="section-h">Par compétence du référentiel</h3><div class="tbl-scroll"><table class="plain"><tbody>${rows.map(r => `<tr><td>C${r.k.n} · ${esc(r.k.court)}</td><td class="num small muted">${r.n} éval.</td><td class="num ${pctClass(r.p)}">${fmtOn(r.p, S.settings.bulletinScale)}/${S.settings.bulletinScale}</td></tr>`).join('')}</tbody></table></div>` : ''; })()}
           <h3 class="section-h">Absences et retards</h3>
           ${absences.length ? `<ul>${absences.map(([d, e]) => `<li><b>${fmtDate(d)}</b> — ${STATUS[e.s].label}${e.n ? ` <span class="muted">(${esc(e.n)})</span>` : ''}</li>`).join('')}</ul>` : '<p class="muted">Aucune absence ni retard.</p>'}
           <h3 class="section-h">Observations <span class="spacer" style="flex:1"></span><button class="btn sm" data-act="new-dacce" data-sid="${s.id}">＋ Observation</button></h3>
@@ -1074,6 +1076,10 @@ function editColumn(col) {
     onOpen: el => {
       const sync = () => { $('#max-field', el).hidden = $('[name=type]', el).value === 'icons'; };
       $('[name=type]', el).addEventListener('change', sync); sync();
+      const att = () => { const k = EPC.comps[+$('#col-comp', el).value - 1]; $('#col-att', el).textContent = k ? `Attendu (${epcLevel(c) === 'S2' ? '2e' : '1re'}) : ${epcAtt(k, epcLevel(c))}` : ''; };
+      $('#col-comp', el).addEventListener('change', e => { const n = +e.target.value; const inp = $('[name=category]', el); if (n) inp.value = compLabel(n); else if (/^C[1-8] ·/.test(inp.value)) inp.value = ''; att(); });
+      $('#col-ref', el).addEventListener('click', () => showEPC(epcLevel(c), +$('#col-comp', el).value || 0));
+      att();
     },
     body: `<label class="field"><span>Titre</span><input class="inp" name="title" value="${esc(col.title)}" placeholder="Ex. Interro conjugaison"></label>
       <div class="row2"><label class="field"><span>Type de cote</span><select class="inp" name="type"><option value="number" ${col.type !== 'icons' ? 'selected' : ''}>Cote chiffrée</option><option value="icons" ${col.type === 'icons' ? 'selected' : ''}>Appréciation par icônes (${S.settings.icons.map(i => i.icon).join(' ')})</option></select></label>
@@ -1081,8 +1087,11 @@ function editColumn(col) {
       <div class="row3"><label class="field"><span>Date</span><input class="inp" type="date" name="date" value="${esc(col.date)}"></label>
       <label class="field" id="max-field"><span>Sur (maximum)</span><input class="inp" name="max" inputmode="decimal" value="${esc(String(col.max).replace('.', ','))}"></label>
       <label class="field"><span>Pondération (× points)</span><input class="inp" name="weight" inputmode="decimal" value="${esc(String(col.weight).replace('.', ','))}"></label></div>
-      <label class="field"><span>Catégorie / compétence (facultatif)</span><input class="inp" name="category" list="cat-list" value="${esc(col.category || '')}" placeholder="Ex. Lire, Écrire, Formatif, Certificatif…">
-      <datalist id="cat-list">${cats.map(k => `<option value="${esc(k)}">`).join('')}</datalist></label>`
+      <label class="field"><span>Compétence du référentiel EPC</span><select class="inp" id="col-comp"><option value="">— Aucune / autre catégorie —</option>${EPC.comps.map(k => `<option value="${k.n}" ${compOfCol(col) === k.n ? 'selected' : ''}>C${k.n} · ${esc(k.t)}</option>`).join('')}</select></label>
+      <div class="small" id="col-att" style="margin:-6px 0 12px;color:var(--accent)"></div>
+      <label class="field"><span>Catégorie (remplie par la compétence, ou libre)</span><input class="inp" name="category" list="cat-list" value="${esc(col.category || '')}" placeholder="Ex. Devoir, Recherche, Formatif…">
+      <datalist id="cat-list">${cats.map(k => `<option value="${esc(k)}">`).join('')}</datalist></label>
+      <button type="button" class="btn sm ghost" id="col-ref" style="padding-left:0">Voir le référentiel (${epcLevel(c) === 'S2' ? '2e' : '1re'} secondaire)</button>`
   });
 }
 function exportCSV() {
@@ -1331,11 +1340,12 @@ function viewJournal(c) {
   const today = todayISO();
   const list = [...c.journal].sort((a, b) => b.date.localeCompare(a.date) || (b.period || '').localeCompare(a.period || '', 'fr', { numeric: true }));
   const upcoming = c.journal.filter(j => j.homework && j.due && j.due >= today).sort((a, b) => a.due.localeCompare(b.due));
-  const tb = `<div class="toolbar"><button class="btn primary" data-act="new-journal">＋ Nouvelle séance</button><span class="spacer"></span><button class="btn sm" data-act="print">Imprimer</button></div>`;
+  const tb = `<div class="toolbar"><button class="btn primary" data-act="new-journal">＋ Nouvelle séance</button><button class="btn" data-act="epc-ref">Référentiel EPC</button><span class="spacer"></span><button class="btn sm" data-act="print">Imprimer</button></div>`;
   return tb + (upcoming.length ? `<div class="card upcoming"><b>📌 À remettre / à préparer</b><ul>${upcoming.map(j => `<li><b>${fmtDate(j.due, { weekday: 'short', day: 'numeric', month: 'short' })}</b> — ${esc(j.homework)}</li>`).join('')}</ul></div>` : '')
     + (list.length ? `<div class="entries">${list.map(j => `<article class="card entry">
       <div class="entry-h"><div class="ttl">${esc(j.title || 'Séance')}</div><span class="when">${fmtDate(j.date)}${j.period ? ' · ' + esc(j.period) : ''}</span>
       <button class="btn sm" data-act="edit-journal" data-id="${j.id}">Modifier</button></div>
+      ${(j.comps || []).length ? `<div class="files" style="margin-top:6px">${j.comps.map(n => `<span class="tag accent">${esc(compLabel(n))}</span>`).join('')}</div>` : ''}
       ${j.content ? `<div class="body pre">${esc(j.content)}</div>` : ''}
       ${j.homework ? `<div class="hw"><b>Devoir${j.due ? ' pour le ' + fmtDate(j.due, { weekday: 'long', day: 'numeric', month: 'long' }) : ''} :</b> <span class="pre">${esc(j.homework)}</span></div>` : ''}
       ${fileChips(j.attachments)}</article>`).join('')}</div>`
@@ -1353,7 +1363,7 @@ function editJournal(j) {
   actions.push({ label: 'Annuler' }, { label: 'Enregistrer', cls: 'primary', value: 'ok', onClick: async el => {
     const d = formData(el);
     if (!d.date) { toast('Indiquez la date'); return false; }
-    Object.assign(j, { date: d.date, period: d.period, title: d.title, content: d.content, homework: d.homework, due: d.due, attachments: ed.list });
+    Object.assign(j, { date: d.date, period: d.period, title: d.title, content: d.content, homework: d.homework, due: d.due, attachments: ed.list, comps: EPC.comps.filter(k => d['comp' + k.n]).map(k => k.n) });
     if (isNew) { j.id = uid(); c.journal.push(j); }
     await ed.commit(); save(); renderMain();
   } });
@@ -1363,7 +1373,8 @@ function editJournal(j) {
     onOpen: el => { ed = attachEditor($('#j-files', el), [...(j.attachments || [])]); },
     body: `<div class="row3"><label class="field"><span>Date</span><input class="inp" type="date" name="date" value="${esc(j.date)}"></label>
       <label class="field"><span>Heure / période</span><input class="inp" name="period" value="${esc(j.period)}" placeholder="Ex. 2e heure"></label>
-      <label class="field"><span>Titre / chapitre</span><input class="inp" name="title" value="${esc(j.title)}" placeholder="Ex. Le passé composé"></label></div>
+      <label class="field"><span>Titre / chapitre</span><input class="inp" name="title" value="${esc(j.title)}" placeholder="Ex. Qu’est-ce qu’une règle juste ?"></label></div>
+      <div class="field"><span>Compétences du référentiel travaillées</span><div class="files">${EPC.comps.map(k => `<label class="chip" style="cursor:pointer"><input type="checkbox" name="comp${k.n}" ${(j.comps || []).includes(k.n) ? 'checked' : ''} style="margin:0"> C${k.n} ${esc(k.court)}</label>`).join('')}</div></div>
       <label class="field"><span>Matière vue / déroulement</span><textarea class="inp" name="content" rows="5">${esc(j.content)}</textarea></label>
       <div class="row2" style="grid-template-columns:2fr 1fr"><label class="field"><span>Devoir / à préparer</span><input class="inp" name="homework" value="${esc(j.homework)}"></label>
       <label class="field"><span>Pour le</span><input class="inp" type="date" name="due" value="${esc(j.due)}"></label></div>
@@ -1410,6 +1421,9 @@ function viewDacce(c) {
           <li><b>Socioaffectif › Rapport aux autres</b> : difficulté à écouter, à accepter un avis différent, à coopérer dans un groupe.</li>
           <li><b>Socioaffectif › Rapport à soi</b> : n’ose jamais donner son avis par manque de confiance, se décourage dès qu’on le contredit.</li>
         </ul>
+        <div><b>Les 8 compétences du référentiel</b> (attendus de ${epcLevel(c) === 'S2' ? '2e' : '1re'}) <button class="btn sm ghost" data-act="epc-ref">Ouvrir le référentiel</button></div>
+        <ul style="margin:0;padding-left:1.2em;display:grid;gap:2px" class="small">${EPC.comps.map(k => `<li><b>C${k.n} ${esc(k.court)}</b> — ${esc(epcAtt(k, epcLevel(c)))}</li>`).join('')}</ul>
+        <div class="small muted">Une difficulté persistante en CPC, c’est un élève qui n’atteint pas un de ces attendus malgré vos aides habituelles. Dans le DAccE, elle se classe « Cognitif › Éducation à la philosophie et à la citoyenneté » ; la compétence précise va dans votre mémo.</div>
         <div><b>Actions de soutien typiques en CPC</b> : « Actions des intervenants spécifiques › Action(s) du maître de philosophie et de citoyenneté » (amorces de phrases, rôle défini dans le débat, prise de parole d’abord en petit groupe…) et « Différenciation dans la classe » (temps, place, supports, réponse orale…). Vous n’avez pas à détailler la mise en œuvre dans le DAccE : notez-la pour vous ou dans votre mémo.</div>
         <div><b>Ce qui n’y va pas</b> : les points et icônes de participation, un retard ou un oubli de matériel isolé, un diagnostic, une information familiale, un jugement.</div>
       </div></details>
@@ -1462,6 +1476,51 @@ function editDacce(n, presetSid, prefilled) {
   });
 }
 
+// ---------- Référentiel d'Éducation à la philosophie et à la citoyenneté (tronc commun, S1-S2) ----------
+const EPC = {
+  visees: ['Construire une pensée autonome et critique', 'Se connaitre soi-même et s’ouvrir à l’autre', 'Construire la citoyenneté dans l’égalité en dignité et en droits', 'S’engager dans la vie sociale et l’espace démocratique'],
+  demarches: { S1: 'identifier, exemplifier, questionner, expliciter', S2: 'questionner, expliciter, conceptualiser, problématiser' },
+  comps: [
+    { n: 1, v: 0, t: 'Élaborer un questionnement philosophique', court: 'Questionnement philosophique', att: 'Formuler une question qui exprime un doute face aux évidences et aux certitudes.',
+      sf: ['Formuler une question pouvant servir de base à une réflexion de type philosophique, la décomposer en sous-questions et la relier à d’autres questions.', 'Comparer et confronter différentes alternatives.'] },
+    { n: 2, v: 0, t: 'Assurer la cohérence de sa pensée', court: 'Cohérence de la pensée', att: 'Construire un raisonnement logique et identifier des erreurs de raisonnement.',
+      sf: ['Déterminer les caractéristiques nécessaires et suffisantes pour définir un concept.', 'Identifier des erreurs de raisonnement (liens de causalité, pensée magique, sophisme…).', 'Distinguer faits, normes et préférences.'],
+      sfS2: ['Déterminer les caractéristiques nécessaires et suffisantes pour définir un concept.', 'Identifier des erreurs de raisonnement et des discours manipulateurs.', 'Distinguer faits, normes et préférences.'] },
+    { n: 3, v: 0, t: 'Prendre position de manière argumentée', court: 'Prise de position argumentée', att: 'Justifier une position sur des questions de type philosophique liées à la citoyenneté.',
+      sf: ['Justifier sa prise de position par des arguments.', 'Identifier différentes raisons (valeurs, normes…) d’une prise de position ou d’une action ; distinguer intentions et conséquences.', 'Reformuler ce que l’autre a dit pour vérifier qu’on l’a compris.', 'Prendre en compte les apports et les objections de l’autre.', 'Questionner une situation depuis une perspective différente de la sienne.'] },
+    { n: 4, v: 1, t: 'Développer son autonomie affective', court: 'Autonomie affective', att: 'Questionner et se questionner sur les affects pour décider librement.',
+      sf: ['Identifier, exprimer et interroger les émotions que suscitent les autres, les médias, les évènements et leurs effets sur le comportement.', 'Exprimer ses limites et identifier celles des autres, notamment dans les relations affectives et sexuelles.', 'Questionner et dégager des pratiques pour préserver sa sécurité, son identité numérique et son intimité sur Internet et les réseaux sociaux.', 'Questionner les besoins, les désirs et les valeurs qui les sous-tendent.'] },
+    { n: 5, v: 1, t: 'S’ouvrir à la pluralité des cultures et des convictions', court: 'Pluralité des cultures et convictions', att: 'Interroger la pluralité des valeurs et des règles.', attS2: 'Interroger les normes qui permettent la pluralité des valeurs.',
+      sf: ['Questionner la concordance et la disparité des valeurs.', 'Expliciter les différentes catégories de normes morales et légales.', 'Distinguer croyance, opinion, savoir, conviction.'] },
+    { n: 6, v: 2, t: 'Comprendre les principes de la démocratie', court: 'Principes de la démocratie', att: 'Questionner ce qui caractérise les démocraties.',
+      sf: ['Questionner le concept de souveraineté populaire (citoyen auteur et bénéficiaire de la loi).', 'Questionner l’égalité devant la loi.', 'Questionner les raisons de la séparation des pouvoirs législatif, exécutif et judiciaire.', 'Identifier le rôle de l’information et de la liberté de la presse en démocratie.', 'Questionner l’usage de l’autorité ; chercher comment mettre fin à une atteinte à la dignité ou à un abus de pouvoir.'],
+      sfS2: ['Problématiser les souverainetés populaire et nationale.', 'Problématiser l’équité et l’impartialité des lois.', 'Questionner les raisons de la séparation des pouvoirs législatif, exécutif et judiciaire.', 'Questionner le rôle et les effets de l’information et de la désinformation en démocratie.', 'Identifier différentes sources de légitimité.'] },
+    { n: 7, v: 3, t: 'S’exercer au processus démocratique', court: 'Processus démocratique', att: 'Nourrir le débat dans le cadre collectivement établi.',
+      sf: ['Organiser et gérer un débat de manière autonome ; sélectionner des ressources pour le nourrir.', 'Confronter, articuler et intégrer les arguments et se positionner au sein du débat.', 'Exprimer sa position en tenant compte de celle des autres ; assumer différents rôles.', 'Dégager les idées essentielles du débat.', 'Décider ensemble à l’issue d’un débat (consensus, compromis, vote…).'] },
+    { n: 8, v: 3, t: 'S’inscrire dans la vie sociale et politique', court: 'Vie sociale et politique', att: 'Imaginer une possibilité d’action et de coopération.',
+      sf: ['S’informer pour questionner des sujets d’actualité et identifier des possibilités d’action.', 'Se concerter en vue de coopérer ; questionner des pratiques de coopération, de compétition, d’individualisme.', 'Esquisser des perspectives d’amélioration de la société.'],
+      sfS2: ['S’informer pour questionner des sujets d’actualité et identifier des possibilités d’action.', 'Se concerter en vue de coopérer ; questionner des pratiques de coopération, de compétition, d’individualisme.', 'Proposer une utopie et/ou des perspectives d’amélioration de la société.'] }
+  ]
+};
+// Niveau de la classe pour le référentiel : choisi dans « Modifier », sinon déduit du nom (1C → S1, 2G → S2)
+const epcLevel = c => c?.level || (/^\s*1/.test(c?.name || '') ? 'S1' : /^\s*2/.test(c?.name || '') ? 'S2' : 'S1');
+const epcAtt = (k, lvl) => (lvl === 'S2' && k.attS2) || k.att;
+const epcSf = (k, lvl) => (lvl === 'S2' && k.sfS2) || k.sf;
+const compLabel = n => { const k = EPC.comps[n - 1]; return k ? `C${n} · ${k.court}` : ''; };
+const compOfCol = col => { const m = String(col.category || '').match(/^C([1-8]) ·/); return m ? +m[1] : 0; };
+function showEPC(lvl, focus) {
+  modal({
+    title: `Référentiel EPC — ${lvl === 'S2' ? '2e' : '1re'} secondaire`, wide: true,
+    body: `<p class="small muted" style="margin-top:0">Démarches mentales visées : ${EPC.demarches[lvl] || EPC.demarches.S1}. Évaluation à dominante formative.</p>
+      ${EPC.visees.map((v, vi) => `<h3 class="section-h">Visée ${vi + 1} · ${esc(v)}</h3>
+        ${EPC.comps.filter(k => k.v === vi).map(k => `<div class="dx-box" style="${focus === k.n ? 'border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)' : ''}">
+          <div><b>C${k.n} · ${esc(k.t)}</b></div>
+          <div class="hw" style="margin:0;background:var(--accent-soft)"><b style="color:var(--accent)">Attendu :</b> ${esc(epcAtt(k, lvl))}</div>
+          <ul style="margin:0;padding-left:18px" class="small">${epcSf(k, lvl).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}`).join('')}`,
+    actions: [{ label: 'Fermer', cls: 'primary' }]
+  });
+}
+
 // ---------- DAccE complet (structure officielle FWB, comme le Journal de classe CPC) ----------
 const DX = {
   axes: {
@@ -1479,7 +1538,7 @@ const DX = {
     'Psychomoteur': 'Difficulté à réaliser une activité en séquence, confusion gauche-droite, difficulté à interagir dans l’espace avec d’autres…',
     'Verbal': 'N’ose pas prendre l’initiative d’un échange, vocabulaire pauvre, difficulté à formuler ou reformuler une idée, parle trop vite…',
     'Non verbal': 'Difficulté à décoder les émotions, le langage corporel ; à percevoir l’effet de ses comportements sur les autres…',
-    'Éducation à la philosophie et à la citoyenneté': 'Selon le référentiel EPC du tronc commun. Ex. : n’arrive pas à formuler une question à partir d’une situation, donne un avis sans pouvoir le justifier, confond opinion et argument, ne parvient pas à envisager un autre point de vue, ne respecte pas les règles du débat malgré les rappels…'
+    'Éducation à la philosophie et à la citoyenneté': 'Selon le référentiel EPC (attendus de l’année). Ex. : ne parvient pas à formuler une question qui exprime un doute (C1), à justifier une position par des arguments (C3), à reformuler ce que l’autre a dit (C3), à distinguer opinion et argument ou faits et normes (C2), à nourrir le débat dans le cadre établi (C7)…'
   },
   exAppui: {
     'Rapport à soi': 'Exprime ses ressentis, fait preuve de curiosité, est conscient de ses besoins, gère ses émotions…',
@@ -1564,6 +1623,7 @@ function genMemo(c, s) {
     L.push('', `Difficulté(s) observée(s) au cours${c.subject ? ' de ' + c.subject : ''} :`);
     for (const x of d.difficultes) {
       L.push(`- ${x.axe || '?'} › ${x.sousAxe || '?'} (suivi : ${x.suivi || 'À mettre en place'})${x.obs ? ` : ${x.obs.trim()}` : ''}`);
+      if (x.comp) L.push(`   Référentiel EPC : C${x.comp} « ${EPC.comps[x.comp - 1].t} » — attendu : ${epcAtt(EPC.comps[x.comp - 1], epcLevel(c))}`);
       for (const ac of (x.actions || [])) L.push(`   • ${ac.cat || '?'} › ${ac.type === 'Autre' ? `Autre : ${ac.autre || '?'}` : ac.type || '?'} [${ac.etat || 'À mettre en place'}]${ac.note ? ` – ${ac.note.trim()}` : ''}`);
     }
   }
@@ -1590,6 +1650,8 @@ function dacceSection(c, s) {
     h += `<div class="dx-box">
       <div class="row2"><select class="inp" data-dx="d-axe" data-i="${i}" aria-label="Axe">${opts(Object.keys(DX.axes), x.axe, 'Axe…')}</select><select class="inp" data-dx="d-sous" data-i="${i}" aria-label="Sous-axe" ${sous.length ? '' : 'disabled'}>${opts(sous, x.sousAxe, 'Sous-axe…')}</select></div>
       ${ex ? `<div class="muted small">Exemples : ${esc(ex)}</div>` : ''}
+      ${x.sousAxe === 'Éducation à la philosophie et à la citoyenneté' ? `<div class="toolbar" style="margin:0"><span class="small" style="font-weight:600">Compétence concernée (pour vous et votre mémo)</span><select class="inp" style="width:auto;flex:1 1 220px" data-dx="d-comp" data-i="${i}"><option value="">—</option>${EPC.comps.map(k => `<option value="${k.n}" ${x.comp === k.n ? 'selected' : ''}>C${k.n} · ${esc(k.t)}</option>`).join('')}</select></div>
+        ${x.comp ? `<div class="small" style="color:var(--accent)">Attendu de fin d’année (${epcLevel(c) === 'S2' ? '2e' : '1re'}) : ${esc(epcAtt(EPC.comps[x.comp - 1], epcLevel(c)))}</div>` : ''}` : ''}
       <div class="toolbar" style="margin:0"><span class="small" style="font-weight:600">Suivi en cours</span><select class="inp" style="width:auto" data-dx="d-suivi" data-i="${i}">${opts(DX.suiviDiff, x.suivi || 'À mettre en place')}</select><span class="spacer"></span><button class="btn sm ghost danger" data-act="dx" data-op="del-diff" data-i="${i}">Supprimer la difficulté</button></div>
       <textarea class="inp" data-dx="d-obs" data-i="${i}" placeholder="Ce que vous observez concrètement (pour vous et votre mémo)" style="min-height:60px">${esc(x.obs || '')}</textarea>
       <div class="small" style="font-weight:600">Actions de soutien ${(x.actions || []).length ? '' : '<span class="tag bad">obligatoire</span>'}</div>
@@ -1642,6 +1704,7 @@ function dxChange(t) {
     case 'd-sous': if (x) x.sousAxe = val; break;
     case 'd-suivi': if (x) x.suivi = val; break;
     case 'd-obs': if (x) x.obs = val; re = false; break;
+    case 'd-comp': if (x) x.comp = +val || 0; break;
     case 'a-cat': if (a) { a.cat = val; a.type = ''; } break;
     case 'a-type': if (a) a.type = val; break;
     case 'a-autre': if (a) a.autre = val; break;
@@ -1710,7 +1773,7 @@ function editClass(c) {
     const d = formData(el), color = $('input[name=color]:checked', el)?.value || c.color;
     if (!d.name) { toast('Donnez un nom à la classe'); return false; }
     const pts = parseFloat(String(d.points).replace(',', '.'));
-    Object.assign(c, { name: d.name, subject: d.subject, color });
+    Object.assign(c, { name: d.name, subject: d.subject, color, level: d.level || '' });
     c.cpc = { ...c.cpc, enabled: !!d.cpcOn, points: pts > 0 ? pts : 20 };
     if (isNew) { Object.assign(c, normalize({ classes: [{ ...c, id: uid() }] }).classes[0]); S.classes.push(c); S.ui.classId = c.id; S.ui.tab = 'eleves'; S.ui.view = 'class'; }
     save(); render();
@@ -1718,7 +1781,8 @@ function editClass(c) {
   modal({
     title: isNew ? 'Nouvelle classe' : 'Modifier la classe', actions,
     body: `<label class="field"><span>Nom de la classe</span><input class="inp" name="name" value="${esc(c.name)}" placeholder="Ex. 3e A"></label>
-      <label class="field"><span>Cours / matière</span><input class="inp" name="subject" value="${esc(c.subject)}" placeholder="Ex. Français"></label>
+      <div class="row2"><label class="field"><span>Cours / matière</span><input class="inp" name="subject" value="${esc(c.subject)}" placeholder="Ex. Philosophie et citoyenneté"></label>
+      <label class="field"><span>Année (référentiel EPC)</span><select class="inp" name="level">${[['', 'Selon le nom de la classe'], ['S1', '1re secondaire'], ['S2', '2e secondaire']].map(([k, l]) => `<option value="${k}" ${(c.level || '') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
       <div class="field"><span>Couleur</span><div class="swatches">${COLORS.map(col => `<label><input type="radio" name="color" value="${col}" ${col === c.color ? 'checked' : ''}><span style="background:${col}"></span></label>`).join('')}</div></div>
       <label class="check"><input type="checkbox" name="cpcOn" ${c.cpc?.enabled ? 'checked' : ''}> Coter la participation avec les icônes (départ à ${S.settings.cpc.base}/${S.settings.cpc.max} à chaque période)</label>
       <label class="field"><span>La participation compte pour … points dans le total de la période</span><input class="inp" name="points" inputmode="decimal" value="${esc(c.cpc?.points ?? 20)}"></label>
@@ -2281,6 +2345,7 @@ const A = {
   'import-backup': importBackup,
   'import-ar': importAR,
   'dx': dxAction,
+  'epc-ref': () => showEPC(epcLevel(cls())),
   'export-dacce': exportDacceCSV,
   'open-dacce': el => { S.ui.studentId = el.dataset.id; renderMain(); setTimeout(() => $('#dacce-card')?.scrollIntoView({ block: 'start' }), 30); },
   'ar-to-dacce': arToDacce,
