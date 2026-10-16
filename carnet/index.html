@@ -1,0 +1,1168 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Carnet Prof">
+<meta name="theme-color" content="#1d2433">
+<meta name="description" content="Carnet du professeur : élèves, carnet de cotes, présences, journal de classe et DAccE. Fonctionne hors ligne sur iPad.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Carnet du prof</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#f3f4f7;--surface:#fff;--surface-2:#f6f7f9;--text:#1b1e24;--muted:#667085;--line:#e3e6ec;
+  --accent:#2f6fec;--accent-soft:#e8efff;--on-accent:#fff;
+  --ok:#16884a;--ok-soft:#e3f5ea;--warn:#a86400;--warn-soft:#fff2d9;--bad:#c93838;--bad-soft:#fde8e8;
+  --info:#6b4fd8;--info-soft:#efeaff;--neutral-soft:#eceef2;
+  --side:#1d2433;--side-2:#2a3347;--side-text:#eef1f7;--side-muted:#9aa4b8;
+  --radius:12px;--shadow:0 1px 2px rgb(16 24 40/.06),0 2px 10px rgb(16 24 40/.06);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12151b;--surface:#1b1f27;--surface-2:#222732;--text:#e9ecf2;--muted:#9aa3b3;--line:#2e3442;
+  --accent:#6b9bff;--accent-soft:#1f2b47;--on-accent:#0b1020;
+  --ok:#4cc77f;--ok-soft:#173326;--warn:#f0b54a;--warn-soft:#3a2d12;--bad:#ff7a7a;--bad-soft:#3d1c1c;
+  --info:#a993ff;--info-soft:#29224a;--neutral-soft:#2a2f3a;
+  --side:#0d1016;--side-2:#1d2330;--side-text:#e9ecf2;--side-muted:#8a93a5;
+  --shadow:0 1px 2px rgb(0 0 0/.3);color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#12151b;--surface:#1b1f27;--surface-2:#222732;--text:#e9ecf2;--muted:#9aa3b3;--line:#2e3442;
+  --accent:#6b9bff;--accent-soft:#1f2b47;--on-accent:#0b1020;
+  --ok:#4cc77f;--ok-soft:#173326;--warn:#f0b54a;--warn-soft:#3a2d12;--bad:#ff7a7a;--bad-soft:#3d1c1c;
+  --info:#a993ff;--info-soft:#29224a;--neutral-soft:#2a2f3a;
+  --side:#0d1016;--side-2:#1d2330;--side-text:#e9ecf2;--side-muted:#8a93a5;
+  --shadow:0 1px 2px rgb(0 0 0/.3);color-scheme:dark;
+}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font:16px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3{margin:0;line-height:1.2}
+#app{display:grid;grid-template-columns:270px 1fr;height:100vh;height:100dvh}
+
+/* Sidebar */
+#sidebar{background:var(--side);color:var(--side-text);display:flex;flex-direction:column;padding:calc(14px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 8px 18px}
+.brand-mark{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#3d7bff,#7a5af8);display:grid;place-items:center;font-weight:700;color:#fff}
+.brand b{display:block;font-size:17px}
+.brand small{color:var(--side-muted);font-size:12px}
+.side-h{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--side-muted);padding:8px 10px 6px}
+.cls-item{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;text-align:left;padding:10px;border-radius:10px;min-height:48px}
+.cls-item:hover{background:var(--side-2)}
+.cls-item.active{background:var(--side-2);box-shadow:inset 3px 0 0 var(--dot,#3d7bff)}
+.cls-item .dot{width:12px;height:12px;border-radius:50%;background:var(--dot);flex:none}
+.cls-item .nm{font-weight:600;display:block}
+.cls-item .sub{font-size:12.5px;color:var(--side-muted)}
+.side-btn{display:flex;align-items:center;gap:10px;width:100%;border:1px dashed #ffffff33;background:none;border-radius:10px;padding:10px;margin-top:8px;color:var(--side-text);min-height:44px}
+.side-foot{margin-top:auto;padding-top:14px;display:grid;gap:6px}
+.side-foot .side-btn{border-style:solid;border-color:#ffffff1f}
+.side-foot .side-btn.active{background:var(--side-2)}
+.backup-warn{font-size:12.5px;color:#ffd27a;padding:6px 10px}
+
+/* Main */
+main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.topbar{background:var(--surface);border-bottom:1px solid var(--line);padding:calc(10px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 0 16px}
+.top-row{display:flex;align-items:center;gap:10px;min-height:44px}
+.top-row h1{font-size:21px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top-row h1 small{font-weight:400;color:var(--muted);font-size:15px;margin-left:6px}
+.menu-btn{display:none}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin-top:6px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{border:0;background:none;padding:10px 14px 12px;border-bottom:3px solid transparent;color:var(--muted);font-weight:600;white-space:nowrap;min-height:44px}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+#view{flex:1;overflow:auto;padding:16px calc(16px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) 16px;-webkit-overflow-scrolling:touch}
+
+/* Common UI */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 14px;min-height:44px;font-weight:600;white-space:nowrap}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.danger{color:var(--bad)}
+.btn.primary.danger-fill{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.sm{min-height:36px;padding:6px 10px;font-size:14px}
+.btn.ghost{border-color:transparent;background:none}
+.icon-btn{border:0;background:none;width:44px;height:44px;border-radius:10px;font-size:20px;display:grid;place-items:center;color:inherit}
+.icon-btn:hover{background:var(--surface-2)}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.toolbar .spacer{flex:1}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:14px;min-height:36px}
+.chip.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.chip.file{padding:0 4px 0 0;max-width:100%}
+.chip.file .link{border:0;background:none;padding:6px 4px 6px 12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;color:var(--accent)}
+.chip .x{border:0;background:none;color:var(--muted);width:30px;height:30px;border-radius:50%}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.muted{color:var(--muted)}
+.small{font-size:13.5px}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--neutral-soft);color:var(--muted)}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}.tag.bad{background:var(--bad-soft);color:var(--bad)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}.tag.info{background:var(--info-soft);color:var(--info)}
+.tag.accent{background:var(--accent-soft);color:var(--accent)}
+.empty{text-align:center;padding:48px 16px;color:var(--muted)}
+.empty h2{color:var(--text);margin-bottom:8px;font-size:20px}
+.empty .btn{margin:14px 4px 0}
+.section-h{font-size:16px;margin:22px 0 10px;display:flex;align-items:center;gap:8px}
+.section-h:first-child{margin-top:0}
+.pre{white-space:pre-wrap;word-break:break-word}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start}
+.files{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+
+/* Forms */
+.field{display:grid;gap:5px;margin-bottom:12px}
+.field>span{font-size:13px;font-weight:600;color:var(--muted)}
+.inp,select.inp,textarea.inp{width:100%;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 12px;min-height:44px;font-size:16px}
+textarea.inp{min-height:96px;resize:vertical}
+.inp:focus{outline:2px solid var(--accent);outline-offset:-1px;background:var(--surface)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatches label{position:relative}
+.swatches input{position:absolute;opacity:0}
+.swatches span{display:block;width:36px;height:36px;border-radius:50%;border:3px solid transparent}
+.swatches input:checked+span{border-color:var(--text)}
+.check{display:flex;align-items:center;gap:10px;min-height:44px}
+.check input{width:22px;height:22px}
+
+/* Avatars & students */
+.av{width:44px;height:44px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:700;color:#fff;font-size:15px;object-fit:cover;background:#8892a6}
+.av.lg{width:96px;height:96px;font-size:30px}
+.av.sm{width:32px;height:32px;font-size:12px}
+.st-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.st-card{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);background:var(--surface);border-radius:var(--radius);text-align:left;box-shadow:var(--shadow);min-height:68px}
+.st-card .nm{font-weight:600;line-height:1.25}
+.st-card .meta{font-size:13px;color:var(--muted);margin-top:2px}
+.ln{text-transform:uppercase;letter-spacing:.01em}
+
+/* Grade table */
+.gt-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);max-height:calc(100dvh - 210px);-webkit-overflow-scrolling:touch}
+table.gt{border-collapse:separate;border-spacing:0;min-width:100%}
+.gt th,.gt td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:0;background:var(--surface)}
+.gt thead th{position:sticky;top:0;z-index:2;background:var(--surface-2);font-weight:600;text-align:center;vertical-align:bottom}
+.gt .name{position:sticky;left:0;z-index:1;text-align:left;min-width:190px;max-width:240px;padding:6px 10px}
+.gt thead .name{z-index:3}
+.gt tfoot td{position:sticky;bottom:0;z-index:1;background:var(--surface-2);font-weight:600;text-align:center;padding:8px 6px}
+.gt tfoot .name{z-index:2}
+.gt .namebtn{border:0;background:none;padding:4px 0;text-align:left;display:flex;align-items:center;gap:8px;width:100%}
+.colh{min-width:84px;max-width:140px;padding:8px 6px!important;cursor:pointer}
+.colh .ct{font-size:14px;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.colh .cm{font-size:11.5px;color:var(--muted);font-weight:400;margin-top:3px}
+.colh:hover{background:var(--accent-soft)}
+.gt td.cell{text-align:center}
+.gin{width:100%;min-width:72px;height:44px;border:0;background:transparent;text-align:center;font-size:17px;font-variant-numeric:tabular-nums}
+.gin:focus{outline:2px solid var(--accent);outline-offset:-2px;background:var(--surface)}
+.g-ok{background:var(--ok-soft)!important;color:var(--ok)}
+.g-warn{background:var(--warn-soft)!important;color:var(--warn)}
+.g-bad{background:var(--bad-soft)!important;color:var(--bad)}
+.g-abs,.g-exc,.g-ne{background:var(--neutral-soft)!important;color:var(--muted)}
+.gt td.avg{text-align:center;font-weight:700;min-width:96px;padding:4px 8px;font-variant-numeric:tabular-nums}
+.gt td.avg small{display:block;font-weight:500;font-size:12px;opacity:.85}
+.legend{font-size:13px;color:var(--muted);margin-top:10px}
+
+/* Attendance */
+.att-list{display:grid;gap:8px}
+.att-row{display:grid;grid-template-columns:minmax(160px,1fr) auto;gap:8px 12px;align-items:center;padding:8px 12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
+.att-row .who{display:flex;align-items:center;gap:10px;min-width:0}
+.att-row .who .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seg{display:flex;gap:6px}
+.seg button{min-width:52px;height:44px;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;font-weight:700;color:var(--muted)}
+.seg button.on.st-P{background:var(--ok);border-color:var(--ok);color:#fff}
+.seg button.on.st-A{background:var(--bad);border-color:var(--bad);color:#fff}
+.seg button.on.st-R{background:var(--warn);border-color:var(--warn);color:#fff}
+.seg button.on.st-J{background:var(--info);border-color:var(--info);color:#fff}
+.att-row .note{grid-column:1/-1}
+.att-date{display:flex;align-items:center;gap:6px}
+.att-date .inp{width:auto}
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+table.plain{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.plain th,.plain td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
+.plain th{font-size:13px;color:var(--muted);background:var(--surface-2)}
+.plain td.num,.plain th.num{text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
+.plain tr:last-child td{border-bottom:0}
+.tbl-scroll{overflow-x:auto}
+
+/* Journal & DAccE */
+.entries{display:grid;gap:12px}
+.entry{padding:14px 16px}
+.entry-h{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.entry-h .ttl{font-weight:700;font-size:17px;flex:1;min-width:180px}
+.entry .when{font-size:13px;color:var(--muted)}
+.entry .body{margin-top:8px}
+.hw{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--warn-soft)}
+.hw b{color:var(--warn)}
+.upcoming{padding:12px 16px;margin-bottom:16px}
+.upcoming li{margin:4px 0}
+
+/* Profile */
+.profile-head{display:flex;gap:16px;align-items:center;padding:16px;margin-bottom:16px;flex-wrap:wrap}
+.profile-head .nm{font-size:24px;font-weight:700}
+.photo-btn{border:0;background:none;padding:0;border-radius:50%;position:relative}
+.photo-btn::after{content:"📷";position:absolute;right:-2px;bottom:-2px;background:var(--surface);border-radius:50%;width:30px;height:30px;display:grid;place-items:center;box-shadow:var(--shadow);font-size:15px}
+.kpis{display:flex;gap:10px;flex-wrap:wrap}
+.kpi{padding:8px 14px;border-radius:10px;background:var(--surface-2);min-width:96px}
+.kpi b{display:block;font-size:20px}
+.kpi span{font-size:12px;color:var(--muted)}
+.pad{padding:16px}
+
+/* Modal */
+.mback{position:fixed;inset:0;background:rgb(10 14 22/.45);display:grid;place-items:center;padding:16px;z-index:50;animation:fade .15s}
+.modal{background:var(--surface);color:var(--text);border-radius:16px;width:min(560px,100%);max-height:calc(100dvh - 32px);display:flex;flex-direction:column;box-shadow:0 20px 60px rgb(0 0 0/.3)}
+.modal.wide{width:min(860px,100%)}
+.modal>header{display:flex;align-items:center;padding:12px 8px 8px 18px;border-bottom:1px solid var(--line)}
+.modal>header h2{flex:1;font-size:18px}
+.mbody{padding:16px 18px;overflow:auto}
+.modal>footer{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);flex-wrap:wrap}
+.modal>footer:empty{display:none}
+.modal>footer .left{margin-right:auto}
+.viewer img,.viewer iframe{width:100%;max-height:70dvh;object-fit:contain;border:0;border-radius:8px;background:var(--surface-2)}
+.viewer iframe{height:70dvh}
+@keyframes fade{from{opacity:0}}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:#1d2433;color:#fff;padding:12px 18px;border-radius:12px;opacity:0;transition:.2s;z-index:60;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%)}
+
+/* Narrow screens (iPad portrait split view, phones) */
+@media (max-width:900px){
+  #app{grid-template-columns:1fr}
+  #sidebar{position:fixed;inset:0 auto 0 0;width:290px;z-index:40;transform:translateX(-105%);transition:transform .2s;box-shadow:0 0 40px rgb(0 0 0/.3)}
+  body.side-open #sidebar{transform:none}
+  body.side-open::after{content:"";position:fixed;inset:0;background:rgb(0 0 0/.35);z-index:30}
+  .menu-btn{display:grid}
+}
+@media (max-width:560px){
+  .row2,.row3{grid-template-columns:1fr}
+  .att-row{grid-template-columns:1fr}
+  .seg button{min-width:0;flex:1}
+  .grid2{grid-template-columns:1fr}
+}
+@media print{
+  body{overflow:visible;background:#fff}
+  #app{display:block;height:auto}
+  #sidebar,.tabs,.toolbar,.menu-btn,.no-print{display:none!important}
+  #view{overflow:visible}
+  .gt-wrap{max-height:none;overflow:visible;border:0}
+  .gt thead th,.gt .name,.gt tfoot td{position:static}
+  .gin{font-size:13px;height:28px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar" aria-label="Classes"></aside>
+  <main>
+    <header class="topbar" id="topbar"></header>
+    <section id="view" tabindex="-1"></section>
+  </main>
+</div>
+<div id="modal-root"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+/* ============================================================
+   Carnet du prof — application de classe hors ligne pour iPad
+   Données stockées localement (IndexedDB) sur l'appareil.
+   ============================================================ */
+
+// ---------- Helpers ----------
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const isoOf = d => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10); };
+const todayISO = () => isoOf(new Date());
+const dateOf = iso => new Date(iso + 'T12:00:00');
+const fmtDate = (iso, opts = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) => iso ? dateOf(iso).toLocaleDateString('fr-BE', opts) : '';
+const fmtShort = iso => iso ? dateOf(iso).toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit' }) : '';
+const fmtNum = (n, d = 1) => Number.isFinite(n) ? n.toLocaleString('fr-BE', { maximumFractionDigits: d }) : '–';
+const fmtSize = b => b < 1024 ? b + ' o' : b < 1048576 ? (b / 1024).toFixed(0) + ' Ko' : (b / 1048576).toFixed(1) + ' Mo';
+const collator = new Intl.Collator('fr', { sensitivity: 'base' });
+const addDays = (iso, n, skipWeekend) => {
+  const d = dateOf(iso);
+  do { d.setDate(d.getDate() + n); } while (skipWeekend && (d.getDay() === 0 || d.getDay() === 6));
+  return isoOf(d);
+};
+
+const COLORS = ['#2f6fec', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#64748b'];
+const STATUS = {
+  P: { label: 'Présent', short: 'P' },
+  A: { label: 'Absent', short: 'A' },
+  R: { label: 'Retard', short: 'R' },
+  J: { label: 'Absence justifiée', short: 'J' }
+};
+const DACCE_TYPES = ['Observation', 'Point fort', 'Difficulté', 'Aménagement raisonnable', 'Remédiation', 'Contact parents', 'Plan individuel (PIA)', 'Orientation', 'Autre'];
+const DACCE_TAG = { 'Point fort': 'ok', 'Difficulté': 'bad', 'Aménagement raisonnable': 'info', 'Remédiation': 'warn', 'Contact parents': 'accent', 'Plan individuel (PIA)': 'info' };
+
+// ---------- Storage (IndexedDB, fallback mémoire) ----------
+const DB = {
+  db: null, ok: false, mem: { kv: new Map(), files: new Map() },
+  async open() {
+    try {
+      this.db = await new Promise((res, rej) => {
+        const r = indexedDB.open('carnet-prof', 1);
+        r.onupgradeneeded = () => { r.result.createObjectStore('kv'); r.result.createObjectStore('files'); };
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      });
+      this.ok = true;
+    } catch (e) { console.warn('IndexedDB indisponible', e); this.ok = false; }
+  },
+  _req(store, mode, fn) {
+    return new Promise((res, rej) => {
+      const t = this.db.transaction(store, mode);
+      const r = fn(t.objectStore(store));
+      t.oncomplete = () => res(r ? r.result : undefined);
+      t.onerror = t.onabort = () => rej(t.error);
+    });
+  },
+  get(store, k) { return this.ok ? this._req(store, 'readonly', s => s.get(k)) : Promise.resolve(this.mem[store].get(k)); },
+  put(store, k, v) { if (!this.ok) { this.mem[store].set(k, v); return Promise.resolve(); } return this._req(store, 'readwrite', s => s.put(v, k)); },
+  del(store, k) { if (!this.ok) { this.mem[store].delete(k); return Promise.resolve(); } return this._req(store, 'readwrite', s => s.delete(k)); },
+  keys(store) { return this.ok ? this._req(store, 'readonly', s => s.getAllKeys()) : Promise.resolve([...this.mem[store].keys()]); },
+  clear(store) { if (!this.ok) { this.mem[store].clear(); return Promise.resolve(); } return this._req(store, 'readwrite', s => s.clear()); }
+};
+
+// ---------- State ----------
+let S;
+const defaultState = () => ({
+  version: 1,
+  settings: { teacher: '', school: '', year: '', scale: 20, pass: 50, absZero: false, skipWeekend: true, theme: 'auto', lastBackup: null },
+  classes: [],
+  ui: { view: 'class', classId: null, tab: 'eleves', studentId: null, attDate: null, gradeCat: '', dacceStudent: '', dacceType: '' }
+});
+function normalize(st) {
+  const d = defaultState();
+  st = st && typeof st === 'object' ? st : d;
+  st.settings = { ...d.settings, ...(st.settings || {}) };
+  st.ui = { ...d.ui, ...(st.ui || {}) };
+  st.classes = Array.isArray(st.classes) ? st.classes : [];
+  for (const c of st.classes) {
+    c.students ||= []; c.columns ||= []; c.grades ||= {}; c.attendance ||= {}; c.journal ||= []; c.dossier ||= [];
+    c.color ||= COLORS[0];
+    for (const s of c.students) s.files ||= [];
+  }
+  return st;
+}
+let saveTimer = null;
+function save() { clearTimeout(saveTimer); saveTimer = setTimeout(flush, 250); }
+function flush() {
+  clearTimeout(saveTimer); saveTimer = null;
+  return DB.put('kv', 'state', JSON.parse(JSON.stringify(S))).catch(e => toast('Erreur d’enregistrement : ' + e.message));
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden && saveTimer) flush(); });
+window.addEventListener('pagehide', () => { if (saveTimer) flush(); });
+
+const cls = () => S.classes.find(c => c.id === S.ui.classId);
+const sortStudents = list => [...list].sort((a, b) => collator.compare(a.lastName, b.lastName) || collator.compare(a.firstName, b.firstName));
+const studentName = s => s ? `${s.lastName} ${s.firstName}`.trim() : '(élève supprimé)';
+const initials = s => ((s.firstName || '')[0] || '') + ((s.lastName || '')[0] || '');
+function avatar(s, size = '') {
+  if (s.photo) return `<img class="av ${size}" src="${s.photo}" alt="">`;
+  const hue = [...(s.lastName + s.firstName)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 360, 7);
+  return `<span class="av ${size}" style="background:hsl(${hue} 45% 48%)" aria-hidden="true">${esc(initials(s).toUpperCase())}</span>`;
+}
+const nameHTML = s => `<span><span class="ln">${esc(s.lastName)}</span> ${esc(s.firstName)}</span>`;
+
+// ---------- Grades ----------
+const sortedCols = c => [...c.columns].sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.created || 0) - (b.created || 0));
+const visibleCols = c => sortedCols(c).filter(col => !S.ui.gradeCat || col.category === S.ui.gradeCat);
+function studentAvg(c, sid, cols = visibleCols(c)) {
+  let num = 0, den = 0;
+  for (const col of cols) {
+    const v = c.grades[col.id]?.[sid], w = Number(col.weight) || 0;
+    if (!w || !col.max) continue;
+    if (typeof v === 'number') { num += v / col.max * w; den += w; }
+    else if (v === 'ABS' && S.settings.absZero) den += w;
+  }
+  return den ? num / den * 100 : NaN;
+}
+function colAvg(c, col) {
+  const vals = Object.values(c.grades[col.id] || {}).filter(v => typeof v === 'number');
+  return vals.length && col.max ? vals.reduce((a, b) => a + b, 0) / vals.length / col.max * 100 : NaN;
+}
+function pctClass(p) {
+  if (!Number.isFinite(p)) return '';
+  const pass = Number(S.settings.pass) || 50;
+  return p < pass ? 'g-bad' : p < pass + 10 ? 'g-warn' : 'g-ok';
+}
+function gradeClass(v, col) {
+  if (v == null) return '';
+  if (typeof v === 'number') return pctClass(v / col.max * 100);
+  return { ABS: 'g-abs', EXC: 'g-exc', NE: 'g-ne' }[v] || '';
+}
+const fmtGrade = v => v == null ? '' : typeof v === 'number' ? String(v).replace('.', ',') : ({ ABS: 'abs', EXC: 'exc', NE: 'ne' }[v] || v);
+const fmtScaled = p => Number.isFinite(p) ? `${fmtNum(p / 100 * S.settings.scale)}/${S.settings.scale}` : '';
+function parseGrade(raw, max) {
+  const t = String(raw).trim().toLowerCase().replace(/,/g, '.');
+  if (!t) return { v: null };
+  if (['abs', 'a', 'absent'].includes(t)) return { v: 'ABS' };
+  if (['exc', 'ex', 'e', 'excusé', 'excuse', 'm'].includes(t)) return { v: 'EXC' };
+  if (['ne', 'n', '-', 'nr'].includes(t)) return { v: 'NE' };
+  let n;
+  const m = t.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
+  if (m) n = Number(m[1]) / Number(m[2]) * max;
+  else if (/^\d+(\.\d+)?%$/.test(t)) n = parseFloat(t) / 100 * max;
+  else n = Number(t);
+  if (!Number.isFinite(n) || n < 0) return { err: true };
+  return { v: Math.round(n * 100) / 100 };
+}
+
+// ---------- Attendance ----------
+function attStats(c, sid) {
+  const r = { days: 0, P: 0, A: 0, R: 0, J: 0 };
+  for (const d in c.attendance) {
+    const e = c.attendance[d][sid];
+    if (!e) continue;
+    r.days++; r[e.s] = (r[e.s] || 0) + 1;
+  }
+  return r;
+}
+
+// ---------- Files ----------
+function pickFiles({ accept = '', multiple = true, capture } = {}) {
+  return new Promise(res => {
+    const i = document.createElement('input');
+    i.type = 'file'; i.accept = accept; i.multiple = multiple; i.hidden = true;
+    if (capture) i.setAttribute('capture', capture);
+    document.body.append(i);
+    i.addEventListener('change', () => { res([...i.files]); i.remove(); });
+    i.addEventListener('cancel', () => { res([]); i.remove(); });
+    i.click();
+  });
+}
+async function storeFiles(files) {
+  const out = [];
+  for (const f of files) {
+    const id = uid();
+    const blob = new Blob([await f.arrayBuffer()], { type: f.type || 'application/octet-stream' });
+    await DB.put('files', id, { blob, name: f.name, type: blob.type, size: blob.size });
+    out.push({ id, name: f.name || 'fichier', type: blob.type, size: blob.size, date: todayISO() });
+  }
+  return out;
+}
+const fileIcon = f => f.type?.startsWith('image/') ? '🖼️' : f.type === 'application/pdf' ? '📄' : f.type?.startsWith('audio/') ? '🎵' : f.type?.startsWith('video/') ? '🎬' : '📎';
+const fileChips = list => list?.length ? `<div class="files">${list.map(f => `<span class="chip file"><button type="button" class="link" data-act="open-file" data-id="${f.id}">${fileIcon(f)} ${esc(f.name)}</button></span>`).join('')}</div>` : '';
+async function deleteFiles(list) { for (const f of list || []) await DB.del('files', f.id); }
+async function openFile(id) {
+  const rec = await DB.get('files', id);
+  if (!rec) return toast('Fichier introuvable');
+  const url = URL.createObjectURL(rec.blob);
+  const isImg = rec.type.startsWith('image/'), isPdf = rec.type === 'application/pdf';
+  const preview = isImg ? `<img src="${url}" alt="">` : isPdf ? `<iframe src="${url}" title="${esc(rec.name)}"></iframe>`
+    : `<div class="empty">${fileIcon(rec)}<br>${esc(rec.name)}<br><span class="small">${fmtSize(rec.size)}</span></div>`;
+  modal({
+    title: rec.name, wide: true, body: `<div class="viewer">${preview}</div>`,
+    actions: [
+      { label: 'Partager / Enregistrer', cls: 'primary', onClick: () => { saveBlob(rec.blob, rec.name); return false; } },
+      { label: 'Ouvrir', onClick: () => { window.open(url, '_blank'); return false; } },
+      { label: 'Fermer' }
+    ],
+    onClose: () => setTimeout(() => URL.revokeObjectURL(url), 60000)
+  });
+}
+async function saveBlob(blob, name) {
+  const file = new File([blob], name, { type: blob.type });
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name }); return true; }
+    catch (e) { if (e.name === 'AbortError') return false; }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.append(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  return true;
+}
+function resizeImage(file, size = 256) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const s = Math.min(img.width, img.height), cv = document.createElement('canvas');
+      cv.width = cv.height = size;
+      cv.getContext('2d').drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+      URL.revokeObjectURL(url); res(cv.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Image illisible')); };
+    img.src = url;
+  });
+}
+// Éditeur de pièces jointes utilisé dans les fenêtres (journal, DAccE)
+function attachEditor(box, list) {
+  const added = [], removed = [];
+  const draw = () => {
+    box.innerHTML = `<div class="files">${list.map(f => `<span class="chip file"><button type="button" class="link" data-act="open-file" data-id="${f.id}">${fileIcon(f)} ${esc(f.name)}</button><button type="button" class="x" data-rm="${f.id}" aria-label="Retirer ${esc(f.name)}">✕</button></span>`).join('')}
+      <button type="button" class="btn sm" data-add>📎 Joindre un fichier</button>
+      <button type="button" class="btn sm" data-cam>📷 Photo</button></div>`;
+  };
+  box.addEventListener('click', async e => {
+    const rm = e.target.closest('[data-rm]');
+    if (rm) { const i = list.findIndex(f => f.id === rm.dataset.rm); if (i >= 0) removed.push(...list.splice(i, 1)); draw(); return; }
+    let files = null;
+    if (e.target.closest('[data-add]')) files = await pickFiles();
+    if (e.target.closest('[data-cam]')) files = await pickFiles({ accept: 'image/*', capture: 'environment', multiple: false });
+    if (files?.length) { const m = await storeFiles(files); list.push(...m); added.push(...m); draw(); }
+  });
+  draw();
+  return { list, commit: () => deleteFiles(removed), rollback: () => deleteFiles(added) };
+}
+
+// ---------- Modal, confirm, toast ----------
+function modal({ title, body, actions = [], wide = false, onClose, onOpen }) {
+  const wrap = document.createElement('div');
+  wrap.className = 'mback';
+  wrap.innerHTML = `<div class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <header><h2>${esc(title)}</h2><button type="button" class="icon-btn" data-close aria-label="Fermer">✕</button></header>
+    <div class="mbody">${body}</div><footer></footer></div>`;
+  let closed = false;
+  const close = v => { if (closed) return; closed = true; wrap.remove(); onClose?.(v); };
+  const foot = wrap.querySelector('footer');
+  for (const a of actions) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn ' + (a.cls || ''); b.textContent = a.label;
+    b.addEventListener('click', async () => {
+      b.disabled = true;
+      try { const r = a.onClick ? await a.onClick(wrap) : undefined; if (r !== false) close(a.value); }
+      finally { b.disabled = false; }
+    });
+    foot.append(b);
+  }
+  wrap.addEventListener('click', e => { if (e.target === wrap || e.target.closest('[data-close]')) close(); });
+  wrap._close = close;
+  $('#modal-root').append(wrap);
+  onOpen?.(wrap);
+  return { el: wrap, close };
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#modal-root').lastElementChild?._close(); });
+function confirmDlg(msg, okLabel = 'Supprimer', danger = true) {
+  return new Promise(res => modal({
+    title: 'Confirmation', body: `<p class="pre">${esc(msg)}</p>`,
+    actions: [{ label: 'Annuler', value: false }, { label: okLabel, cls: danger ? 'primary danger-fill' : 'primary', value: true }],
+    onClose: v => res(!!v)
+  }));
+}
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+const formData = el => Object.fromEntries($$('[name]', el).map(i => [i.name, i.type === 'checkbox' ? i.checked : i.value.trim()]));
+
+// ============================================================
+// Rendering
+// ============================================================
+function applyTheme() {
+  const t = S.settings.theme;
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  else delete document.documentElement.dataset.theme;
+}
+function render() { applyTheme(); renderSidebar(); renderMain(); }
+
+function renderSidebar() {
+  const days = S.settings.lastBackup ? (Date.now() - new Date(S.settings.lastBackup)) / 864e5 : Infinity;
+  const warn = S.classes.length && days > 7;
+  $('#sidebar').innerHTML = `
+    <div class="brand"><div class="brand-mark">C</div><div><b>Carnet du prof</b><small>${esc(S.settings.year || S.settings.school || 'Ma classe sur iPad')}</small></div></div>
+    <div class="side-h">Mes classes</div>
+    ${S.classes.map(c => `<button class="cls-item ${S.ui.view === 'class' && c.id === S.ui.classId ? 'active' : ''}" style="--dot:${c.color}" data-act="select-class" data-id="${c.id}">
+      <span class="dot"></span><span><span class="nm">${esc(c.name)}</span><span class="sub">${esc(c.subject || '')}${c.subject ? ' · ' : ''}${c.students.length} élève${c.students.length > 1 ? 's' : ''}</span></span></button>`).join('')}
+    <button class="side-btn" data-act="new-class">＋ Nouvelle classe</button>
+    <div class="side-foot">
+      ${warn ? `<div class="backup-warn">⚠︎ Pensez à faire une sauvegarde${Number.isFinite(days) ? ` (dernière il y a ${Math.floor(days)} j)` : ''}.</div>` : ''}
+      <button class="side-btn ${S.ui.view === 'settings' ? 'active' : ''}" data-act="settings">⚙︎ Réglages &amp; sauvegarde</button>
+    </div>`;
+}
+
+const TABS = [['eleves', 'Élèves'], ['cotes', 'Carnet de cotes'], ['presences', 'Présences'], ['journal', 'Journal de classe'], ['dacce', 'DAccE']];
+function renderMain() {
+  const top = $('#topbar'), view = $('#view');
+  const menu = `<button class="icon-btn menu-btn" data-act="toggle-side" aria-label="Menu">☰</button>`;
+  const c = cls();
+  if (S.ui.view === 'settings') {
+    top.innerHTML = `<div class="top-row">${menu}<h1>Réglages &amp; sauvegarde</h1></div><div style="height:10px"></div>`;
+    view.innerHTML = viewSettings();
+    return;
+  }
+  if (!c) {
+    if (S.classes.length) { S.ui.classId = S.classes[0].id; return renderMain(); }
+    top.innerHTML = `<div class="top-row">${menu}<h1>Bienvenue</h1></div><div style="height:10px"></div>`;
+    view.innerHTML = `<div class="empty"><h2>Bienvenue dans votre carnet</h2>
+      <p>Créez une première classe pour y ajouter vos élèves, vos cotes, les présences, le journal de classe et le DAccE.<br>Toutes les données restent sur cet iPad.</p>
+      <button class="btn primary" data-act="new-class">＋ Créer une classe</button>
+      <button class="btn" data-act="load-demo">Essayer avec une classe d’exemple</button></div>`;
+    return;
+  }
+  top.innerHTML = `<div class="top-row">${menu}<span class="dot" style="width:12px;height:12px;border-radius:50%;background:${c.color}"></span>
+      <h1>${esc(c.name)}${c.subject ? `<small>${esc(c.subject)}</small>` : ''}</h1>
+      <button class="btn sm ghost" data-act="edit-class">Modifier</button></div>
+    <nav class="tabs" role="tablist">${TABS.map(([k, l]) => `<button class="tab ${S.ui.tab === k ? 'active' : ''}" role="tab" aria-selected="${S.ui.tab === k}" data-act="tab" data-tab="${k}">${l}</button>`).join('')}</nav>`;
+  const st = S.ui.studentId && c.students.find(s => s.id === S.ui.studentId);
+  if (st) { view.innerHTML = viewStudent(c, st); return; }
+  S.ui.studentId = null;
+  view.innerHTML = ({ eleves: viewStudents, cotes: viewGrades, presences: viewAttendance, journal: viewJournal, dacce: viewDacce }[S.ui.tab] || viewStudents)(c);
+}
+
+// ---------- Élèves ----------
+function viewStudents(c) {
+  const list = sortStudents(c.students);
+  const tb = `<div class="toolbar"><button class="btn primary" data-act="add-student">＋ Élève</button>
+    <button class="btn" data-act="import-students">Importer une liste</button><span class="spacer"></span>
+    <span class="muted small">${list.length} élève${list.length > 1 ? 's' : ''}</span></div>`;
+  if (!list.length) return tb + `<div class="empty"><h2>Aucun élève</h2><p>Ajoutez vos élèves un par un ou collez une liste (par exemple depuis Excel ou un PDF).</p></div>`;
+  return tb + `<div class="st-grid">${list.map(s => {
+    const avg = studentAvg(c, s.id, c.columns), a = attStats(c, s.id), nd = c.dossier.filter(d => d.sid === s.id).length;
+    const bits = [];
+    if (Number.isFinite(avg)) bits.push(`<span class="tag ${pctClass(avg).replace('g-', '')}">${fmtNum(avg, 0)} %</span>`);
+    if (a.A) bits.push(`${a.A} abs.`);
+    if (a.R) bits.push(`${a.R} ret.`);
+    if (nd) bits.push(`${nd} note${nd > 1 ? 's' : ''} DAccE`);
+    return `<button class="st-card" data-act="open-student" data-id="${s.id}">${avatar(s)}<span><span class="nm">${nameHTML(s)}</span><span class="meta" style="display:block">${bits.join(' · ') || '&nbsp;'}</span></span></button>`;
+  }).join('')}</div>`;
+}
+
+function viewStudent(c, s) {
+  const avg = studentAvg(c, s.id, c.columns), a = attStats(c, s.id);
+  const cols = sortedCols(c);
+  const absences = Object.keys(c.attendance).sort().reverse().map(d => [d, c.attendance[d][s.id]]).filter(([, e]) => e && e.s !== 'P');
+  const notes = c.dossier.filter(d => d.sid === s.id).sort((x, y) => y.date.localeCompare(x.date));
+  const f = (name, label, type = 'text') => `<label class="field"><span>${label}</span><input class="inp" type="${type}" data-sfield="${name}" value="${esc(s[name] || '')}"></label>`;
+  return `<div class="toolbar no-print"><button class="btn" data-act="back">‹ Retour</button><span class="spacer"></span>
+      <button class="btn danger" data-act="delete-student" data-id="${s.id}">Supprimer l’élève</button></div>
+    <div class="card profile-head">
+      <button class="photo-btn" data-act="student-photo" aria-label="Changer la photo">${avatar(s, 'lg')}</button>
+      <div style="flex:1;min-width:200px"><div class="nm">${nameHTML(s)}</div><div class="muted">${esc(c.name)}${s.birth ? ' · né(e) le ' + fmtDate(s.birth, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}</div></div>
+      <div class="kpis">
+        <div class="kpi"><b class="${pctClass(avg)}" style="background:none!important">${Number.isFinite(avg) ? fmtNum(avg, 0) + ' %' : '–'}</b><span>Moyenne ${fmtScaled(avg)}</span></div>
+        <div class="kpi"><b>${a.A || 0}</b><span>Absences</span></div>
+        <div class="kpi"><b>${a.J || 0}</b><span>Justifiées</span></div>
+        <div class="kpi"><b>${a.R || 0}</b><span>Retards</span></div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="card pad">
+          <h3 class="section-h">Fiche</h3>
+          <div class="row2">${f('lastName', 'Nom')}${f('firstName', 'Prénom')}</div>
+          <div class="row2">${f('birth', 'Date de naissance', 'date')}${f('email', 'E-mail', 'email')}</div>
+          <div class="row2">${f('parents', 'Responsable(s)')}${f('phone', 'Téléphone', 'tel')}</div>
+          <label class="field"><span>Remarques</span><textarea class="inp" data-sfield="notes">${esc(s.notes || '')}</textarea></label>
+          <h3 class="section-h">Pièces jointes</h3>
+          <div class="files">${(s.files || []).map(fl => `<span class="chip file"><button class="link" data-act="open-file" data-id="${fl.id}">${fileIcon(fl)} ${esc(fl.name)}</button><button class="x" data-act="del-sfile" data-id="${fl.id}" aria-label="Supprimer ${esc(fl.name)}">✕</button></span>`).join('')}
+            <button class="btn sm" data-act="student-add-file">📎 Joindre</button><button class="btn sm" data-act="student-add-photo">📷 Photo</button></div>
+        </div>
+      </div>
+      <div>
+        <div class="card pad">
+          <h3 class="section-h">Résultats</h3>
+          ${cols.length ? `<div class="tbl-scroll"><table class="plain"><thead><tr><th>Évaluation</th><th>Date</th><th class="num">Cote</th><th class="num">%</th></tr></thead><tbody>
+          ${cols.map(col => { const v = c.grades[col.id]?.[s.id]; const p = typeof v === 'number' ? v / col.max * 100 : NaN;
+            return `<tr><td>${esc(col.title)}${col.category ? ` <span class="tag">${esc(col.category)}</span>` : ''}</td><td class="small muted">${fmtShort(col.date)}</td><td class="num">${v == null ? '–' : fmtGrade(v) + (typeof v === 'number' ? ' / ' + col.max : '')}</td><td class="num ${pctClass(p)}">${Number.isFinite(p) ? fmtNum(p, 0) + ' %' : ''}</td></tr>`; }).join('')}
+          </tbody></table></div>` : '<p class="muted">Aucune évaluation encodée.</p>'}
+          <h3 class="section-h">Absences et retards</h3>
+          ${absences.length ? `<ul>${absences.map(([d, e]) => `<li><b>${fmtDate(d)}</b> — ${STATUS[e.s].label}${e.n ? ` <span class="muted">(${esc(e.n)})</span>` : ''}</li>`).join('')}</ul>` : '<p class="muted">Aucune absence ni retard.</p>'}
+          <h3 class="section-h">DAccE <span class="spacer" style="flex:1"></span><button class="btn sm" data-act="new-dacce" data-sid="${s.id}">＋ Note</button></h3>
+          ${notes.length ? `<div class="entries">${notes.map(n => dacceCard(c, n, false)).join('')}</div>` : '<p class="muted">Aucune note dans le dossier d’accompagnement.</p>'}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ---------- Carnet de cotes ----------
+function viewGrades(c) {
+  const studs = sortStudents(c.students), cols = visibleCols(c);
+  const cats = [...new Set(c.columns.map(x => x.category).filter(Boolean))].sort(collator.compare);
+  if (S.ui.gradeCat && !cats.includes(S.ui.gradeCat)) S.ui.gradeCat = '';
+  const tb = `<div class="toolbar"><button class="btn primary" data-act="add-col">＋ Évaluation</button>
+    ${cats.length ? `<button class="chip ${!S.ui.gradeCat ? 'active' : ''}" data-act="grade-cat" data-cat="">Toutes</button>${cats.map(k => `<button class="chip ${S.ui.gradeCat === k ? 'active' : ''}" data-act="grade-cat" data-cat="${esc(k)}">${esc(k)}</button>`).join('')}` : ''}
+    <span class="spacer"></span><button class="btn sm" data-act="export-csv">Exporter (CSV)</button><button class="btn sm" data-act="print">Imprimer</button></div>`;
+  if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2><p>Ajoutez des élèves dans l’onglet « Élèves » pour commencer à coter.</p><button class="btn" data-act="tab" data-tab="eleves">Aller aux élèves</button></div>`;
+  if (!c.columns.length) return tb + `<div class="empty"><h2>Aucune évaluation</h2><p>Créez une colonne (interro, contrôle, travail…) avec son maximum et sa pondération.</p></div>`;
+  const classAvg = () => { const v = studs.map(s => studentAvg(c, s.id, cols)).filter(Number.isFinite); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN; };
+  const ca = classAvg();
+  return tb + `<div class="gt-wrap"><table class="gt">
+    <thead><tr><th class="name">Élève</th>${cols.map(col => `<th class="colh" data-act="edit-col" data-id="${col.id}" title="Modifier"><div class="ct">${esc(col.title)}</div><div class="cm">${fmtShort(col.date)} · /${fmtNum(col.max, 2)}${Number(col.weight) !== 1 ? ' · ×' + fmtNum(Number(col.weight), 2) : ''}</div>${col.category ? `<div class="cm">${esc(col.category)}</div>` : ''}</th>`).join('')}<th>Moyenne</th></tr></thead>
+    <tbody>${studs.map((s, ri) => { const avg = studentAvg(c, s.id, cols);
+      return `<tr><td class="name"><button class="namebtn" data-act="open-student" data-id="${s.id}">${avatar(s, 'sm')}<span>${nameHTML(s)}</span></button></td>
+      ${cols.map((col, ci) => { const v = c.grades[col.id]?.[s.id];
+        return `<td class="cell ${gradeClass(v, col)}"><input class="gin" data-col="${col.id}" data-sid="${s.id}" data-r="${ri}" data-c="${ci}" value="${esc(fmtGrade(v))}" inputmode="decimal" enterkeyhint="next" autocomplete="off" autocorrect="off" aria-label="${esc(studentName(s))} — ${esc(col.title)}"></td>`; }).join('')}
+      <td class="avg ${pctClass(avg)}" data-avg="${s.id}">${Number.isFinite(avg) ? fmtNum(avg, 0) + ' %<small>' + fmtScaled(avg) + '</small>' : '–'}</td></tr>`; }).join('')}</tbody>
+    <tfoot><tr><td class="name">Moyenne de classe</td>${cols.map(col => { const p = colAvg(c, col); return `<td data-cavg="${col.id}">${Number.isFinite(p) ? fmtNum(p, 0) + ' %' : '–'}</td>`; }).join('')}<td data-gavg>${Number.isFinite(ca) ? fmtNum(ca, 0) + ' %' : '–'}</td></tr></tfoot>
+  </table></div>
+  <p class="legend">Touchez une case pour coter. Saisie possible : <b>14,5</b> · <b>7/10</b> (converti) · <b>abs</b> (absent) · <b>exc</b> (excusé, non compté) · <b>ne</b> (non évalué). Touchez l’en-tête d’une colonne pour la modifier. ${S.settings.absZero ? 'Les « abs » comptent pour 0.' : 'Les « abs » ne sont pas comptés dans la moyenne.'}</p>`;
+}
+function onGradeChange(inp) {
+  const c = cls(); if (!c) return;
+  const col = c.columns.find(x => x.id === inp.dataset.col), sid = inp.dataset.sid;
+  if (!col) return;
+  const old = c.grades[col.id]?.[sid];
+  const r = parseGrade(inp.value, col.max);
+  if (r.err) { toast('Valeur non reconnue : un nombre, abs, exc ou ne'); inp.value = fmtGrade(old); return; }
+  c.grades[col.id] ||= {};
+  if (r.v == null) delete c.grades[col.id][sid]; else c.grades[col.id][sid] = r.v;
+  if (typeof r.v === 'number' && r.v > col.max) toast(`Attention : ${fmtGrade(r.v)} dépasse le maximum (${col.max})`);
+  inp.value = fmtGrade(r.v);
+  inp.parentElement.className = 'cell ' + gradeClass(r.v, col);
+  const cols = visibleCols(c), avg = studentAvg(c, sid, cols);
+  const ac = $(`[data-avg="${sid}"]`);
+  if (ac) { ac.className = 'avg ' + pctClass(avg); ac.innerHTML = Number.isFinite(avg) ? fmtNum(avg, 0) + ' %<small>' + fmtScaled(avg) + '</small>' : '–'; }
+  const cp = colAvg(c, col), cc = $(`[data-cavg="${col.id}"]`);
+  if (cc) cc.textContent = Number.isFinite(cp) ? fmtNum(cp, 0) + ' %' : '–';
+  const all = c.students.map(s => studentAvg(c, s.id, cols)).filter(Number.isFinite), g = $('[data-gavg]');
+  if (g) g.textContent = all.length ? fmtNum(all.reduce((a, b) => a + b, 0) / all.length, 0) + ' %' : '–';
+  save();
+}
+function editColumn(col) {
+  const c = cls(), isNew = !col;
+  col ||= { title: '', date: todayISO(), max: S.settings.scale, weight: 1, category: '' };
+  const cats = [...new Set(c.columns.map(x => x.category).filter(Boolean))];
+  const actions = [];
+  if (!isNew) actions.push({ label: 'Supprimer', cls: 'danger left', onClick: async () => {
+    if (!await confirmDlg(`Supprimer l’évaluation « ${col.title} » et toutes ses cotes ?`)) return false;
+    c.columns = c.columns.filter(x => x.id !== col.id); delete c.grades[col.id]; save(); renderMain();
+  } });
+  actions.push({ label: 'Annuler' }, { label: isNew ? 'Créer' : 'Enregistrer', cls: 'primary', onClick: el => {
+    const d = formData(el), max = parseFloat(d.max.replace(',', '.')), w = parseFloat(d.weight.replace(',', '.'));
+    if (!d.title) { toast('Donnez un titre à l’évaluation'); return false; }
+    if (!(max > 0)) { toast('Le maximum doit être supérieur à 0'); return false; }
+    Object.assign(col, { title: d.title, date: d.date, max, weight: w >= 0 ? w : 1, category: d.category });
+    if (isNew) { col.id = uid(); col.created = Date.now(); c.columns.push(col); }
+    save(); renderMain();
+  } });
+  modal({
+    title: isNew ? 'Nouvelle évaluation' : 'Modifier l’évaluation', actions,
+    body: `<label class="field"><span>Titre</span><input class="inp" name="title" value="${esc(col.title)}" placeholder="Ex. Interro conjugaison"></label>
+      <div class="row3"><label class="field"><span>Date</span><input class="inp" type="date" name="date" value="${esc(col.date)}"></label>
+      <label class="field"><span>Sur (maximum)</span><input class="inp" name="max" inputmode="decimal" value="${esc(String(col.max).replace('.', ','))}"></label>
+      <label class="field"><span>Pondération</span><input class="inp" name="weight" inputmode="decimal" value="${esc(String(col.weight).replace('.', ','))}"></label></div>
+      <label class="field"><span>Catégorie / compétence (facultatif)</span><input class="inp" name="category" list="cat-list" value="${esc(col.category || '')}" placeholder="Ex. Lire, Écrire, Formatif, Certificatif…">
+      <datalist id="cat-list">${cats.map(k => `<option value="${esc(k)}">`).join('')}</datalist></label>`
+  });
+}
+function exportCSV() {
+  const c = cls(), cols = sortedCols(c), studs = sortStudents(c.students);
+  const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const lines = [['Nom', 'Prénom', ...cols.map(col => `${col.title} (/${col.max})`), 'Moyenne %'].map(q).join(';')];
+  for (const s of studs) {
+    const avg = studentAvg(c, s.id, cols);
+    lines.push([s.lastName, s.firstName, ...cols.map(col => fmtGrade(c.grades[col.id]?.[s.id])), Number.isFinite(avg) ? avg.toFixed(1).replace('.', ',') : ''].map(q).join(';'));
+  }
+  saveBlob(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv' }), `cotes-${c.name.replace(/[^\w-]+/g, '_')}-${todayISO()}.csv`);
+}
+
+// ---------- Présences ----------
+function viewAttendance(c) {
+  const date = S.ui.attDate || todayISO();
+  const day = c.attendance[date] || {};
+  const studs = sortStudents(c.students);
+  const count = { P: 0, A: 0, R: 0, J: 0 };
+  Object.values(day).forEach(e => count[e.s]++);
+  const tb = `<div class="toolbar"><div class="att-date"><button class="btn" data-act="att-shift" data-n="-1" aria-label="Jour précédent">‹</button>
+      <input class="inp" type="date" id="att-date" value="${date}"><button class="btn" data-act="att-shift" data-n="1" aria-label="Jour suivant">›</button></div>
+      <button class="btn" data-act="att-today">Aujourd’hui</button><span class="spacer"></span>
+      <button class="btn primary" data-act="att-all">✓ Tous présents</button></div>`;
+  if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2></div>`;
+  const recap = studs.map(s => [s, attStats(c, s.id)]);
+  const dates = Object.keys(c.attendance).sort().reverse();
+  return tb + `<h3 class="section-h">${fmtDate(date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</h3>
+    <div class="stats"><span class="tag ok">${count.P} présent(s)</span><span class="tag bad">${count.A} absent(s)</span><span class="tag warn">${count.R} retard(s)</span><span class="tag info">${count.J} justifié(s)</span><span class="tag">${studs.length - Object.keys(day).length} non encodé(s)</span></div>
+    <div class="att-list">${studs.map(s => { const e = day[s.id];
+      return `<div class="att-row"><div class="who">${avatar(s, 'sm')}<span class="nm">${nameHTML(s)}</span></div>
+        <div class="seg" role="group" aria-label="Présence de ${esc(studentName(s))}">${Object.entries(STATUS).map(([k, v]) => `<button class="st-${k} ${e?.s === k ? 'on' : ''}" data-act="att-set" data-sid="${s.id}" data-s="${k}" title="${v.label}" aria-pressed="${e?.s === k}">${v.short}</button>`).join('')}</div>
+        ${e && e.s !== 'P' ? `<input class="inp note att-note" data-sid="${s.id}" placeholder="Motif / remarque (facultatif)" value="${esc(e.n || '')}">` : ''}</div>`; }).join('')}</div>
+    <p class="legend">P = présent · A = absent · R = retard · J = absence justifiée. Touchez à nouveau un statut pour l’effacer.</p>
+    <h3 class="section-h">Récapitulatif de la classe</h3>
+    <div class="tbl-scroll"><table class="plain"><thead><tr><th>Élève</th><th class="num">Jours encodés</th><th class="num">Absences</th><th class="num">Justifiées</th><th class="num">Retards</th></tr></thead><tbody>
+    ${recap.map(([s, r]) => `<tr><td><button class="namebtn" style="border:0;background:none;padding:0" data-act="open-student" data-id="${s.id}">${nameHTML(s)}</button></td><td class="num">${r.days}</td><td class="num ${r.A ? 'g-bad' : ''}">${r.A || 0}</td><td class="num">${r.J || 0}</td><td class="num ${r.R ? 'g-warn' : ''}">${r.R || 0}</td></tr>`).join('')}
+    </tbody></table></div>
+    ${dates.length ? `<h3 class="section-h">Jours encodés</h3><div class="files">${dates.map(d => `<button class="chip ${d === date ? 'active' : ''}" data-act="att-goto" data-d="${d}">${fmtDate(d, { weekday: 'short', day: 'numeric', month: 'short' })}</button>`).join('')}</div>` : ''}`;
+}
+
+// ---------- Journal de classe ----------
+function viewJournal(c) {
+  const today = todayISO();
+  const list = [...c.journal].sort((a, b) => b.date.localeCompare(a.date) || (b.period || '').localeCompare(a.period || '', 'fr', { numeric: true }));
+  const upcoming = c.journal.filter(j => j.homework && j.due && j.due >= today).sort((a, b) => a.due.localeCompare(b.due));
+  const tb = `<div class="toolbar"><button class="btn primary" data-act="new-journal">＋ Nouvelle séance</button><span class="spacer"></span><button class="btn sm" data-act="print">Imprimer</button></div>`;
+  return tb + (upcoming.length ? `<div class="card upcoming"><b>📌 À remettre / à préparer</b><ul>${upcoming.map(j => `<li><b>${fmtDate(j.due, { weekday: 'short', day: 'numeric', month: 'short' })}</b> — ${esc(j.homework)}</li>`).join('')}</ul></div>` : '')
+    + (list.length ? `<div class="entries">${list.map(j => `<article class="card entry">
+      <div class="entry-h"><div class="ttl">${esc(j.title || 'Séance')}</div><span class="when">${fmtDate(j.date)}${j.period ? ' · ' + esc(j.period) : ''}</span>
+      <button class="btn sm" data-act="edit-journal" data-id="${j.id}">Modifier</button></div>
+      ${j.content ? `<div class="body pre">${esc(j.content)}</div>` : ''}
+      ${j.homework ? `<div class="hw"><b>Devoir${j.due ? ' pour le ' + fmtDate(j.due, { weekday: 'long', day: 'numeric', month: 'long' }) : ''} :</b> <span class="pre">${esc(j.homework)}</span></div>` : ''}
+      ${fileChips(j.attachments)}</article>`).join('')}</div>`
+      : `<div class="empty"><h2>Journal vide</h2><p>Notez la matière vue à chaque cours, les devoirs et joignez vos documents (fiches, photos du tableau…).</p></div>`);
+}
+function editJournal(j) {
+  const c = cls(), isNew = !j;
+  j ||= { date: S.ui.tab === 'presences' && S.ui.attDate ? S.ui.attDate : todayISO(), period: '', title: '', content: '', homework: '', due: '', attachments: [] };
+  let ed;
+  const actions = [];
+  if (!isNew) actions.push({ label: 'Supprimer', cls: 'danger left', value: 'del', onClick: async () => {
+    if (!await confirmDlg('Supprimer cette séance du journal de classe et ses pièces jointes ?')) return false;
+    c.journal = c.journal.filter(x => x.id !== j.id); await deleteFiles(j.attachments); save(); renderMain();
+  } });
+  actions.push({ label: 'Annuler' }, { label: 'Enregistrer', cls: 'primary', value: 'ok', onClick: async el => {
+    const d = formData(el);
+    if (!d.date) { toast('Indiquez la date'); return false; }
+    Object.assign(j, { date: d.date, period: d.period, title: d.title, content: d.content, homework: d.homework, due: d.due, attachments: ed.list });
+    if (isNew) { j.id = uid(); c.journal.push(j); }
+    await ed.commit(); save(); renderMain();
+  } });
+  modal({
+    title: isNew ? 'Nouvelle séance' : 'Modifier la séance', wide: true, actions,
+    onClose: v => { if (v !== 'ok') ed.rollback(); },
+    onOpen: el => { ed = attachEditor($('#j-files', el), [...(j.attachments || [])]); },
+    body: `<div class="row3"><label class="field"><span>Date</span><input class="inp" type="date" name="date" value="${esc(j.date)}"></label>
+      <label class="field"><span>Heure / période</span><input class="inp" name="period" value="${esc(j.period)}" placeholder="Ex. 2e heure"></label>
+      <label class="field"><span>Titre / chapitre</span><input class="inp" name="title" value="${esc(j.title)}" placeholder="Ex. Le passé composé"></label></div>
+      <label class="field"><span>Matière vue / déroulement</span><textarea class="inp" name="content" rows="5">${esc(j.content)}</textarea></label>
+      <div class="row2" style="grid-template-columns:2fr 1fr"><label class="field"><span>Devoir / à préparer</span><input class="inp" name="homework" value="${esc(j.homework)}"></label>
+      <label class="field"><span>Pour le</span><input class="inp" type="date" name="due" value="${esc(j.due)}"></label></div>
+      <div class="field"><span>Pièces jointes</span><div id="j-files"></div></div>`
+  });
+}
+
+// ---------- DAccE (dossier d'accompagnement de l'élève) ----------
+function dacceCard(c, n, showName = true) {
+  const s = c.students.find(x => x.id === n.sid);
+  return `<article class="card entry"><div class="entry-h"><div class="ttl">${showName && s ? `<button class="namebtn" style="border:0;background:none;padding:0;font-weight:700;display:inline-flex" data-act="open-student" data-id="${s.id}">${avatar(s, 'sm')}&nbsp;${nameHTML(s)}</button>` : ''}
+    <span class="tag ${DACCE_TAG[n.type] || ''}">${esc(n.type)}</span></div><span class="when">${fmtDate(n.date)}</span>
+    <button class="btn sm" data-act="edit-dacce" data-id="${n.id}">Modifier</button></div>
+    ${n.text ? `<div class="body pre">${esc(n.text)}</div>` : ''}
+    ${n.follow ? `<div class="hw" style="background:var(--accent-soft)"><b style="color:var(--accent)">Suivi / action :</b> <span class="pre">${esc(n.follow)}</span></div>` : ''}
+    ${fileChips(n.attachments)}</article>`;
+}
+function viewDacce(c) {
+  const studs = sortStudents(c.students);
+  let list = [...c.dossier].sort((a, b) => b.date.localeCompare(a.date));
+  if (S.ui.dacceStudent) list = list.filter(n => n.sid === S.ui.dacceStudent);
+  if (S.ui.dacceType) list = list.filter(n => n.type === S.ui.dacceType);
+  const tb = `<div class="toolbar"><button class="btn primary" data-act="new-dacce" ${studs.length ? '' : 'disabled'}>＋ Nouvelle note</button>
+    <select class="inp" style="width:auto" data-filter="dacceStudent"><option value="">Tous les élèves</option>${studs.map(s => `<option value="${s.id}" ${S.ui.dacceStudent === s.id ? 'selected' : ''}>${esc(studentName(s))}</option>`).join('')}</select>
+    <select class="inp" style="width:auto" data-filter="dacceType"><option value="">Tous les types</option>${DACCE_TYPES.map(t => `<option ${S.ui.dacceType === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
+    <span class="spacer"></span><button class="btn sm" data-act="print">Imprimer</button></div>`;
+  if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2></div>`;
+  return tb + (list.length ? `<div class="entries">${list.map(n => dacceCard(c, n)).join('')}</div>`
+    : `<div class="empty"><h2>Aucune note</h2><p>Le DAccE rassemble les observations, points forts, difficultés, aménagements raisonnables, remédiations et contacts avec les parents de chaque élève.</p></div>`);
+}
+function editDacce(n, presetSid) {
+  const c = cls(), isNew = !n, studs = sortStudents(c.students);
+  n ||= { sid: presetSid || S.ui.dacceStudent || studs[0]?.id, date: todayISO(), type: 'Observation', text: '', follow: '', attachments: [] };
+  let ed;
+  const actions = [];
+  if (!isNew) actions.push({ label: 'Supprimer', cls: 'danger left', value: 'del', onClick: async () => {
+    if (!await confirmDlg('Supprimer cette note du DAccE et ses pièces jointes ?')) return false;
+    c.dossier = c.dossier.filter(x => x.id !== n.id); await deleteFiles(n.attachments); save(); renderMain();
+  } });
+  actions.push({ label: 'Annuler' }, { label: 'Enregistrer', cls: 'primary', value: 'ok', onClick: async el => {
+    const d = formData(el);
+    if (!d.text && !d.follow) { toast('Écrivez une observation'); return false; }
+    Object.assign(n, { sid: d.sid, date: d.date || todayISO(), type: d.type, text: d.text, follow: d.follow, attachments: ed.list });
+    if (isNew) { n.id = uid(); c.dossier.push(n); }
+    await ed.commit(); save(); renderMain();
+  } });
+  modal({
+    title: isNew ? 'Nouvelle note DAccE' : 'Modifier la note DAccE', wide: true, actions,
+    onClose: v => { if (v !== 'ok') ed.rollback(); },
+    onOpen: el => { ed = attachEditor($('#d-files', el), [...(n.attachments || [])]); },
+    body: `<div class="row3"><label class="field"><span>Élève</span><select class="inp" name="sid">${studs.map(s => `<option value="${s.id}" ${s.id === n.sid ? 'selected' : ''}>${esc(studentName(s))}</option>`).join('')}</select></label>
+      <label class="field"><span>Date</span><input class="inp" type="date" name="date" value="${esc(n.date)}"></label>
+      <label class="field"><span>Type</span><select class="inp" name="type">${DACCE_TYPES.map(t => `<option ${t === n.type ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label></div>
+      <label class="field"><span>Observation</span><textarea class="inp" name="text" rows="5">${esc(n.text)}</textarea></label>
+      <label class="field"><span>Suivi / action prévue</span><textarea class="inp" name="follow" rows="2" style="min-height:60px">${esc(n.follow)}</textarea></label>
+      <div class="field"><span>Pièces jointes</span><div id="d-files"></div></div>`
+  });
+}
+
+// ---------- Classes & élèves ----------
+function editClass(c) {
+  const isNew = !c;
+  c ||= { name: '', subject: '', color: COLORS[S.classes.length % COLORS.length] };
+  const actions = [];
+  if (!isNew) actions.push({ label: 'Supprimer la classe', cls: 'danger left', onClick: async () => {
+    if (!await confirmDlg(`Supprimer définitivement la classe « ${c.name} » avec ses élèves, cotes, présences, journal et DAccE ?`)) return false;
+    await deleteFiles([...c.students.flatMap(s => s.files || []), ...c.journal.flatMap(j => j.attachments || []), ...c.dossier.flatMap(d => d.attachments || [])]);
+    S.classes = S.classes.filter(x => x.id !== c.id); S.ui.classId = S.classes[0]?.id || null; S.ui.studentId = null; save(); render();
+  } });
+  actions.push({ label: 'Annuler' }, { label: isNew ? 'Créer' : 'Enregistrer', cls: 'primary', onClick: el => {
+    const d = formData(el), color = $('input[name=color]:checked', el)?.value || c.color;
+    if (!d.name) { toast('Donnez un nom à la classe'); return false; }
+    Object.assign(c, { name: d.name, subject: d.subject, color });
+    if (isNew) { Object.assign(c, normalize({ classes: [{ ...c, id: uid() }] }).classes[0]); S.classes.push(c); S.ui.classId = c.id; S.ui.tab = 'eleves'; S.ui.view = 'class'; }
+    save(); render();
+  } });
+  modal({
+    title: isNew ? 'Nouvelle classe' : 'Modifier la classe', actions,
+    body: `<label class="field"><span>Nom de la classe</span><input class="inp" name="name" value="${esc(c.name)}" placeholder="Ex. 3e A"></label>
+      <label class="field"><span>Cours / matière</span><input class="inp" name="subject" value="${esc(c.subject)}" placeholder="Ex. Français"></label>
+      <div class="field"><span>Couleur</span><div class="swatches">${COLORS.map(col => `<label><input type="radio" name="color" value="${col}" ${col === c.color ? 'checked' : ''}><span style="background:${col}"></span></label>`).join('')}</div></div>`
+  });
+}
+function addStudent() {
+  const c = cls();
+  modal({
+    title: 'Ajouter un élève',
+    body: `<div class="row2"><label class="field"><span>Nom</span><input class="inp" name="lastName" autocapitalize="words"></label>
+      <label class="field"><span>Prénom</span><input class="inp" name="firstName" autocapitalize="words"></label></div>
+      <p class="muted small" id="added-info"></p>`,
+    actions: [
+      { label: 'Fermer' },
+      { label: 'Ajouter et continuer', onClick: el => { if (doAdd(el)) { $$('input', el).forEach(i => i.value = ''); $('input', el).focus(); } return false; } },
+      { label: 'Ajouter', cls: 'primary', onClick: el => doAdd(el) ? undefined : false }
+    ]
+  });
+  function doAdd(el) {
+    const d = formData(el);
+    if (!d.lastName && !d.firstName) { toast('Indiquez au moins un nom'); return false; }
+    c.students.push({ id: uid(), lastName: d.lastName, firstName: d.firstName, files: [] });
+    $('#added-info', el).textContent = `${studentName(d)} ajouté(e).`;
+    save(); render(); return true;
+  }
+}
+function parseNameLine(line) {
+  line = line.trim().replace(/^\d+[.)\-\s]+/, '');
+  if (!line) return null;
+  const sep = line.match(/[;\t,]/);
+  if (sep) { const [a, ...b] = line.split(sep[0]); return { lastName: a.trim(), firstName: b.join(' ').trim() }; }
+  const w = line.split(/\s+/);
+  if (w.length === 1) return { lastName: w[0], firstName: '' };
+  const caps = w.filter(x => x.length > 1 && x === x.toLocaleUpperCase('fr') && /\p{L}/u.test(x));
+  if (caps.length && caps.length < w.length) return { lastName: caps.join(' '), firstName: w.filter(x => !caps.includes(x)).join(' ') };
+  return { lastName: w.slice(0, -1).join(' '), firstName: w[w.length - 1] };
+}
+function importStudents() {
+  const c = cls();
+  modal({
+    title: 'Importer une liste d’élèves',
+    body: `<p class="muted small">Un élève par ligne. Formats acceptés : « NOM Prénom », « Nom;Prénom », « Nom, Prénom » ou deux colonnes copiées depuis Excel / Numbers.</p>
+      <textarea class="inp" name="list" rows="10" placeholder="DUPONT Marie&#10;MARTIN Lucas&#10;Janssens;Emma"></textarea>`,
+    actions: [{ label: 'Annuler' }, { label: 'Importer', cls: 'primary', onClick: el => {
+      const rows = formData(el).list.split(/\r?\n/).map(parseNameLine).filter(Boolean);
+      if (!rows.length) { toast('Aucun nom détecté'); return false; }
+      rows.forEach(r => c.students.push({ id: uid(), ...r, files: [] }));
+      toast(`${rows.length} élève(s) importé(s)`); save(); render();
+    } }]
+  });
+}
+function studentByUI() { const c = cls(); return c?.students.find(s => s.id === S.ui.studentId); }
+
+// ---------- Réglages ----------
+function viewSettings() {
+  const st = S.settings;
+  const nbFiles = S.classes.reduce((n, c) => n + c.students.reduce((m, s) => m + (s.files?.length || 0), 0) + c.journal.reduce((m, j) => m + (j.attachments?.length || 0), 0) + c.dossier.reduce((m, d) => m + (d.attachments?.length || 0), 0), 0);
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  return `<div class="grid2">
+    <div class="card pad">
+      <h3 class="section-h">Profil</h3>
+      <label class="field"><span>Nom de l’enseignant·e</span><input class="inp" data-setting="teacher" value="${esc(st.teacher)}"></label>
+      <label class="field"><span>École</span><input class="inp" data-setting="school" value="${esc(st.school)}"></label>
+      <label class="field"><span>Année scolaire</span><input class="inp" data-setting="year" value="${esc(st.year)}" placeholder="2026-2027"></label>
+      <h3 class="section-h">Cotes</h3>
+      <div class="row2"><label class="field"><span>Moyennes affichées sur</span><select class="inp" data-setting="scale">${[10, 20, 50, 100].map(n => `<option value="${n}" ${+st.scale === n ? 'selected' : ''}>/${n}</option>`).join('')}</select></label>
+      <label class="field"><span>Seuil de réussite (%)</span><input class="inp" data-setting="pass" inputmode="numeric" value="${esc(st.pass)}"></label></div>
+      <label class="check"><input type="checkbox" data-setting="absZero" ${st.absZero ? 'checked' : ''}> Compter « abs » comme 0 dans les moyennes</label>
+      <h3 class="section-h">Présences &amp; affichage</h3>
+      <label class="check"><input type="checkbox" data-setting="skipWeekend" ${st.skipWeekend ? 'checked' : ''}> Sauter le week-end avec les flèches ‹ ›</label>
+      <label class="field"><span>Thème</span><select class="inp" data-setting="theme">${[['auto', 'Automatique (comme l’iPad)'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, l]) => `<option value="${k}" ${st.theme === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+    </div>
+    <div>
+      <div class="card pad">
+        <h3 class="section-h">Sauvegarde</h3>
+        <p class="small muted">Vos données sont enregistrées uniquement sur cet appareil${DB.ok ? '' : ' — <b style="color:var(--bad)">attention : le stockage permanent n’est pas disponible ici, les données seront perdues à la fermeture</b>'}. Exportez régulièrement une sauvegarde vers « Fichiers », iCloud Drive ou par e-mail.</p>
+        <p class="small">Dernière sauvegarde : <b>${st.lastBackup ? new Date(st.lastBackup).toLocaleString('fr-BE') : 'jamais'}</b> · ${S.classes.length} classe(s) · ${nbFiles} pièce(s) jointe(s)<span id="storage-est"></span></p>
+        <div class="toolbar" style="margin:12px 0 0"><button class="btn primary" data-act="export-backup">⬆︎ Exporter une sauvegarde</button><button class="btn" data-act="import-backup">⬇︎ Restaurer une sauvegarde</button></div>
+      </div>
+      <div class="card pad" style="margin-top:16px">
+        <h3 class="section-h">Installer sur l’iPad</h3>
+        ${standalone ? '<p class="small">✅ L’application est installée sur l’écran d’accueil et fonctionne hors ligne.</p>'
+          : '<p class="small">Dans Safari, touchez <b>Partager</b> <span aria-hidden="true">⬆︎</span> puis <b>« Sur l’écran d’accueil »</b>. Le Carnet s’ouvrira alors en plein écran, comme une vraie app, et fonctionnera sans connexion.</p>'}
+      </div>
+      <div class="card pad" style="margin-top:16px">
+        <h3 class="section-h">Données</h3>
+        <div class="toolbar" style="margin:0"><button class="btn" data-act="load-demo">Ajouter une classe d’exemple</button><button class="btn danger" data-act="wipe-all">Tout effacer</button></div>
+      </div>
+    </div></div>`;
+}
+async function exportBackup() {
+  toast('Préparation de la sauvegarde…');
+  await flush();
+  const files = [];
+  for (const k of await DB.keys('files')) {
+    const r = await DB.get('files', k);
+    if (r) files.push({ id: k, name: r.name, type: r.type, data: await blobToB64(r.blob) });
+  }
+  const data = { app: 'carnet-prof', format: 1, exportedAt: new Date().toISOString(), state: S, files };
+  const ok = await saveBlob(new Blob([JSON.stringify(data)], { type: 'application/json' }), `carnet-sauvegarde-${todayISO()}.json`);
+  if (ok) { S.settings.lastBackup = new Date().toISOString(); save(); render(); }
+}
+const blobToB64 = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
+const b64ToBlob = (b64, type) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type }); };
+async function importBackup() {
+  const [f] = await pickFiles({ accept: '.json,application/json', multiple: false });
+  if (!f) return;
+  let data;
+  try { data = JSON.parse(await f.text()); } catch { return toast('Fichier illisible'); }
+  if (data?.app !== 'carnet-prof' || !data.state) return toast('Ce fichier n’est pas une sauvegarde du Carnet');
+  if (!await confirmDlg(`Restaurer la sauvegarde du ${new Date(data.exportedAt).toLocaleString('fr-BE')} ?\nToutes les données actuelles de cet iPad seront remplacées.`, 'Restaurer')) return;
+  await DB.clear('files');
+  for (const x of data.files || []) await DB.put('files', x.id, { blob: b64ToBlob(x.data, x.type), name: x.name, type: x.type, size: Math.floor(x.data.length * 3 / 4) });
+  S = normalize(data.state); S.ui.view = 'class';
+  await flush(); render(); toast('Sauvegarde restaurée');
+}
+
+// ---------- Démo ----------
+function demoClass() {
+  const names = [['DUBOIS', 'Emma'], ['PEETERS', 'Lucas'], ['MAES', 'Louise'], ['JACOBS', 'Noah'], ['MERTENS', 'Olivia'], ['WILLEMS', 'Arthur'], ['CLAES', 'Mila'], ['GOOSSENS', 'Louis'], ['LAMBERT', 'Alice'], ['DUPONT', 'Jules'], ['LEROY', 'Juliette'], ['MARTIN', 'Adam']];
+  const c = normalize({ classes: [{ id: uid(), name: '3e A (exemple)', subject: 'Français', color: COLORS[S.classes.length % COLORS.length] }] }).classes[0];
+  c.students = names.map(([l, f]) => ({ id: uid(), lastName: l, firstName: f, files: [] }));
+  const t = todayISO();
+  const cols = [['Dictée 1', -20, 20, 1, 'Écrire'], ['Lecture : compréhension', -14, 10, 1, 'Lire'], ['Interro conjugaison', -7, 20, 1, 'Langue'], ['Expression orale', -3, 10, 2, 'Parler']];
+  for (const [title, off, max, weight, category] of cols) {
+    const col = { id: uid(), title, date: addDays(t, off), max, weight, category, created: Date.now() };
+    c.columns.push(col); c.grades[col.id] = {};
+    c.students.forEach((s, i) => { c.grades[col.id][s.id] = i === 3 && off === -7 ? 'ABS' : Math.round(max * (0.35 + ((((i * 37 + off * 13) % 60) + 60) % 60) / 100) * 2) / 2; });
+  }
+  for (let k = 1; k <= 4; k++) {
+    const d = addDays(t, -k, true); c.attendance[d] = {};
+    c.students.forEach((s, i) => c.attendance[d][s.id] = { s: (i + k) % 9 === 0 ? 'A' : (i * k) % 11 === 5 ? 'R' : 'P', n: '' });
+  }
+  c.journal.push({ id: uid(), date: addDays(t, -1, true), period: '2e heure', title: 'Le passé composé', content: 'Rappel de la formation (auxiliaire + participe passé).\nExercices p. 42 n° 1 à 4 en classe.', homework: 'Exercices p. 43 n° 5 et 6', due: addDays(t, 2, true), attachments: [] });
+  c.journal.push({ id: uid(), date: addDays(t, -3, true), period: '4e heure', title: 'Lecture suivie — chapitre 3', content: 'Lecture à voix haute et questions de compréhension.', homework: '', due: '', attachments: [] });
+  c.dossier.push({ id: uid(), sid: c.students[3].id, date: addDays(t, -5), type: 'Aménagement raisonnable', text: 'Temps supplémentaire (+1/3) lors des évaluations écrites. Police agrandie pour les consignes.', follow: 'Faire le point avec le CPMS en fin de période.', attachments: [] });
+  c.dossier.push({ id: uid(), sid: c.students[0].id, date: addDays(t, -2), type: 'Point fort', text: 'Très bonne participation orale, aide spontanément ses camarades.', follow: '', attachments: [] });
+  return c;
+}
+
+// ============================================================
+// Events
+// ============================================================
+const A = {
+  'toggle-side': () => document.body.classList.toggle('side-open'),
+  'select-class': el => { S.ui.view = 'class'; S.ui.classId = el.dataset.id; S.ui.studentId = null; document.body.classList.remove('side-open'); save(); render(); $('#view').scrollTop = 0; },
+  'new-class': () => { document.body.classList.remove('side-open'); editClass(); },
+  'edit-class': () => editClass(cls()),
+  'settings': () => { S.ui.view = 'settings'; document.body.classList.remove('side-open'); save(); render(); showStorageEstimate(); },
+  'tab': el => { S.ui.tab = el.dataset.tab; S.ui.studentId = null; save(); renderMain(); $('#view').scrollTop = 0; },
+  'add-student': addStudent,
+  'import-students': importStudents,
+  'open-student': el => { S.ui.studentId = el.dataset.id; renderMain(); $('#view').scrollTop = 0; },
+  'back': () => { S.ui.studentId = null; renderMain(); },
+  'delete-student': async () => {
+    const c = cls(), s = studentByUI(); if (!s) return;
+    if (!await confirmDlg(`Supprimer ${studentName(s)} ainsi que ses cotes, présences et notes DAccE ?`)) return;
+    await deleteFiles([...(s.files || []), ...c.dossier.filter(d => d.sid === s.id).flatMap(d => d.attachments || [])]);
+    c.students = c.students.filter(x => x.id !== s.id);
+    c.dossier = c.dossier.filter(d => d.sid !== s.id);
+    Object.values(c.grades).forEach(g => delete g[s.id]);
+    Object.values(c.attendance).forEach(g => delete g[s.id]);
+    S.ui.studentId = null; save(); render();
+  },
+  'student-photo': async () => {
+    const s = studentByUI(); if (!s) return;
+    const [f] = await pickFiles({ accept: 'image/*', multiple: false });
+    if (!f) return;
+    try { s.photo = await resizeImage(f); save(); render(); } catch (e) { toast(e.message); }
+  },
+  'student-add-file': async () => { const s = studentByUI(); const fs = await pickFiles(); if (s && fs.length) { s.files.push(...await storeFiles(fs)); save(); renderMain(); } },
+  'student-add-photo': async () => { const s = studentByUI(); const fs = await pickFiles({ accept: 'image/*', capture: 'environment', multiple: false }); if (s && fs.length) { s.files.push(...await storeFiles(fs)); save(); renderMain(); } },
+  'del-sfile': async el => {
+    const s = studentByUI(), f = s?.files.find(x => x.id === el.dataset.id); if (!f) return;
+    if (!await confirmDlg(`Supprimer la pièce jointe « ${f.name} » ?`)) return;
+    s.files = s.files.filter(x => x !== f); await DB.del('files', f.id); save(); renderMain();
+  },
+  'open-file': el => openFile(el.dataset.id),
+  'add-col': () => editColumn(),
+  'edit-col': el => editColumn(cls().columns.find(x => x.id === el.dataset.id)),
+  'grade-cat': el => { S.ui.gradeCat = el.dataset.cat; save(); renderMain(); },
+  'export-csv': exportCSV,
+  'print': () => window.print(),
+  'att-shift': el => { S.ui.attDate = addDays(S.ui.attDate || todayISO(), +el.dataset.n, S.settings.skipWeekend); save(); renderMain(); },
+  'att-today': () => { S.ui.attDate = todayISO(); save(); renderMain(); },
+  'att-goto': el => { S.ui.attDate = el.dataset.d; save(); renderMain(); $('#view').scrollTop = 0; },
+  'att-set': el => {
+    const c = cls(), d = S.ui.attDate || todayISO(), sid = el.dataset.sid, st = el.dataset.s;
+    c.attendance[d] ||= {};
+    if (c.attendance[d][sid]?.s === st) delete c.attendance[d][sid];
+    else c.attendance[d][sid] = { s: st, n: c.attendance[d][sid]?.n || '' };
+    if (!Object.keys(c.attendance[d]).length) delete c.attendance[d];
+    const y = $('#view').scrollTop; save(); renderMain(); $('#view').scrollTop = y;
+  },
+  'att-all': () => {
+    const c = cls(), d = S.ui.attDate || todayISO();
+    c.attendance[d] ||= {};
+    c.students.forEach(s => { c.attendance[d][s.id] ||= { s: 'P', n: '' }; });
+    save(); renderMain(); toast('Élèves non encodés marqués présents');
+  },
+  'new-journal': () => editJournal(),
+  'edit-journal': el => editJournal(cls().journal.find(j => j.id === el.dataset.id)),
+  'new-dacce': el => editDacce(null, el.dataset.sid),
+  'edit-dacce': el => editDacce(cls().dossier.find(n => n.id === el.dataset.id)),
+  'export-backup': exportBackup,
+  'import-backup': importBackup,
+  'load-demo': () => { const c = demoClass(); S.classes.push(c); S.ui.classId = c.id; S.ui.view = 'class'; S.ui.tab = 'cotes'; save(); render(); toast('Classe d’exemple ajoutée'); },
+  'wipe-all': async () => {
+    if (!await confirmDlg('Effacer TOUTES les classes, élèves, cotes, présences, journaux et pièces jointes de cet iPad ?\nCette action est irréversible. Faites d’abord une sauvegarde.', 'Tout effacer')) return;
+    await DB.clear('files'); const theme = S.settings.theme; S = defaultState(); S.settings.theme = theme; await flush(); render();
+  }
+};
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  const f = A[el.dataset.act];
+  if (f) { e.preventDefault(); f(el, e); }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.classList.contains('gin')) return onGradeChange(t);
+  if (t.id === 'att-date') { if (t.value) { S.ui.attDate = t.value; save(); renderMain(); } return; }
+  if (t.classList.contains('att-note')) { const c = cls(), d = S.ui.attDate || todayISO(); const e2 = c.attendance[d]?.[t.dataset.sid]; if (e2) { e2.n = t.value.trim(); save(); } return; }
+  if (t.dataset.sfield) {
+    const s = studentByUI(); if (!s) return;
+    s[t.dataset.sfield] = t.value.trim(); save();
+    if (['lastName', 'firstName', 'birth'].includes(t.dataset.sfield)) { renderSidebar(); const y = $('#view').scrollTop; renderMain(); $('#view').scrollTop = y; }
+    return;
+  }
+  if (t.dataset.setting) {
+    const k = t.dataset.setting;
+    S.settings[k] = t.type === 'checkbox' ? t.checked : ['scale', 'pass'].includes(k) ? (Number(t.value) || defaultState().settings[k]) : t.value.trim();
+    save(); applyTheme(); renderSidebar(); return;
+  }
+  if (t.dataset.filter) { S.ui[t.dataset.filter] = t.value; save(); renderMain(); }
+});
+document.addEventListener('focusin', e => { if (e.target.classList?.contains('gin')) setTimeout(() => e.target.select(), 0); });
+document.addEventListener('keydown', e => {
+  const t = e.target;
+  if (!t.classList?.contains('gin')) return;
+  const r = +t.dataset.r, c = +t.dataset.c;
+  const move = { Enter: [1, 0], ArrowDown: [1, 0], ArrowUp: [-1, 0] }[e.key];
+  if (!move) return;
+  e.preventDefault();
+  const next = $(`.gin[data-r="${r + move[0]}"][data-c="${c + move[1]}"]`);
+  if (next) next.focus(); else t.blur();
+});
+async function showStorageEstimate() {
+  try {
+    const est = await navigator.storage?.estimate?.();
+    const el = $('#storage-est');
+    if (est && el) el.textContent = ` · ${fmtSize(est.usage || 0)} utilisés`;
+  } catch {}
+}
+
+// ============================================================
+// Démarrage
+// ============================================================
+(async function init() {
+  await DB.open();
+  try { S = normalize(await DB.get('kv', 'state')); } catch { S = defaultState(); }
+  S.ui.studentId = null;
+  if (S.ui.view === 'settings') S.ui.view = 'class';
+  render();
+  try { await navigator.storage?.persist?.(); } catch {}
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>
