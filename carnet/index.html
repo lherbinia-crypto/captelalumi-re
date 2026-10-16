@@ -209,6 +209,9 @@ table.gt{border-collapse:separate;border-spacing:0;min-width:100%}
 .ar-banner{background:var(--info-soft);border-radius:var(--radius);padding:10px 14px;margin-bottom:12px}
 .ar-banner summary{cursor:pointer}
 .ar-banner-list{display:grid;gap:6px;margin-top:8px}
+.ok-mark{display:inline-block;font-weight:800;font-size:15px;letter-spacing:.02em;color:var(--ok)}
+.ok-mark.no{color:var(--bad);text-decoration:line-through;text-decoration-thickness:2px}
+.check-cell{font-size:16px;cursor:pointer}
 .pcell{width:100%;height:44px;border:0;background:transparent;font-size:17px;font-weight:700;color:inherit;font-variant-numeric:tabular-nums}
 .pcell small{font-size:11px;font-weight:500;opacity:.8}
 .draw-box{display:grid;justify-items:center;gap:16px;text-align:center;padding:8px 0}
@@ -598,7 +601,10 @@ function valuePct(v, col) {
   return ic ? Number(ic.pct) : NaN;
 }
 // Total des points : points obtenus / points possibles (une pondération multiplie les points de la colonne)
-const colPoints = col => col.type === 'icons' ? 20 : Number(col.max) || 0;
+// Colonne « Remis / non remis » (OK, OK barré) : un simple suivi, jamais compté dans les moyennes
+const colPoints = col => col.type === 'icons' ? 20 : col.type === 'check' ? 0 : Number(col.max) || 0;
+const CHECK_NEXT = { undefined: 'OK', OK: 'NO', NO: undefined };
+const checkHTML = v => v === 'OK' ? '<span class="ok-mark">OK</span>' : v === 'NO' ? '<span class="ok-mark no">OK</span>' : '<span class="muted">·</span>';
 function pointsOf(c, sid, cols) {
   let got = 0, max = 0;
   for (const col of cols) {
@@ -633,11 +639,12 @@ function pctClass(p) {
   return p < pass ? 'g-bad' : p < pass + 10 ? 'g-warn' : 'g-ok';
 }
 function gradeClass(v, col) {
+  if (col?.type === 'check') return v === 'OK' ? 'g-ok' : v === 'NO' ? 'g-bad' : '';
   if (v == null) return '';
   if (typeof v === 'number' || isIcon(v)) return pctClass(valuePct(v, col));
   return { ABS: 'g-abs', EXC: 'g-exc', NE: 'g-ne' }[v] || '';
 }
-const fmtGrade = v => v == null ? '' : typeof v === 'number' ? String(v).replace('.', ',') : isIcon(v) ? (iconOf(v)?.icon || '?') : ({ ABS: 'abs', EXC: 'exc', NE: 'ne' }[v] || v);
+const fmtGrade = v => v == null ? '' : v === 'OK' ? 'remis' : v === 'NO' ? 'non remis' : typeof v === 'number' ? String(v).replace('.', ',') : isIcon(v) ? (iconOf(v)?.icon || '?') : ({ ABS: 'abs', EXC: 'exc', NE: 'ne' }[v] || v);
 const fmtOn = (p, scale) => Number.isFinite(p) ? fmtNum(p / 100 * scale) : '–';
 const fmtScaled = p => Number.isFinite(p) ? `${fmtNum(p / 100 * S.settings.scale)}/${S.settings.scale}` : '';
 function parseGrade(raw, max) {
@@ -941,6 +948,8 @@ function viewStudents(c) {
     if (a.R) bits.push(`${a.R} ret.`);
     if (s.dacc?.suivi) bits.push('<span class="tag bad">DAccE</span>');
     if (nd) bits.push(`${nd} obs.`);
+    const nr = c.columns.filter(col => col.type === 'check' && c.grades[col.id]?.[s.id] === 'NO').length;
+    if (nr) bits.push(`<span class="tag bad">${nr} non remis</span>`);
     return `<button class="st-card" data-act="open-student" data-id="${s.id}">${avatar(s)}<span><span class="nm">${nameHTML(s)}</span><span class="meta" style="display:block">${bits.join(' · ') || '&nbsp;'}</span></span></button>`;
   }).join('')}</div>`;
 }
@@ -983,7 +992,7 @@ function viewStudent(c, s) {
           <h3 class="section-h">Résultats</h3>
           ${cols.length ? `<div class="tbl-scroll"><table class="plain"><thead><tr><th>Évaluation</th><th>Date</th><th class="num">Cote</th><th class="num">%</th></tr></thead><tbody>
           ${cols.map(col => { const v = c.grades[col.id]?.[s.id]; const p = valuePct(v, col);
-            return `<tr><td>${esc(col.title)} <span class="tag">P${colPeriod(col) + 1}</span>${col.category ? ` <span class="tag">${esc(col.category)}</span>` : ''}</td><td class="small muted">${fmtShort(col.date)}</td><td class="num">${v == null ? '–' : esc(fmtGrade(v)) + (typeof v === 'number' ? ' / ' + col.max : isIcon(v) ? ' ' + esc(iconOf(v)?.label || '') : '')}</td><td class="num ${pctClass(p)}">${Number.isFinite(p) ? fmtNum(p, 0) + ' %' : ''}</td></tr>`; }).join('')}
+            return `<tr><td>${esc(col.title)} <span class="tag">P${colPeriod(col) + 1}</span>${col.category ? ` <span class="tag">${esc(col.category)}</span>` : ''}</td><td class="small muted">${fmtShort(col.date)}</td><td class="num">${col.type === 'check' ? checkHTML(v) : v == null ? '–' : esc(fmtGrade(v)) + (typeof v === 'number' ? ' / ' + col.max : isIcon(v) ? ' ' + esc(iconOf(v)?.label || '') : '')}</td><td class="num ${pctClass(p)}">${Number.isFinite(p) ? fmtNum(p, 0) + ' %' : ''}</td></tr>`; }).join('')}
           </tbody></table></div>` : '<p class="muted">Aucune évaluation encodée.</p>'}
           ${(() => { const rows = EPC.comps.map(k => { const kc = c.columns.filter(col => compOfCol(col) === k.n); const p = kc.length ? studentAvg(c, s.id, kc) : NaN; return { k, n: kc.length, p }; }).filter(r => r.n);
             return rows.length ? `<h3 class="section-h">Par compétence du référentiel</h3><div class="tbl-scroll"><table class="plain"><tbody>${rows.map(r => `<tr><td>C${r.k.n} · ${esc(r.k.court)}</td><td class="num small muted">${r.n} éval.</td><td class="num ${pctClass(r.p)}">${fmtOn(r.p, S.settings.bulletinScale)}/${S.settings.bulletinScale}</td></tr>`).join('')}</tbody></table></div>` : ''; })()}
@@ -1003,7 +1012,7 @@ function viewGrades(c) {
   const cats = [...new Set(c.columns.map(x => x.category).filter(Boolean))].sort(collator.compare);
   if (S.ui.gradeCat && !cats.includes(S.ui.gradeCat)) S.ui.gradeCat = '';
   const P = S.settings.periods, sp = selPeriod(), cur = periodOfDate(todayISO()), bs = S.settings.bulletinScale;
-  const tb = `<div class="toolbar"><button class="btn primary" data-act="add-col">＋ Évaluation${sp != null ? ' en ' + esc(P[sp].name) : ''}</button>
+  const tb = `<div class="toolbar"><button class="btn primary" data-act="add-col">＋ Évaluation${sp != null ? ' en ' + esc(P[sp].name) : ''}</button><button class="btn" data-act="add-check"><span class="ok-mark">OK</span> Travail à remettre</button>
     <span class="spacer"></span><button class="btn sm" data-act="export-csv">Exporter (CSV)</button><button class="btn sm" data-act="print">Imprimer</button></div>
     <div class="toolbar">${P.map((p, i) => `<button class="chip ${sp === i ? 'active' : ''}" data-act="grade-period" data-p="${i}">${esc(p.name)}${i === cur ? ' (en cours)' : ''}</button>`).join('')}
     <button class="chip ${sp == null ? 'active' : ''}" data-act="grade-period" data-p="all">Toute l’année</button>
@@ -1019,14 +1028,15 @@ function viewGrades(c) {
   const partCell = sid => { if (!showPart) return ''; const n = cpcNote(c, sid, sp); return `<td class="cell ${pctClass(n / pmax * 100)}"><button type="button" class="pcell" data-act="cpc-student" data-sid="${sid}">${fmtNum(n)}<small>/${pmax}</small></button></td>`; };
   const partFoot = () => { if (!showPart) return ''; const v = studs.map(s => cpcNote(c, s.id, sp)); return `<td>${fmtNum(v.reduce((a, b) => a + b, 0) / v.length)}/${pmax}</td>`; };
   return tb + arBanner(c) + `<div class="gt-wrap"><table class="gt">
-    <thead><tr><th class="name">Élève</th>${cols.map(col => `<th class="colh" data-act="edit-col" data-id="${col.id}" title="Modifier"><div class="ct">${esc(col.title)}</div><div class="cm">${fmtShort(col.date)} · ${col.type === 'icons' ? 'icônes' : '/' + fmtNum(col.max, 2)}${Number(col.weight) !== 1 ? ' · ×' + fmtNum(Number(col.weight), 2) : ''}</div><div class="cm">P${colPeriod(col) + 1}${col.category ? ' · ' + esc(col.category) : ''}</div></th>`).join('')}${partHead}<th>${avgTitle}<div class="cm" style="font-weight:400">sur ${bs}</div></th></tr></thead>
+    <thead><tr><th class="name">Élève</th>${cols.map(col => `<th class="colh" data-act="edit-col" data-id="${col.id}" title="Modifier"><div class="ct">${esc(col.title)}</div><div class="cm">${fmtShort(col.date)} · ${col.type === 'icons' ? 'icônes' : col.type === 'check' ? 'remis ?' : '/' + fmtNum(col.max, 2)}${col.type !== 'check' && Number(col.weight) !== 1 ? ' · ×' + fmtNum(Number(col.weight), 2) : ''}</div><div class="cm">P${colPeriod(col) + 1}${col.category ? ' · ' + esc(col.category) : ''}</div></th>`).join('')}${partHead}<th>${avgTitle}<div class="cm" style="font-weight:400">sur ${bs}</div></th></tr></thead>
     <tbody>${studs.map((s, ri) => { const avg = rowAvg(c, s.id);
       return `<tr><td class="name"><button class="namebtn" data-act="open-student" data-id="${s.id}">${avatar(s, 'sm')}<span>${nameHTML(s)}</span></button></td>
       ${cols.map((col, ci) => { const v = c.grades[col.id]?.[s.id];
+        if (col.type === 'check') return `<td class="cell ${gradeClass(v, col)}"><button type="button" class="gin check-cell" data-act="toggle-check" data-col="${col.id}" data-sid="${s.id}" data-r="${ri}" data-c="${ci}" aria-label="${esc(studentName(s))} — ${esc(col.title)} : ${v === 'OK' ? 'remis' : v === 'NO' ? 'non remis' : 'pas encore noté'}">${checkHTML(v)}</button></td>`;
         if (col.type === 'icons') return `<td class="cell ${gradeClass(v, col)}"><button type="button" class="gin icon-cell" data-act="pick-icon" data-col="${col.id}" data-sid="${s.id}" data-r="${ri}" data-c="${ci}" aria-label="${esc(studentName(s))} — ${esc(col.title)}">${v == null ? '<span class="muted">＋</span>' : esc(fmtGrade(v))}</button></td>`;
         return `<td class="cell ${gradeClass(v, col)}"><input class="gin" data-col="${col.id}" data-sid="${s.id}" data-r="${ri}" data-c="${ci}" value="${esc(fmtGrade(v))}" inputmode="decimal" enterkeyhint="next" autocomplete="off" autocorrect="off" aria-label="${esc(studentName(s))} — ${esc(col.title)}"></td>`; }).join('')}
       ${partCell(s.id)}<td class="avg ${pctClass(avg)}" data-avg="${s.id}">${avgCellHTML(c, s.id)}</td></tr>`; }).join('')}</tbody>
-    <tfoot><tr><td class="name">Moyenne de classe</td>${cols.map(col => `<td data-cavg="${col.id}">${colAvgText(c, col)}</td>`).join('')}${partFoot()}<td data-gavg>${Number.isFinite(ca) ? fmtOn(ca, bs) + '/' + bs : '–'}</td></tr></tfoot>
+    <tfoot><tr><td class="name">Moyenne de classe</td>${cols.map(col => col.type === 'check' ? `<td data-cavg="${col.id}"><button type="button" class="pcell" style="font-size:13px" data-act="check-all" data-col="${col.id}" title="Marquer OK les élèves sans réponse">${colAvgText(c, col)}</button></td>` : `<td data-cavg="${col.id}">${colAvgText(c, col)}</td>`).join('')}${partFoot()}<td data-gavg>${Number.isFinite(ca) ? fmtOn(ca, bs) + '/' + bs : '–'}</td></tr></tfoot>
   </table></div>
   <p class="legend">Touchez une case pour coter. Saisie possible : <b>14,5</b> · <b>7/10</b> (converti) · <b>abs</b> (absent) · <b>exc</b> (excusé, non compté) · <b>ne</b> (non évalué). Touchez l’en-tête d’une colonne pour la modifier. La note sur ${bs} se calcule sur le <b>total des points</b> (points obtenus ÷ points possibles)${showPart ? `, la participation comptant pour ${ppts} points` : ''}. ${S.settings.absZero ? 'Les « abs » comptent pour 0.' : 'Les « abs » ne sont pas comptés dans la moyenne.'}</p>`;
 }
@@ -1045,6 +1055,7 @@ function onGradeChange(inp) {
   refreshGradeTotals(c, col, sid);
 }
 function colAvgText(c, col) {
+  if (col.type === 'check') { const g = Object.values(c.grades[col.id] || {}); return `${g.filter(v => v === 'OK').length}/${c.students.length} remis`; }
   const p = colAvg(c, col);
   if (!Number.isFinite(p)) return '–';
   return col.type === 'icons' ? fmtNum(p, 0) + ' %' : `${fmtNum(p / 100 * col.max)}/${fmtNum(col.max, 2)}`;
@@ -1083,7 +1094,8 @@ function pickIcon(btn) {
   });
 }
 function editColumn(col) {
-  const c = cls(), isNew = !col;
+  const c = cls(), isNew = !col || !!col._new;
+  if (col?._new) delete col._new;
   const sp = selPeriod(), today = todayISO();
   col ||= { title: '', date: sp == null || periodOfDate(today) === sp ? today : (periodStart(sp) || today), max: S.settings.scale, weight: 1, category: '', type: 'number', period: sp };
   const cats = [...new Set(c.columns.map(x => x.category).filter(Boolean))];
@@ -1094,7 +1106,7 @@ function editColumn(col) {
   } });
   actions.push({ label: 'Annuler' }, { label: isNew ? 'Créer' : 'Enregistrer', cls: 'primary', onClick: el => {
     const d = formData(el), w = parseFloat(d.weight.replace(',', '.'));
-    const type = d.type === 'icons' ? 'icons' : 'number', max = type === 'icons' ? 100 : parseFloat(d.max.replace(',', '.'));
+    const type = ['icons', 'check'].includes(d.type) ? d.type : 'number', max = type === 'icons' ? 100 : type === 'check' ? 1 : parseFloat(d.max.replace(',', '.'));
     if (!d.title) { toast('Donnez un titre à l’évaluation'); return false; }
     if (!(max > 0)) { toast('Le maximum doit être supérieur à 0'); return false; }
     if (!isNew && type !== (col.type || 'number') && Object.keys(c.grades[col.id] || {}).length) { toast('Videz d’abord les cotes de cette colonne pour changer son type'); return false; }
@@ -1105,7 +1117,7 @@ function editColumn(col) {
   modal({
     title: isNew ? 'Nouvelle évaluation' : 'Modifier l’évaluation', actions,
     onOpen: el => {
-      const sync = () => { $('#max-field', el).hidden = $('[name=type]', el).value === 'icons'; };
+      const sync = () => { const t = $('[name=type]', el).value; $('#max-field', el).hidden = t !== 'number'; $('[name=weight]', el).closest('.field').hidden = t === 'check'; };
       $('[name=type]', el).addEventListener('change', sync); sync();
       const att = () => { const k = EPC.comps[+$('#col-comp', el).value - 1]; $('#col-att', el).textContent = k ? `Attendu (${epcLevel(c) === 'S2' ? '2e' : '1re'}) : ${epcAtt(k, epcLevel(c))}` : ''; };
       $('#col-comp', el).addEventListener('change', e => { const n = +e.target.value; const inp = $('[name=category]', el); if (n) inp.value = compLabel(n); else if (/^C[1-8] ·/.test(inp.value)) inp.value = ''; att(); });
@@ -1113,7 +1125,7 @@ function editColumn(col) {
       att();
     },
     body: `<label class="field"><span>Titre</span><input class="inp" name="title" value="${esc(col.title)}" placeholder="Ex. Interro conjugaison"></label>
-      <div class="row2"><label class="field"><span>Type de cote</span><select class="inp" name="type"><option value="number" ${col.type !== 'icons' ? 'selected' : ''}>Cote chiffrée</option><option value="icons" ${col.type === 'icons' ? 'selected' : ''}>Appréciation par icônes (${S.settings.icons.map(i => i.icon).join(' ')})</option></select></label>
+      <div class="row2"><label class="field"><span>Type de cote</span><select class="inp" name="type"><option value="number" ${!col.type || col.type === 'number' ? 'selected' : ''}>Cote chiffrée</option><option value="check" ${col.type === 'check' ? 'selected' : ''}>Remis / non remis (OK)</option><option value="icons" ${col.type === 'icons' ? 'selected' : ''}>Appréciation par icônes (${S.settings.icons.map(i => i.icon).join(' ')})</option></select></label>
       <label class="field"><span>Période du bulletin</span><select class="inp" name="period"><option value="">Selon la date</option>${S.settings.periods.map((p, i) => `<option value="${i}" ${col.period === i ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label></div>
       <div class="row3"><label class="field"><span>Date</span><input class="inp" type="date" name="date" value="${esc(col.date)}"></label>
       <label class="field" id="max-field"><span>Sur (maximum)</span><input class="inp" name="max" inputmode="decimal" value="${esc(String(col.max).replace('.', ','))}"></label>
@@ -1130,7 +1142,7 @@ function exportCSV() {
   const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const P = S.settings.periods, bs = S.settings.bulletinScale;
   const num = p => Number.isFinite(p) ? (p / 100 * bs).toFixed(1).replace('.', ',') : '';
-  const lines = [['Nom', 'Prénom', ...cols.map(col => col.type === 'icons' ? `${col.title} (icônes)` : `${col.title} (/${col.max})`), ...(cpcOn(c) ? P.map(p => `Participation ${p.name} /${S.settings.cpc.max}`) : []), ...P.map(p => `${p.name} /${bs}`), `Année /${bs}`].map(q).join(';')];
+  const lines = [['Nom', 'Prénom', ...cols.map(col => col.type === 'icons' ? `${col.title} (icônes)` : col.type === 'check' ? `${col.title} (remis)` : `${col.title} (/${col.max})`), ...(cpcOn(c) ? P.map(p => `Participation ${p.name} /${S.settings.cpc.max}`) : []), ...P.map(p => `${p.name} /${bs}`), `Année /${bs}`].map(q).join(';')];
   for (const s of studs) {
     lines.push([s.lastName, s.firstName, ...cols.map(col => { const v = c.grades[col.id]?.[s.id]; return isIcon(v) ? `${fmtGrade(v)} ${iconOf(v)?.label || ''}` : fmtGrade(v); }),
       ...(cpcOn(c) ? P.map((p, i) => periodStarted(i) ? String(cpcNote(c, s.id, i)).replace('.', ',') : '') : []),
@@ -2370,6 +2382,23 @@ const A = {
   },
   'open-file': el => openFile(el.dataset.id),
   'add-col': () => editColumn(),
+  'add-check': () => { const sp = selPeriod(), today = todayISO(); editColumn({ title: '', date: today, max: 1, weight: 0, category: '', type: 'check', period: sp != null && periodOfDate(today) !== sp ? sp : null, _new: true }); },
+  'toggle-check': el => {
+    const c = cls(), col = c.columns.find(x => x.id === el.dataset.col), sid = el.dataset.sid; if (!col) return;
+    c.grades[col.id] ||= {};
+    const nv = CHECK_NEXT[c.grades[col.id][sid]];
+    if (nv) c.grades[col.id][sid] = nv; else delete c.grades[col.id][sid];
+    el.innerHTML = checkHTML(nv); el.parentElement.className = 'cell ' + gradeClass(nv, col);
+    const cc = $(`[data-cavg="${col.id}"] button`); if (cc) cc.textContent = colAvgText(c, col);
+    save();
+  },
+  'check-all': async el => {
+    const c = cls(), col = c.columns.find(x => x.id === el.dataset.col); if (!col) return;
+    const left = c.students.filter(s => c.grades[col.id]?.[s.id] == null);
+    if (!left.length) return toast('Tous les élèves ont déjà une réponse');
+    if (!await confirmDlg(`Marquer « remis » les ${left.length} élève(s) sans réponse pour « ${col.title} » ?`, 'Tout marquer OK', false)) return;
+    c.grades[col.id] ||= {}; left.forEach(s => c.grades[col.id][s.id] = 'OK'); save(); renderMain();
+  },
   'edit-col': el => editColumn(cls().columns.find(x => x.id === el.dataset.id)),
   'grade-cat': el => { S.ui.gradeCat = el.dataset.cat; save(); renderMain(); },
   'grade-period': el => { S.ui.gradePeriod = el.dataset.p === String(periodOfDate(todayISO())) ? '' : el.dataset.p; save(); renderMain(); },
