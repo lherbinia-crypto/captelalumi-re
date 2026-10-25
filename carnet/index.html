@@ -354,7 +354,10 @@ const addDays = (iso, n, skipWeekend) => {
   return isoOf(d);
 };
 
-const COLORS = ['#2f6fec', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#64748b'];
+const COLORS = ['#e8559a', '#14b3b0', '#a678de', '#2f6fec', '#16a34a', '#dc2626', '#d97706', '#64748b'];
+// Couleur par groupe : 1res en rose, 2es en turquoise, options en mauve
+const GROUP_COLOR = { S1: '#e8559a', S2: '#14b3b0', option: '#a678de' };
+const groupColor = c => /option/i.test(c.name || '') ? GROUP_COLOR.option : /^\s*2/.test(c.name || '') ? GROUP_COLOR.S2 : /^\s*1/.test(c.name || '') ? GROUP_COLOR.S1 : null;
 const STATUS = {
   P: { label: 'Présent', short: 'P' },
   A: { label: 'Absent', short: 'A' },
@@ -464,7 +467,7 @@ function normalize(st) {
   st.classes = Array.isArray(st.classes) ? st.classes : [];
   for (const c of st.classes) {
     c.students ||= []; c.columns ||= []; c.grades ||= {}; c.attendance ||= {}; c.journal ||= []; c.dossier ||= [];
-    c.color ||= COLORS[0];
+    if (!c.colorUser) c.color = groupColor(c) || c.color || COLORS[3]; // couleur choisie à la main = gardée
     c.cpc = { enabled: true, points: 20, events: [], self: {}, over: {}, ...(c.cpc || {}) };
     if (!c.cpc.userSet) c.cpc.enabled = true; // participation dans toutes les classes, sauf si désactivée dans « Modifier »
     c.drawn ||= [];
@@ -1876,7 +1879,9 @@ function editClass(c) {
     const d = formData(el), color = $('input[name=color]:checked', el)?.value || c.color;
     if (!d.name) { toast('Donnez un nom à la classe'); return false; }
     const pts = parseFloat(String(d.points).replace(',', '.'));
+    if (color !== c.color) c.colorUser = color !== groupColor({ name: d.name });
     Object.assign(c, { name: d.name, subject: d.subject, color, level: d.level || '' });
+    if (!c.colorUser) c.color = groupColor(c) || c.color;
     c.cpc = { ...c.cpc, enabled: !!d.cpcOn, userSet: !d.cpcOn, points: pts > 0 ? pts : 20 };
     if (isNew) { Object.assign(c, normalize({ classes: [{ ...c, id: uid() }] }).classes[0]); S.classes.push(c); S.ui.classId = c.id; S.ui.tab = 'eleves'; S.ui.view = 'class'; }
     save(); render();
