@@ -1027,7 +1027,9 @@ function viewGrades(c) {
   const partHead = showPart ? `<th class="colh" data-act="tab" data-tab="participation" title="Voir la participation"><div class="ct">Participation</div><div class="cm">départ ${S.settings.cpc.base}/${pmax}${ppts !== pmax ? ' · compte /' + ppts : ''}</div><div class="cm">icônes</div></th>` : '';
   const partCell = sid => { if (!showPart) return ''; const n = cpcNote(c, sid, sp); return `<td class="cell ${pctClass(n / pmax * 100)}"><button type="button" class="pcell" data-act="cpc-student" data-sid="${sid}">${fmtNum(n)}<small>/${pmax}</small></button></td>`; };
   const partFoot = () => { if (!showPart) return ''; const v = studs.map(s => cpcNote(c, s.id, sp)); return `<td>${fmtNum(v.reduce((a, b) => a + b, 0) / v.length)}/${pmax}</td>`; };
-  return tb + arBanner(c) + `<div class="gt-wrap"><table class="gt">
+  const sus = suspectPartCols(c);
+  const susBanner = sus.length ? `<div class="hw no-print" style="margin:0 0 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span><b>À vérifier :</b> ${sus.map(col => `« ${esc(col.title)} »`).join(', ')} ressemble${sus.length > 1 ? 'nt' : ''} à des points de participation iDoceo (−1, −2…), pas à des évaluations.</span><span class="spacer" style="flex:1"></span><button class="btn sm primary" data-act="convert-part">Convertir en participation</button><button class="btn sm ghost" data-act="keep-cols">Ce sont des évaluations</button></div>` : '';
+  return tb + susBanner + arBanner(c) + `<div class="gt-wrap"><table class="gt">
     <thead><tr><th class="name">Élève</th>${cols.map(col => `<th class="colh" data-act="edit-col" data-id="${col.id}" title="Modifier"><div class="ct">${esc(col.title)}</div><div class="cm">${fmtShort(col.date)} · ${col.type === 'icons' ? 'icônes' : col.type === 'check' ? 'remis ?' : '/' + fmtNum(col.max, 2)}${col.type !== 'check' && Number(col.weight) !== 1 ? ' · ×' + fmtNum(Number(col.weight), 2) : ''}</div><div class="cm">P${colPeriod(col) + 1}${col.category ? ' · ' + esc(col.category) : ''}</div></th>`).join('')}${partHead}<th>${avgTitle}<div class="cm" style="font-weight:400">sur ${bs}</div></th></tr></thead>
     <tbody>${studs.map((s, ri) => { const avg = rowAvg(c, s.id);
       return `<tr><td class="name"><button class="namebtn" data-act="open-student" data-id="${s.id}">${avatar(s, 'sm')}<span>${nameHTML(s)}</span></button></td>
@@ -1053,6 +1055,25 @@ function onGradeChange(inp) {
   inp.value = fmtGrade(r.v);
   inp.parentElement.className = 'cell ' + gradeClass(r.v, col);
   refreshGradeTotals(c, col, sid);
+}
+const DATE_TITLE = /^\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s*$/;
+function suspectPartCols(c) {
+  return c.columns.filter(col => (!col.type || col.type === 'number') && !col.partOk &&
+    looksLikePartPoints(DATE_TITLE.test(col.title), Object.values(c.grades[col.id] || {}).filter(v => typeof v === 'number')));
+}
+async function convertToPart(c, cols) {
+  const names = cols.map(col => `« ${col.title} »`).join(', ');
+  if (!await confirmDlg(`Convertir ${names} en points de participation ?\nChaque valeur (−1, −2…) devient des points ajoutés ou retirés aux 14/20 de l’élève, à la date de la colonne. Ces colonnes ne compteront plus comme des évaluations.`, 'Convertir', false)) return;
+  let n = 0;
+  for (const col of cols) {
+    const m = col.title.match(DATE_TITLE), date = m ? idoceoDate(+m[1], +m[2], m[3]) : (col.date || todayISO());
+    for (const [sid, v] of Object.entries(c.grades[col.id] || {})) {
+      if (typeof v === 'number' && v) { c.cpc.events.push({ id: uid(), sid, k: 'import', pts: v, date, t: 0 }); n++; }
+    }
+    c.columns = c.columns.filter(x => x.id !== col.id); delete c.grades[col.id];
+  }
+  c.cpc.enabled = true;
+  save(); render(); toast(`${n} point(s) de participation repris · ${cols.length} colonne(s) convertie(s)`);
 }
 function colAvgText(c, col) {
   if (col.type === 'check') { const g = Object.values(c.grades[col.id] || {}); return `${g.filter(v => v === 'OK').length}/${c.students.length} remis`; }
@@ -1134,6 +1155,7 @@ function editColumn(col) {
       <div class="small" id="col-att" style="margin:-6px 0 12px;color:var(--accent)"></div>
       <label class="field"><span>Catégorie (remplie par la compétence, ou libre)</span><input class="inp" name="category" list="cat-list" value="${esc(col.category || '')}" placeholder="Ex. Devoir, Recherche, Formatif…">
       <datalist id="cat-list">${cats.map(k => `<option value="${esc(k)}">`).join('')}</datalist></label>
+      ${!isNew && (!col.type || col.type === 'number') ? `<button type="button" class="btn sm" data-act="convert-one" data-id="${col.id}" style="margin:0 8px 8px 0">Convertir en points de participation</button>` : ''}
       <button type="button" class="btn sm ghost" id="col-ref" style="padding-left:0">Voir le référentiel (${epcLevel(c) === 'S2' ? '2e' : '1re'} secondaire)</button>`
   });
 }
@@ -2024,9 +2046,18 @@ function rowsToStudents(rows) {
 }
 // ---------- Import iDoceo (export Excel d'une classe) ----------
 // En-têtes iDoceo : « Titre\nMaximum\nJJ/MM ». Colonne des élèves : « Nom, Prénom ».
+// Colonne de symboles de participation iDoceo : titre = une date, valeurs = petits entiers (souvent négatifs)
+function looksLikePartPoints(dateTitle, values) {
+  const nums = values.map(v => num(v)).filter(v => v != null);
+  if (!nums.length) return false;
+  if (!nums.every(v => Number.isInteger(v) && Math.abs(v) <= 10)) return false;
+  return nums.some(v => v < 0) || (dateTitle && nums.every(v => Math.abs(v) <= 3));
+}
 function parseIdoceoHeader(h) {
   const lines = String(h || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
   const out = { title: lines[0] || '', max: null, date: '' };
+  const td = out.title.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+  if (td) { out.date = idoceoDate(+td[1], +td[2], td[3]); out.dateTitle = true; }
   for (const l of lines.slice(1)) {
     const d = l.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
     if (d) out.date = idoceoDate(+d[1], +d[2], d[3]);
@@ -2071,6 +2102,7 @@ function analyseIdoceo(rows, fileName) {
       : /valeur ic/.test(t) ? 'iconsum'
       : /^pr[ée]sences?$|^absences?$|^appel$/.test(t) ? 'presence'
       : /^participation$/.test(t) && hd.max == null ? 'icons'
+      : looksLikePartPoints(hd.dateTitle, values) ? 'icons'
       : values.some(v => num(v) != null || String(v).trim()) ? 'grade' : 'empty';
     cols.push({ j, ...hd, kind, values });
   });
@@ -2135,7 +2167,11 @@ function verifyIdoceo(an, c) {
     col.values.forEach((v, i) => {
       const s = c.students[i], ref = num(v); if (!s || ref == null) return;
       total++;
-      const mine = col.kind === 'bulletin' ? periodAvg(c, s.id, pi) / 100 * (col.max || 20) : cpcNote(c, s.id, pi);
+      // contrôle de l'import selon la règle d'iDoceo (14 + somme des points) ; le Carnet fait ensuite la moyenne des cours
+      const partI = clampNote((Number(S.settings.cpc.base) || 0) + cpcEvents(c, s.id, pi).reduce((t, e) => t + evPts(e), 0));
+      let mine;
+      if (col.kind === 'parttotal') mine = partI;
+      else { const r = pointsOf(c, s.id, periodCols(c, pi)), pts = Number(c.cpc.points) || 20; if (cpcOn(c)) { r.got += partI / (Number(S.settings.cpc.max) || 20) * pts; r.max += pts; } mine = r.max ? r.got / r.max * (col.max || 20) : NaN; }
       if (Number.isFinite(mine) && Math.abs(mine - ref) < 0.051) ok++; else diffs.push(`${studentName(s)} : iDoceo ${fmtNum(ref)}, Carnet ${fmtNum(mine)}`);
     });
     if (total) checks.push({ title: col.title, ok, total, diffs });
@@ -2175,7 +2211,7 @@ async function importIdoceo() {
           <td class="small">${x.kind === 'grade' ? `Évaluation /${fmtNum(c.columns.find(g => g.title === x.title)?.max ?? x.max, 2)} en ${esc(S.settings.periods[periodOfDate(x.date || todayISO())]?.name || '')}` : x.kind === 'iconsum' && an.iconCols[0]?.kind === 'icons' ? 'total des icônes, recalculé ici' : label[x.kind]}</td></tr>`).join('')}
         </tbody></table></div>
         ${presCols.length && !att ? `<p class="small" style="color:var(--warn);font-weight:600">⚠︎ Les ${presCols.length} colonnes « Présence » (${presCols.map(x => fmtShort(x.date)).join(', ')}) sont vides dans le fichier : iDoceo n’y a mis ni absence ni retard. Rien n’est donc repris pour ces dates.</p>` : ''}
-        ${it.checks.length ? it.checks.map(ch => `<p class="small" style="color:${ch.ok === ch.total ? 'var(--ok)' : 'var(--warn)'};font-weight:600;margin:8px 0 0">${ch.ok === ch.total ? '✓' : '⚠︎'} ${esc(ch.title)} : ${ch.ok}/${ch.total} élèves identiques à iDoceo${ch.diffs.length ? '<br><span class="muted" style="font-weight:400">' + ch.diffs.slice(0, 5).map(esc).join('<br>') + '</span>' : ''}</p>`).join('') : ''}
+        ${it.checks.length ? it.checks.map(ch => `<p class="small" style="color:${ch.ok === ch.total ? 'var(--ok)' : 'var(--warn)'};font-weight:600;margin:8px 0 0">${ch.ok === ch.total ? '✓' : '⚠︎'} ${esc(ch.title)} : ${ch.ok}/${ch.total} élèves identiques à iDoceo (calcul iDoceo : 14 + tous les points)${ch.diffs.length ? '<br><span class="muted" style="font-weight:400">' + ch.diffs.slice(0, 5).map(esc).join('<br>') + '</span>' : ''}</p>`).join('') : ''}
       </div>`;
     }).join('') + `<p class="small muted">Les classes sont ajoutées à côté de vos classes actuelles ; rien n’est effacé. Le détail des icônes n’est pas dans l’export Excel d’iDoceo : la participation est reprise comme un total de points par date.</p>`,
     actions: [{ label: 'Annuler' }, { label: items.length > 1 ? 'Importer les classes' : 'Importer la classe', cls: 'primary', onClick: el => {
@@ -2382,6 +2418,9 @@ const A = {
   },
   'open-file': el => openFile(el.dataset.id),
   'add-col': () => editColumn(),
+  'convert-part': () => { const c = cls(); convertToPart(c, suspectPartCols(c)); },
+  'keep-cols': () => { const c = cls(); suspectPartCols(c).forEach(col => col.partOk = true); save(); renderMain(); },
+  'convert-one': el => { const c = cls(), col = c.columns.find(x => x.id === el.dataset.id); if (col) { $('#modal-root').lastElementChild?._close(); convertToPart(c, [col]); } },
   'add-check': () => { const sp = selPeriod(), today = todayISO(); editColumn({ title: '', date: today, max: 1, weight: 0, category: '', type: 'check', period: sp != null && periodOfDate(today) !== sp ? sp : null, _new: true }); },
   'toggle-check': el => {
     const c = cls(), col = c.columns.find(x => x.id === el.dataset.col), sid = el.dataset.sid; if (!col) return;
