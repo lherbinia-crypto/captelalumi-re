@@ -482,6 +482,10 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && sav
 window.addEventListener('pagehide', () => { if (saveTimer) flush(); });
 
 const cls = () => S.classes.find(c => c.id === S.ui.classId);
+// Ordre des classes : 1re puis 2e, par lettre (1C, 1D, 1F… 2A, 2B…), les groupes d'option à la fin
+const isOption = c => /option/i.test(c.name || '');
+const natural = new Intl.Collator('fr', { numeric: true, sensitivity: 'base' });
+const sortedClasses = () => [...S.classes].sort((a, b) => (isOption(a) - isOption(b)) || natural.compare(a.name, b.name));
 const sortStudents = list => [...list].sort((a, b) => collator.compare(a.lastName, b.lastName) || collator.compare(a.firstName, b.firstName));
 const studentName = s => s ? `${s.lastName} ${s.firstName}`.trim() : '(élève supprimé)';
 const initials = s => ((s.firstName || '')[0] || '') + ((s.lastName || '')[0] || '');
@@ -893,7 +897,7 @@ function renderSidebar() {
   $('#sidebar').innerHTML = `
     <div class="brand"><div class="brand-mark">C</div><div><b>Carnet du prof</b><small>${esc(S.settings.year || S.settings.school || 'Ma classe sur iPad')}</small></div></div>
     <div class="side-h">Mes classes</div>
-    ${S.classes.map(c => `<button class="cls-item ${S.ui.view === 'class' && c.id === S.ui.classId ? 'active' : ''}" style="--dot:${c.color}" data-act="select-class" data-id="${c.id}">
+    ${sortedClasses().map(c => `<button class="cls-item ${S.ui.view === 'class' && c.id === S.ui.classId ? 'active' : ''}" style="--dot:${c.color}" data-act="select-class" data-id="${c.id}">
       <span class="dot"></span><span><span class="nm">${esc(c.name)}</span><span class="sub">${esc(c.subject || '')}${c.subject ? ' · ' : ''}${c.students.length} élève${c.students.length > 1 ? 's' : ''}</span></span></button>`).join('')}
     <button class="side-btn" data-act="new-class">＋ Nouvelle classe</button>
     <button class="side-btn" data-act="import-idoceo">⬇︎ Importer depuis iDoceo</button>
@@ -914,7 +918,7 @@ function renderMain() {
     return;
   }
   if (!c) {
-    if (S.classes.length) { S.ui.classId = S.classes[0].id; return renderMain(); }
+    if (S.classes.length) { S.ui.classId = sortedClasses()[0].id; return renderMain(); }
     top.innerHTML = `<div class="top-row">${menu}<h1>Bienvenue</h1></div><div style="height:10px"></div>`;
     view.innerHTML = `<div class="empty"><h2>Bienvenue dans votre carnet</h2>
       <p>Créez une première classe pour y ajouter vos élèves, vos cotes, les présences, le journal de classe et le DAccE.<br>Toutes les données restent sur cet iPad.</p>
@@ -1602,7 +1606,7 @@ const EPC = {
   ]
 };
 // Niveau de la classe pour le référentiel : choisi dans « Modifier », sinon déduit du nom (1C → S1, 2G → S2)
-const epcLevel = c => c?.level || (/^\s*1/.test(c?.name || '') ? 'S1' : /^\s*2/.test(c?.name || '') ? 'S2' : 'S1');
+const epcLevel = c => c?.level || (isOption(c || {}) ? 'S2' : /^\s*1/.test(c?.name || '') ? 'S1' : /^\s*2/.test(c?.name || '') ? 'S2' : 'S1');
 const epcAtt = (k, lvl) => (lvl === 'S2' && k.attS2) || k.att;
 const epcSf = (k, lvl) => (lvl === 'S2' && k.sfS2) || k.sf;
 const compLabel = n => { const k = EPC.comps[n - 1]; return k ? `C${n} · ${k.court}` : ''; };
@@ -1866,7 +1870,7 @@ function editClass(c) {
   if (!isNew) actions.push({ label: 'Supprimer la classe', cls: 'danger left', onClick: async () => {
     if (!await confirmDlg(`Supprimer définitivement la classe « ${c.name} » avec ses élèves, cotes, présences, journal et DAccE ?`)) return false;
     await deleteFiles([...c.students.flatMap(s => s.files || []), ...c.journal.flatMap(j => j.attachments || []), ...c.dossier.flatMap(d => d.attachments || [])]);
-    S.classes = S.classes.filter(x => x.id !== c.id); S.ui.classId = S.classes[0]?.id || null; S.ui.studentId = null; save(); render();
+    S.classes = S.classes.filter(x => x.id !== c.id); S.ui.classId = sortedClasses()[0]?.id || null; S.ui.studentId = null; save(); render();
   } });
   actions.push({ label: 'Annuler' }, { label: isNew ? 'Créer' : 'Enregistrer', cls: 'primary', onClick: el => {
     const d = formData(el), color = $('input[name=color]:checked', el)?.value || c.color;
