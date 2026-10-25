@@ -465,7 +465,8 @@ function normalize(st) {
   for (const c of st.classes) {
     c.students ||= []; c.columns ||= []; c.grades ||= {}; c.attendance ||= {}; c.journal ||= []; c.dossier ||= [];
     c.color ||= COLORS[0];
-    c.cpc = { enabled: false, points: 20, events: [], self: {}, over: {}, mode: 'periode', ...(c.cpc || {}) };
+    c.cpc = { enabled: true, points: 20, events: [], self: {}, over: {}, ...(c.cpc || {}) };
+    if (!c.cpc.userSet) c.cpc.enabled = true; // participation dans toutes les classes, sauf si désactivée dans « Modifier »
     c.drawn ||= [];
     for (const s of c.students) s.files ||= [];
   }
@@ -565,16 +566,19 @@ function cpcNote(c, sid, i) {
 const cpcOn = c => !!c?.cpc?.enabled;
 // Note de période : participation (si activée) + évaluations de la période, selon la part choisie
 // Points d'une période : évaluations de la période + participation (comptée comme une évaluation)
-function periodPoints(c, sid, i) {
+// La participation compte dès que la période a commencé ou contient déjà une évaluation ou un cours
+// (force = toujours, pour l'affichage du carnet de cotes)
+const partCounts = (c, i) => periodStarted(i) || periodCols(c, i).length > 0 || lessonDates(c, i).length > 0;
+function periodPoints(c, sid, i, force) {
   const r = pointsOf(c, sid, periodCols(c, i));
-  if (cpcOn(c) && periodStarted(i)) {
+  if (cpcOn(c) && (force || partCounts(c, i))) {
     const pts = Number(c.cpc.points) || 20;
     r.got += cpcNote(c, sid, i) / (Number(S.settings.cpc.max) || 20) * pts; r.max += pts;
   }
   return r;
 }
-function periodAvg(c, sid, i) {
-  const r = periodPoints(c, sid, i);
+function periodAvg(c, sid, i, force) {
+  const r = periodPoints(c, sid, i, force);
   return r.max ? r.got / r.max * 100 : NaN;
 }
 const fmtPtsTotal = r => `${fmtNum(r.got, 1)} / ${fmtNum(r.max, 1)} pts`;
@@ -584,11 +588,11 @@ const visibleCols = c => { const sp = selPeriod(); return sortedCols(c).filter(c
 const gradeMode = () => S.ui.gradeCat ? 'filter' : selPeriod() == null ? 'year' : 'period';
 function rowAvg(c, sid) {
   const m = gradeMode();
-  return m === 'filter' ? studentAvg(c, sid, visibleCols(c)) : m === 'year' ? annualAvg(c, sid) : periodAvg(c, sid, selPeriod());
+  return m === 'filter' ? studentAvg(c, sid, visibleCols(c)) : m === 'year' ? annualAvg(c, sid) : periodAvg(c, sid, selPeriod(), true);
 }
 function avgCellHTML(c, sid) {
   const avg = rowAvg(c, sid), bs = S.settings.bulletinScale, m = gradeMode();
-  const r = m === 'period' ? periodPoints(c, sid, selPeriod()) : m === 'filter' ? pointsOf(c, sid, visibleCols(c)) : null;
+  const r = m === 'period' ? periodPoints(c, sid, selPeriod(), true) : m === 'filter' ? pointsOf(c, sid, visibleCols(c)) : null;
   return Number.isFinite(avg) ? `${fmtOn(avg, bs)}<span style="font-weight:500;font-size:13px">/${bs}</span>${r ? `<small>${fmtPtsTotal(r)}</small>` : ''}` : '–';
 }
 const periodCols = (c, i) => sortedCols(c).filter(col => colPeriod(col) === i);
@@ -1018,7 +1022,7 @@ function viewGrades(c) {
     <button class="chip ${sp == null ? 'active' : ''}" data-act="grade-period" data-p="all">Toute l’année</button>
     ${cats.length ? '<span style="width:12px"></span>' : ''}${cats.length ? `<button class="chip ${!S.ui.gradeCat ? 'active' : ''}" data-act="grade-cat" data-cat="">Toutes</button>${cats.map(k => `<button class="chip ${S.ui.gradeCat === k ? 'active' : ''}" data-act="grade-cat" data-cat="${esc(k)}">${esc(k)}</button>`).join('')}` : ''}</div>`;
   if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2><p>Ajoutez des élèves dans l’onglet « Élèves » pour commencer à coter.</p><button class="btn" data-act="tab" data-tab="eleves">Aller aux élèves</button></div>`;
-  const showPart = gradeMode() === 'period' && cpcOn(c) && periodStarted(sp);
+  const showPart = gradeMode() === 'period' && cpcOn(c);
   if (!cols.length && !showPart) return tb + `<div class="empty"><h2>Aucune évaluation${sp != null ? ' en ' + esc(P[sp].name) : ''}</h2><p>Touchez « ＋ Évaluation » pour créer une colonne (devoir, recherche, interro…) avec ses points.</p></div>`;
   const classAvg = () => { const v = studs.map(s => rowAvg(c, s.id)).filter(Number.isFinite); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN; };
   const ca = classAvg();
@@ -1167,7 +1171,7 @@ function exportCSV() {
   const lines = [['Nom', 'Prénom', ...cols.map(col => col.type === 'icons' ? `${col.title} (icônes)` : col.type === 'check' ? `${col.title} (remis)` : `${col.title} (/${col.max})`), ...(cpcOn(c) ? P.map(p => `Participation ${p.name} /${S.settings.cpc.max}`) : []), ...P.map(p => `${p.name} /${bs}`), `Année /${bs}`].map(q).join(';')];
   for (const s of studs) {
     lines.push([s.lastName, s.firstName, ...cols.map(col => { const v = c.grades[col.id]?.[s.id]; return isIcon(v) ? `${fmtGrade(v)} ${iconOf(v)?.label || ''}` : fmtGrade(v); }),
-      ...(cpcOn(c) ? P.map((p, i) => periodStarted(i) ? String(cpcNote(c, s.id, i)).replace('.', ',') : '') : []),
+      ...(cpcOn(c) ? P.map((p, i) => partCounts(c, i) ? String(cpcNote(c, s.id, i)).replace('.', ',') : '') : []),
       ...P.map((p, i) => num(periodAvg(c, s.id, i))), num(annualAvg(c, s.id))].map(q).join(';'));
   }
   saveBlob(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv' }), `cotes-${c.name.replace(/[^\w-]+/g, '_')}-${todayISO()}.csv`);
@@ -1392,7 +1396,7 @@ function viewBulletins(c) {
     <span class="spacer"></span><button class="btn sm" data-act="export-csv">Exporter (CSV)</button><button class="btn sm" data-act="print">Imprimer</button></div>`;
   if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2></div>`;
   const cell = (p, sub = '') => `<td class="num ${pctClass(p)}"><b>${fmtOn(p, bs)}</b>${Number.isFinite(p) ? `<small class="muted"> /${bs}</small>` : ''}${sub}</td>`;
-  const rows = studs.map(s => ({ s, per: P.map((p, i) => periodAvg(c, s.id, i)), part: P.map((p, i) => cpcOn(c) && periodStarted(i) ? cpcNote(c, s.id, i) : null), year: annualAvg(c, s.id) }));
+  const rows = studs.map(s => ({ s, per: P.map((p, i) => periodAvg(c, s.id, i)), part: P.map((p, i) => cpcOn(c) && partCounts(c, i) ? cpcNote(c, s.id, i) : null), year: annualAvg(c, s.id) }));
   const partSub = (n, i, s) => { const r = periodPoints(c, s.id, i); return r.max ? `<div class="small muted">${fmtPtsTotal(r)}${n == null ? '' : ` · particip. ${fmtNum(n)}/${S.settings.cpc.max}`}</div>` : ''; };
   const mean = arr => { const v = arr.filter(Number.isFinite); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN; };
   let start = '';
@@ -1869,7 +1873,7 @@ function editClass(c) {
     if (!d.name) { toast('Donnez un nom à la classe'); return false; }
     const pts = parseFloat(String(d.points).replace(',', '.'));
     Object.assign(c, { name: d.name, subject: d.subject, color, level: d.level || '' });
-    c.cpc = { ...c.cpc, enabled: !!d.cpcOn, points: pts > 0 ? pts : 20 };
+    c.cpc = { ...c.cpc, enabled: !!d.cpcOn, userSet: !d.cpcOn, points: pts > 0 ? pts : 20 };
     if (isNew) { Object.assign(c, normalize({ classes: [{ ...c, id: uid() }] }).classes[0]); S.classes.push(c); S.ui.classId = c.id; S.ui.tab = 'eleves'; S.ui.view = 'class'; }
     save(); render();
   } });
@@ -2123,8 +2127,7 @@ function attCode(v) {
 function buildIdoceoClass(an) {
   const c = normalize({ classes: [{ id: uid(), name: an.name, subject: '', color: COLORS[S.classes.length % COLORS.length] }] }).classes[0];
   c.students = an.students.map((st, i) => ({ id: uid(), ...st, files: [], ...(an.photoUrls?.[i] ? { photo: an.photoUrls[i] } : {}) }));
-  const hasPart = an.cols.some(x => ['parttotal', 'icons', 'iconsum'].includes(x.kind));
-  c.cpc = { enabled: hasPart, points: Number(an.cols.find(x => x.kind === 'parttotal')?.max) || 20, events: [], self: {} };
+  c.cpc = { enabled: true, points: Number(an.cols.find(x => x.kind === 'parttotal')?.max) || 20, events: [], self: {} };
   let created = Date.now();
   for (const col of an.cols) {
     if (col.kind === 'grade') {
