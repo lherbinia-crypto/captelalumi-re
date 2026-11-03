@@ -479,6 +479,7 @@ function normalize(st) {
   if (!Array.isArray(dp) || dp.length !== 3 || (/-11-07$/.test(dp[0].au) && /-03-06$/.test(dp[1].au) && /-06-30$/.test(dp[2].au))) st.settings.daccePeriods = defaultDaccePeriods();
   st.ui = { ...d.ui, ...(st.ui || {}) };
   st.classes = Array.isArray(st.classes) ? st.classes : [];
+  st.pendingAR = Array.isArray(st.pendingAR) ? st.pendingAR : [];
   for (const c of st.classes) {
     c.students ||= []; c.columns ||= []; c.grades ||= {}; c.attendance ||= {}; c.journal ||= []; c.dossier ||= [];
     if (!c.colorUser) c.color = groupColor(c) || c.color || COLORS[3]; // couleur choisie à la main = gardée
@@ -550,7 +551,7 @@ function arCard(s) {
   const ar = s.ar || {}, n = (ar.liste || []).length;
   return `<div class="card pad ar-card ${n ? 'ok' : hasAR(s) ? 'todo' : ''}" style="margin-bottom:16px">
     <div class="toolbar" style="margin-bottom:8px"><h3 class="section-h" style="margin:0">Aménagements raisonnables</h3>${ar.source ? `<span class="muted small">${esc(ar.source)}</span>` : ''}<span class="spacer"></span>
-      ${n ? `<button class="btn sm" data-act="ar-to-dacce">＋ Note DAccE depuis ses AR</button>` : ''}</div>
+      <button class="btn sm" data-act="ar-paste">📋 Coller le mail d’A.R.</button>${n ? `<button class="btn sm" data-act="ar-to-dacce">＋ Note DAccE depuis ses AR</button>` : ''}</div>
     ${ar.note ? `<div class="hw" style="margin:0 0 10px"><b>À faire :</b> ${esc(ar.note)} <button class="btn sm ghost" data-act="ar-note-done">C’est fait</button></div>` : ''}
     ${n ? `<ul class="ar-list">${ar.liste.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
     <details ${n ? '' : 'open'}><summary class="small" style="cursor:pointer;font-weight:600;color:var(--accent);margin:6px 0">${n ? 'Modifier' : 'Encoder les aménagements'}</summary>
@@ -1352,36 +1353,97 @@ function arToDacce() {
 }
 // Import des AR exportés du « Journal de classe CPC » (fichier JSON)
 const normName = x => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+// Retrouver l'élève d'une fiche d'AR : dans sa classe (« 1A », « 1A S2 »…), sinon par son nom dans toutes les classes
+function findStudentFor(x) {
+  const full = normName(`${x.nom} ${x.prenom}`), cl = normName(x.classe || '');
+  const isHim = k => normName(`${k.lastName} ${k.firstName}`) === full || normName(`${k.firstName} ${k.lastName}`) === full;
+  const inClass = S.classes.filter(k => cl && (normName(k.name) === cl || normName(k.name).startsWith(cl + ' ')));
+  for (const c of [...inClass.filter(k => !k.archived), ...inClass.filter(k => k.archived)]) {
+    let s = c.students.find(isHim);
+    if (!s) { const same = c.students.filter(k => normName(k.lastName) === normName(x.nom)); if (same.length === 1) s = same[0]; }
+    if (s) return s;
+  }
+  const any = S.classes.flatMap(c => c.students).filter(isHim);
+  return any.length === 1 ? any[0] : null;
+}
+function applyAR(s, x) {
+  const liste = (x.liste || []).filter(Boolean);
+  if (liste.length || !hasAR(s)) s.ar = { motif: x.motif || s.ar?.motif || '', liste: liste.length ? liste : (s.ar?.liste || []), source: x.source || s.ar?.source || 'Journal de classe CPC', note: liste.length ? '' : (x.note || s.ar?.note || '') };
+}
+// Lecture d'un mail d'A.R. collé : lignes « - … » (y compris les mails cités « > - … »), motif reconnu
+const AR_MOTIFS = [[/\btdah\b/i, 'TDAH'], [/\btda\b/i, 'TDA'], [/dyslexi/i, 'Dyslexie'], [/dysorthograph/i, 'Dysorthographie'], [/dyscalculi/i, 'Dyscalculie'], [/dyspraxi/i, 'Dyspraxie'], [/dysphasi/i, 'Dysphasie'], [/dysgraphi/i, 'Dysgraphie'], [/b[ée]gai/i, 'Bégaiement'], [/neurodivergen/i, 'Neurodivergence'], [/\b(hpi|haut potentiel)\b/i, 'Haut potentiel'], [/\b(tsa|autis\w*)\b/i, 'TSA'], [/\bvue\b|ophtalm/i, 'Vue']];
+function parseARMail(text) {
+  const lines = String(text || '').split(/\r?\n/).map(l => l.replace(/^\s*(>\s*)+/, '').trim());
+  const items = [], seen = new Set();
+  for (const l of lines) {
+    if (!/^[-•–*·]\s*\S/.test(l)) continue;
+    for (let part of l.replace(/^[-•–*·]\s*/, '').split(/(?<=\S)[-–]\s+(?=[a-zà-ÿ])/i)) {
+      part = part.replace(/[\s.;,-]+$/, '').trim(); if (!part) continue;
+      part = part[0].toUpperCase() + part.slice(1);
+      const k = normName(part); if (!seen.has(k)) { seen.add(k); items.push(part); }
+    }
+  }
+  const motifs = [...new Set(AR_MOTIFS.filter(([re]) => re.test(text)).map(([, m]) => m))];
+  if (motifs.includes('TDAH')) motifs.splice(motifs.indexOf('TDA'), motifs.includes('TDA') ? 1 : 0);
+  return { items, motif: motifs.join(', '), add: /\b(r?ajout\w*)\b/i.test(text) };
+}
+function arPaste() {
+  const s = studentByUI(); if (!s) return;
+  const cur = s.ar?.liste || [];
+  const draw = (el) => {
+    const r = parseARMail($('[name=mail]', el).value);
+    $('#arp-prev', el).innerHTML = r.items.length ? `<b>${r.items.length} aménagement(s) trouvé(s)</b>${r.motif ? ` · motif : <b>${esc(r.motif)}</b>` : ''}${r.add ? ' · <span class="tag warn">le mail dit « ajouter »</span>' : ''}<ul style="margin:6px 0;padding-left:18px">${r.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<span class="muted">Collez le mail : chaque ligne qui commence par « - » devient un aménagement.</span>';
+  };
+  const apply = (el, mode) => {
+    const r = parseARMail($('[name=mail]', el).value);
+    if (!r.items.length) { toast('Aucune ligne « - … » trouvée dans le texte collé'); return false; }
+    const keep = mode === 'add' ? [...cur] : [];
+    for (const x of r.items) if (!keep.some(y => normName(y) === normName(x))) keep.push(x);
+    s.ar = { motif: s.ar?.motif || r.motif, liste: keep, source: `Mail d’A.R. collé le ${fmtShort(todayISO())}${s.ar?.source && mode === 'add' ? ' · ' + s.ar.source : ''}`, note: '' };
+    if (!s.ar.motif && r.motif) s.ar.motif = r.motif;
+    save(); renderMain(); toast(`${keep.length} aménagement(s) enregistrés pour ${s.firstName || s.lastName}`);
+  };
+  modal({
+    title: `Coller le mail d’A.R. — ${studentName(s)}`, wide: true,
+    body: `<p class="small muted" style="margin-top:0">Dans votre messagerie, sélectionnez tout le texte du mail (y compris l’ancien mail cité en dessous si les A.R. s’ajoutent), copiez, puis collez ici.</p>
+      <textarea class="inp" name="mail" rows="8" placeholder="Bonjour,&#10;Nora est dysorthographique et bénéficie d’A.R., à savoir :&#10;- octroi de temps supplémentaire&#10;- …"></textarea>
+      <div id="arp-prev" class="small" style="margin-top:8px"></div>
+      ${cur.length ? `<p class="small muted">Liste actuelle : ${cur.length} aménagement(s). « Ajouter » les garde et ajoute les nouveaux sans doublon ; « Remplacer » ne garde que ceux du mail.</p>` : ''}`,
+    onOpen: el => { $('[name=mail]', el).addEventListener('input', () => draw(el)); draw(el); },
+    actions: [{ label: 'Annuler' }, ...(cur.length ? [{ label: 'Remplacer la liste', onClick: el => apply(el, 'replace') }] : []), { label: cur.length ? 'Ajouter à la liste' : 'Enregistrer', cls: 'primary', onClick: el => apply(el, 'add') }]
+  });
+}
+const arKey = x => normName(`${x.nom} ${x.prenom}`);
+// AR des élèves pas encore dans le Carnet (ex. 2e semestre) : appliqués dès que l'élève arrive
+function applyPendingAR(silent) {
+  let n = 0;
+  S.pendingAR = S.pendingAR.filter(x => { const s = findStudentFor(x); if (!s) return true; applyAR(s, x); n++; return false; });
+  if (n && !silent) setTimeout(() => toast(`Aménagements raisonnables en attente appliqués à ${n} élève(s)`), 3000);
+  return n;
+}
 async function importAR() {
   const [f] = await pickFiles({ accept: '.json,application/json', multiple: false });
   if (!f) return;
   let data;
   try { data = JSON.parse(await f.text()); } catch { return toast('Fichier illisible'); }
   if (data?.app !== 'journal-cpc-ar' || !Array.isArray(data.eleves)) return toast('Ce fichier ne contient pas d’aménagements raisonnables du Journal CPC');
-  const plan = [], missing = [], noClass = new Set();
+  const plan = [], later = [];
   for (const x of data.eleves) {
-    const c = S.classes.find(k => normName(k.name) === normName(x.classe));
-    if (!c) { noClass.add(x.classe); continue; }
-    const full = normName(`${x.nom} ${x.prenom}`);
-    let s = c.students.find(k => normName(`${k.lastName} ${k.firstName}`) === full || normName(`${k.firstName} ${k.lastName}`) === full);
-    if (!s) { const same = c.students.filter(k => normName(k.lastName) === normName(x.nom)); if (same.length === 1) s = same[0]; }
-    if (!s) { missing.push(`${x.classe} · ${x.nom} ${x.prenom}`); continue; }
-    plan.push({ s, x });
+    const s = findStudentFor(x);
+    if (s) plan.push({ s, x }); else later.push(x);
   }
   const withList = plan.filter(p => (p.x.liste || []).length).length;
   modal({
     title: 'Aménagements raisonnables du Journal CPC', wide: true,
     body: `<p><b>${plan.length} élève${plan.length > 1 ? 's' : ''}</b> retrouvé${plan.length > 1 ? 's' : ''} dans vos classes, dont <b>${withList}</b> avec la liste complète des aménagements${plan.length - withList ? ` et ${plan.length - withList} marqué${plan.length - withList > 1 ? 's' : ''} « AR à compléter »` : ''}.</p>
-      ${noClass.size ? `<p class="small muted">Classes pas encore dans le Carnet (importez-les depuis iDoceo puis recommencez) : ${[...noClass].sort().map(esc).join(', ')}.</p>` : ''}
-      ${missing.length ? `<p class="small" style="color:var(--warn)">Élèves introuvables (nom différent ?) : ${missing.map(esc).join(' ; ')}</p>` : ''}
+      ${later.length ? `<p class="small"><b>${later.length} élève${later.length > 1 ? 's' : ''} pas encore dans le Carnet</b> (par exemple du 2e semestre) : ${later.map(x => `${esc(x.classe)} · ${esc(x.nom)} ${esc(x.prenom)}`).join(' ; ')}.<br><span class="muted">Leurs AR sont gardés en attente et s’appliqueront automatiquement dès que vous importerez leur classe.</span></p>` : ''}
       <p class="small muted">Ce qui est déjà encodé dans le Carnet est remplacé seulement si le Journal contient une liste.</p>`,
     actions: [{ label: 'Annuler' }, { label: 'Importer', cls: 'primary', onClick: () => {
-      if (!plan.length) return;
-      for (const { s, x } of plan) {
-        const liste = (x.liste || []).filter(Boolean);
-        if (liste.length || !hasAR(s)) s.ar = { motif: x.motif || s.ar?.motif || '', liste: liste.length ? liste : (s.ar?.liste || []), source: x.source || s.ar?.source || 'Journal de classe CPC', note: liste.length ? '' : (x.note || s.ar?.note || '') };
-      }
-      save(); render(); toast(`AR importés pour ${plan.length} élève(s)`);
+      for (const { s, x } of plan) applyAR(s, x);
+      const keep = new Map(S.pendingAR.map(x => [arKey(x), x]));
+      later.forEach(x => keep.set(arKey(x), x));
+      S.pendingAR = [...keep.values()];
+      save(); render(); toast(`AR importés pour ${plan.length} élève(s)${later.length ? ` · ${later.length} en attente` : ''}`);
     } }]
   });
 }
@@ -1969,6 +2031,7 @@ function addStudent() {
     const d = formData(el);
     if (!d.lastName && !d.firstName) { toast('Indiquez au moins un nom'); return false; }
     c.students.push({ id: uid(), lastName: d.lastName, firstName: d.firstName, files: [], ...(photo ? { photo } : {}) });
+    applyPendingAR();
     photo = null;
     $('#added-info', el).textContent = `${studentName(d)} ajouté(e).`;
     save(); render(); return true;
@@ -2161,7 +2224,7 @@ async function importSchoolLists() {
       });
       if (!first) return;
       S.ui.classId = first.id; S.ui.view = 'class'; S.ui.tab = 'eleves'; S.ui.studentId = null;
-      save(); render(); toast(`${n2} classe(s) importée(s) — touchez 📷 sur un élève pour prendre sa photo`);
+      applyPendingAR(); save(); render(); toast(`${n2} classe(s) importée(s) — touchez 📷 sur un élève pour prendre sa photo`);
     } }]
   });
 }
@@ -2401,7 +2464,7 @@ async function importIdoceo() {
         }
       });
       S.ui.classId = firstId; S.ui.view = 'class'; S.ui.tab = 'cotes'; S.ui.gradePeriod = ''; S.ui.studentId = null;
-      S.ui.tab = 'eleves'; save(); render(); toast(msg.join(' · '));
+      S.ui.tab = 'eleves'; applyPendingAR(); save(); render(); toast(msg.join(' · '));
     } }]
   });
 }
@@ -2436,7 +2499,7 @@ function importStudents() {
       const rows = formData(el).list.split(/\r?\n/).map(parseNameLine).filter(Boolean);
       if (!rows.length) { toast('Aucun nom détecté'); return false; }
       rows.forEach(r => c.students.push({ id: uid(), ...r, files: [] }));
-      toast(`${rows.length} élève(s) importé(s)`); save(); render();
+      toast(`${rows.length} élève(s) importé(s)`); applyPendingAR(); save(); render();
     } }]
   });
 }
@@ -2493,6 +2556,9 @@ function viewSettings() {
       <div class="card pad" style="margin-top:16px">
         <h3 class="section-h">Données</h3>
         <div class="toolbar" style="margin:0 0 10px"><button class="btn" data-act="import-ar">Importer les AR du Journal CPC</button></div>
+        ${S.pendingAR.length ? `<details style="margin:0 0 10px"><summary class="small" style="cursor:pointer;font-weight:600">AR en attente : ${S.pendingAR.length} élève(s) pas encore dans le Carnet</summary>
+          <ul class="small" style="margin:6px 0;padding-left:18px">${S.pendingAR.map((x, i) => `<li>${esc(x.classe)} · <span class="ln">${esc(x.nom)}</span> ${esc(x.prenom)} ${(x.liste || []).length ? `<span class="muted">(${x.liste.length} AR)</span>` : '<span class="muted">(à compléter)</span>'} <button class="btn sm ghost" data-act="drop-pending" data-i="${i}">retirer</button></li>`).join('')}</ul>
+          <p class="small muted" style="margin:0">Ils s’appliqueront dès que l’élève sera importé ou ajouté (le nom doit correspondre).</p></details>` : ''}
         <div class="toolbar" style="margin:0"><button class="btn" data-act="load-demo">Ajouter une classe d’exemple</button><button class="btn danger" data-act="wipe-all">Tout effacer</button></div>
       </div>
     </div></div>`;
@@ -2657,6 +2723,8 @@ const A = {
   'export-backup': exportBackup,
   'import-backup': importBackup,
   'import-ar': importAR,
+  'ar-paste': arPaste,
+  'drop-pending': el => { S.pendingAR.splice(+el.dataset.i, 1); save(); renderMain(); },
   'dx': dxAction,
   'epc-ref': () => showEPC(epcLevel(cls())),
   'export-dacce': exportDacceCSV,
