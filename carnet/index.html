@@ -292,6 +292,10 @@ table.plain{border-collapse:collapse;width:100%;background:var(--surface);border
 .viewer iframe{height:70dvh}
 @keyframes fade{from{opacity:0}}
 #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:#1d2433;color:#fff;padding:12px 18px;border-radius:12px;opacity:0;transition:.2s;z-index:60;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
+
+.st-nav{display:inline-flex;align-items:center;gap:6px}
+.st-nav .btn[disabled]{opacity:.35}
+#update-bar{position:fixed;top:calc(8px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:70;background:#1d2433;color:#fff;border-radius:12px;padding:10px 14px;display:flex;gap:12px;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:calc(100% - 32px)}
 #toast.show{opacity:1;transform:translateX(-50%)}
 #toast.actionable{pointer-events:auto;display:flex;align-items:center;gap:14px}
 .toast-btn{border:0;background:#ffffff26;color:#fff;border-radius:8px;padding:8px 12px;font-weight:700;min-height:40px}
@@ -522,6 +526,7 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', () => { if (saveTimer) flush(); });
 
+const APP_VERSION = '25';
 const cls = () => S.classes.find(c => c.id === S.ui.classId);
 // Ordre des classes : 1re puis 2e, par lettre (1C, 1D, 1F… 2A, 2B…), les groupes d'option à la fin
 const isOption = c => /option/i.test(c.name || '');
@@ -995,6 +1000,7 @@ function viewStudents(c) {
   const list = S.ui.onlyAR ? all.filter(hasAR) : all;
   const tb = `<div class="toolbar"><button class="btn primary" data-act="add-student">＋ Élève</button>
     <button class="btn" data-act="import-students">Importer une liste</button>
+    ${all.length ? '<button class="btn" data-act="ar-paste" data-mode="class">📋 Coller un mail d’A.R.</button>' : ''}
     ${all.length ? '<button class="btn" data-act="swap-names" title="Si les prénoms ont été pris pour des noms de famille">⇄ Inverser nom / prénom</button>' : ''}
     ${list.length ? `<button class="btn" data-act="photo-session" data-missing="${list.some(s => !s.photo) && list.some(s => s.photo) ? 1 : 0}">📷 Photos des élèves</button>` : ''}${nAR ? `<button class="chip ${S.ui.onlyAR ? 'active' : ''}" data-act="only-ar"><span class="ar-tag">AR</span> ${nAR} élève${nAR > 1 ? 's' : ''}</button>` : ''}<span class="spacer"></span>
     <span class="muted small">${all.length} élève${all.length > 1 ? 's' : ''}</span></div>`;
@@ -1013,13 +1019,42 @@ function viewStudents(c) {
   }).join('')}</div>`;
 }
 
+function studentNav(d) {
+  const c = cls(), s = studentByUI(); if (!c || !s) return;
+  const order = sortStudents(c.students), n = order[order.indexOf(s) + d];
+  if (!n) return;
+  document.activeElement?.blur?.(); // enregistre un champ en cours de saisie
+  S.ui.studentId = n.id; renderMain(); $('#view').scrollTop = 0;
+}
+// Glisser le doigt vers la gauche / la droite sur la fiche : élève suivant / précédent
+(() => {
+  let x0 = null, y0 = 0;
+  document.addEventListener('touchstart', e => {
+    x0 = null;
+    if (!S.ui.studentId || e.touches.length !== 1 || $('#modal-root').childElementCount) return;
+    if (e.target.closest('input,textarea,select,.tbl-wrap,table,[contenteditable]')) return;
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null;
+    if (Math.abs(dx) > 90 && Math.abs(dy) < 50) studentNav(dx < 0 ? 1 : -1);
+  }, { passive: true });
+  document.addEventListener('keydown', e => {
+    if (!S.ui.studentId || $('#modal-root').childElementCount || e.target.closest?.('input,textarea,select,[contenteditable]')) return;
+    if (e.key === 'ArrowRight') studentNav(1); else if (e.key === 'ArrowLeft') studentNav(-1);
+  });
+})();
 function viewStudent(c, s) {
   const a = attStats(c, s.id);
   const cols = sortedCols(c);
   const absences = Object.keys(c.attendance).sort().reverse().map(d => [d, c.attendance[d][s.id]]).filter(([, e]) => e && e.s !== 'P');
   const notes = c.dossier.filter(d => d.sid === s.id).sort((x, y) => y.date.localeCompare(x.date));
   const f = (name, label, type = 'text') => `<label class="field"><span>${label}</span><input class="inp" type="${type}" data-sfield="${name}" value="${esc(s[name] || '')}"></label>`;
-  return `<div class="toolbar no-print"><button class="btn" data-act="back">‹ Retour</button><span class="spacer"></span>
+  const order = sortStudents(c.students), pos = order.indexOf(s);
+  return `<div class="toolbar no-print"><button class="btn" data-act="back">‹ Retour</button>
+      <span class="st-nav"><button class="btn" data-act="student-nav" data-dir="-1" ${pos > 0 ? '' : 'disabled'} aria-label="Élève précédent">◀︎ Précédent</button><span class="muted small" style="min-width:52px;text-align:center">${pos + 1} / ${order.length}</span><button class="btn" data-act="student-nav" data-dir="1" ${pos < order.length - 1 ? '' : 'disabled'} aria-label="Élève suivant">Suivant ▶︎</button></span>
+      <span class="spacer"></span>
       <button class="btn danger" data-act="delete-student" data-id="${s.id}">Supprimer l’élève</button></div>
     <div class="card profile-head">
       <button class="photo-btn" data-act="student-photo" aria-label="Changer la photo">${avatar(s, 'lg')}</button>
@@ -1387,30 +1422,59 @@ function parseARMail(text) {
   if (motifs.includes('TDAH')) motifs.splice(motifs.indexOf('TDA'), motifs.includes('TDA') ? 1 : 0);
   return { items, motif: motifs.join(', '), add: /\b(r?ajout\w*)\b/i.test(text) };
 }
-function arPaste() {
-  const s = studentByUI(); if (!s) return;
-  const cur = s.ar?.liste || [];
+// Retrouver l'élève dont parle le mail (nom et/ou prénom cités)
+function guessStudent(text, list) {
+  const T = ' ' + normName(text) + ' ', has = w => w && w.length > 1 && T.includes(' ' + w + ' ');
+  let best = null, top = 0, tie = false;
+  for (const s of list) {
+    const ln = normName(s.lastName), fn = normName(s.firstName), fn1 = fn.split(' ')[0], ln1 = ln.split(' ')[0];
+    const sc = (has(ln) ? 2 : has(ln1) && ln1.length > 2 ? 1 : 0) + (has(fn) || has(fn1) ? 1.5 : 0);
+    if (sc > top) { top = sc; best = s; tie = false; } else if (sc && sc === top) tie = true;
+  }
+  return top >= 1.5 && !tie ? best : null;
+}
+function arPaste(btn) {
+  const classMode = btn?.dataset?.mode === 'class';
+  let s = classMode ? null : studentByUI();
+  if (!classMode && !s) return;
+  const c = cls();
+  const pool = classMode ? [...sortStudents(c.students).map(st => [c, st]), ...sortedClasses().filter(k => k !== c && !k.archived).flatMap(k => sortStudents(k.students).map(st => [k, st]))] : [];
+  let picked = false; // l'élève a été choisi à la main
   const draw = (el) => {
-    const r = parseARMail($('[name=mail]', el).value);
+    const txt = $('[name=mail]', el).value;
+    if (classMode) {
+      const sel = $('[name=who]', el);
+      if (!picked) { const g = guessStudent(txt, c.students) || guessStudent(txt, pool.map(p => p[1])); if (g) sel.value = g.id; }
+      s = pool.find(p => p[1].id === sel.value)?.[1] || null;
+      const nCur = s?.ar?.liste?.length || 0;
+      $('#arp-who', el).innerHTML = s ? (nCur ? `${esc(s.firstName)} a déjà ${nCur} aménagement(s) : « Ajouter » les garde, « Remplacer » ne garde que ceux du mail.` : '') : '<span class="tag warn">Choisissez l’élève concerné</span>';
+    }
+    const r = parseARMail(txt);
     $('#arp-prev', el).innerHTML = r.items.length ? `<b>${r.items.length} aménagement(s) trouvé(s)</b>${r.motif ? ` · motif : <b>${esc(r.motif)}</b>` : ''}${r.add ? ' · <span class="tag warn">le mail dit « ajouter »</span>' : ''}<ul style="margin:6px 0;padding-left:18px">${r.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<span class="muted">Collez le mail : chaque ligne qui commence par « - » devient un aménagement.</span>';
   };
   const apply = (el, mode) => {
+    if (!s) { toast('Choisissez d’abord l’élève concerné'); return false; }
+    const cur = s.ar?.liste || [];
     const r = parseARMail($('[name=mail]', el).value);
     if (!r.items.length) { toast('Aucune ligne « - … » trouvée dans le texte collé'); return false; }
     const keep = mode === 'add' ? [...cur] : [];
     for (const x of r.items) if (!keep.some(y => normName(y) === normName(x))) keep.push(x);
     s.ar = { motif: s.ar?.motif || r.motif, liste: keep, source: `Mail d’A.R. collé le ${fmtShort(todayISO())}${s.ar?.source && mode === 'add' ? ' · ' + s.ar.source : ''}`, note: '' };
     if (!s.ar.motif && r.motif) s.ar.motif = r.motif;
-    save(); renderMain(); toast(`${keep.length} aménagement(s) enregistrés pour ${s.firstName || s.lastName}`);
+    save(); renderMain();
+    const who = s;
+    toast(`${keep.length} aménagement(s) enregistrés pour ${who.firstName || who.lastName}`, classMode ? { label: 'Voir la fiche', fn: () => { const k = S.classes.find(x => x.students.includes(who)); S.ui.classId = k.id; S.ui.view = 'class'; S.ui.studentId = who.id; save(); render(); } } : undefined);
   };
+  const cur = s?.ar?.liste || [];
+  const opts = () => { let h = '<option value="">— Élève concerné —</option>', last = null; for (const [k, st] of pool) { if (k !== last) { h += `${last ? '</optgroup>' : ''}<optgroup label="${esc(k.name)}">`; last = k; } h += `<option value="${st.id}">${esc(studentName(st))}${hasAR(st) ? ' (AR)' : ''}</option>`; } return h + (last ? '</optgroup>' : ''); };
   modal({
-    title: `Coller le mail d’A.R. — ${studentName(s)}`, wide: true,
-    body: `<p class="small muted" style="margin-top:0">Dans votre messagerie, sélectionnez tout le texte du mail (y compris l’ancien mail cité en dessous si les A.R. s’ajoutent), copiez, puis collez ici.</p>
+    title: classMode ? 'Coller un mail d’A.R.' : `Coller le mail d’A.R. — ${studentName(s)}`, wide: true,
+    body: `${classMode ? `<label class="field"><span>Élève (trouvé automatiquement dans le mail si son nom y est)</span><select class="inp" name="who">${opts()}</select></label><div id="arp-who" class="small" style="margin:-4px 0 10px"></div>` : ''}<p class="small muted" style="margin-top:0">Dans votre messagerie, sélectionnez tout le texte du mail (y compris l’ancien mail cité en dessous si les A.R. s’ajoutent), copiez, puis collez ici.</p>
       <textarea class="inp" name="mail" rows="8" placeholder="Bonjour,&#10;Nora est dysorthographique et bénéficie d’A.R., à savoir :&#10;- octroi de temps supplémentaire&#10;- …"></textarea>
       <div id="arp-prev" class="small" style="margin-top:8px"></div>
-      ${cur.length ? `<p class="small muted">Liste actuelle : ${cur.length} aménagement(s). « Ajouter » les garde et ajoute les nouveaux sans doublon ; « Remplacer » ne garde que ceux du mail.</p>` : ''}`,
-    onOpen: el => { $('[name=mail]', el).addEventListener('input', () => draw(el)); draw(el); },
-    actions: [{ label: 'Annuler' }, ...(cur.length ? [{ label: 'Remplacer la liste', onClick: el => apply(el, 'replace') }] : []), { label: cur.length ? 'Ajouter à la liste' : 'Enregistrer', cls: 'primary', onClick: el => apply(el, 'add') }]
+      ${!classMode && cur.length ? `<p class="small muted">Liste actuelle : ${cur.length} aménagement(s). « Ajouter » les garde et ajoute les nouveaux sans doublon ; « Remplacer » ne garde que ceux du mail.</p>` : ''}`,
+    onOpen: el => { $('[name=mail]', el).addEventListener('input', () => draw(el)); $('[name=who]', el)?.addEventListener('change', () => { picked = true; draw(el); }); draw(el); },
+    actions: [{ label: 'Annuler' }, ...(classMode || cur.length ? [{ label: 'Remplacer la liste', onClick: el => apply(el, 'replace') }] : []), { label: classMode ? 'Ajouter à sa liste' : cur.length ? 'Ajouter à la liste' : 'Enregistrer', cls: 'primary', onClick: el => apply(el, 'add') }]
   });
 }
 const arKey = x => normName(`${x.nom} ${x.prenom}`);
@@ -2512,7 +2576,7 @@ function viewSettings() {
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   return `<div class="grid2">
     <div class="card pad">
-      <h3 class="section-h">Profil</h3>
+      <h3 class="section-h">Profil <span class="muted small" style="font-weight:400">· version ${APP_VERSION}</span></h3>
       <label class="field"><span>Nom de l’enseignant·e</span><input class="inp" data-setting="teacher" value="${esc(st.teacher)}"></label>
       <label class="field"><span>École</span><input class="inp" data-setting="school" value="${esc(st.school)}"></label>
       <label class="field"><span>Année scolaire</span><input class="inp" data-setting="year" value="${esc(st.year)}" placeholder="2026-2027"></label>
@@ -2632,6 +2696,7 @@ const A = {
   'import-students': importStudents,
   'open-student': el => { S.ui.studentId = el.dataset.id; renderMain(); $('#view').scrollTop = 0; },
   'back': () => { S.ui.studentId = null; renderMain(); },
+  'student-nav': el => studentNav(+el.dataset.dir),
   'delete-student': async () => {
     const c = cls(), s = studentByUI(); if (!s) return;
     if (!await confirmDlg(`Supprimer ${studentName(s)} ainsi que ses cotes, présences et notes DAccE ?`)) return;
@@ -2723,7 +2788,7 @@ const A = {
   'export-backup': exportBackup,
   'import-backup': importBackup,
   'import-ar': importAR,
-  'ar-paste': arPaste,
+  'ar-paste': el => arPaste(el),
   'drop-pending': el => { S.pendingAR.splice(+el.dataset.i, 1); save(); renderMain(); },
   'dx': dxAction,
   'epc-ref': () => showEPC(epcLevel(cls())),
@@ -2855,9 +2920,28 @@ async function showStorageEstimate() {
   render();
   try { await navigator.storage?.persist?.(); } catch {}
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+    }).catch(() => {});
   }
+  checkUpdate();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
 })();
+// Nouvelle version en ligne ? (l'app restée ouverte sur l'iPad garderait sinon l'ancienne)
+let lastCheck = 0;
+async function checkUpdate() {
+  if (!location.protocol.startsWith('http') || Date.now() - lastCheck < 60000 || $('#update-bar')) return;
+  lastCheck = Date.now();
+  try {
+    const txt = await (await fetch('index.html', { cache: 'no-store' })).text();
+    const v = txt.match(/APP_VERSION = '([^']+)'/)?.[1];
+    if (!v || v === APP_VERSION) return;
+    const bar = document.createElement('div'); bar.id = 'update-bar';
+    bar.innerHTML = '<span>Une nouvelle version du Carnet est disponible.</span><button class="btn sm primary" type="button">Mettre à jour</button>';
+    bar.querySelector('button').onclick = async () => { try { await flush(); } catch {} location.reload(); };
+    document.body.append(bar);
+  } catch {}
+}
 </script>
 </body>
 </html>
