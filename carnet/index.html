@@ -140,6 +140,7 @@ body.ph-tres{--av:96px;--av-sm:68px;--av-lg:180px}
 .st-card{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);background:var(--surface);border-radius:var(--radius);text-align:left;box-shadow:var(--shadow);min-height:68px}
 .st-card .nm{font-weight:600;line-height:1.25}
 .st-card .meta{font-size:13px;color:var(--muted);margin-top:2px}
+.st-no{display:inline-block;min-width:1.6em;margin-right:6px;padding:0 4px;border-radius:6px;background:var(--neutral-soft);color:var(--muted);font-size:.8em;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;vertical-align:1px}
 .ln{text-transform:uppercase;letter-spacing:.01em}
 
 /* Grade table */
@@ -502,7 +503,13 @@ const hasAR = s => !!(s.ar && ((s.ar.liste || []).length || s.ar.note || s.ar.mo
 const arTag = s => !hasAR(s) ? '' : (s.ar.liste || []).length
   ? ` <span class="ar-tag" title="${esc(s.ar.liste.join(' · '))}">AR</span>`
   : ` <span class="ar-tag todo" title="${esc(s.ar.note || 'Aménagements à compléter')}">AR ?</span>`;
-const nameHTML = s => `<span><span class="ln">${esc(s.lastName)}</span> ${esc(s.firstName)}${arTag(s)}</span>`;
+// Numéro de l'élève : sa place dans l'ordre alphabétique (nom de famille) de sa classe, comme sur les listes de l'école
+function studentNo(s) {
+  const c = S.classes.find(k => k.students.includes(s)); if (!c) return '';
+  return sortStudents(c.students).indexOf(s) + 1;
+}
+const noHTML = s => { const n = studentNo(s); return n ? `<span class="st-no">${n}</span>` : ''; };
+const nameHTML = s => `<span>${noHTML(s)}<span class="ln">${esc(s.lastName)}</span> ${esc(s.firstName)}${arTag(s)}</span>`;
 function arCard(s) {
   const ar = s.ar || {}, n = (ar.liste || []).length;
   return `<div class="card pad ar-card ${n ? 'ok' : hasAR(s) ? 'todo' : ''}" style="margin-bottom:16px">
@@ -976,7 +983,7 @@ function viewStudent(c, s) {
       <button class="btn danger" data-act="delete-student" data-id="${s.id}">Supprimer l’élève</button></div>
     <div class="card profile-head">
       <button class="photo-btn" data-act="student-photo" aria-label="Changer la photo">${avatar(s, 'lg')}</button>
-      <div style="flex:1;min-width:200px"><div class="nm">${nameHTML(s)}${s.dacc?.suivi ? ' <span class="tag bad">DAccE</span>' : ''}</div><div class="muted">${esc(c.name)}${s.birth ? ' · né(e) le ' + fmtDate(s.birth, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}</div></div>
+      <div style="flex:1;min-width:200px"><div class="nm">${nameHTML(s)}${s.dacc?.suivi ? ' <span class="tag bad">DAccE</span>' : ''}</div><button class="btn sm" data-act="rename-student" style="margin-top:6px">✎ Modifier le nom</button><div class="muted">${esc(c.name)}${s.birth ? ' · né(e) le ' + fmtDate(s.birth, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}</div></div>
       <div class="kpis">
         ${S.settings.periods.map((p, i) => { const a2 = periodAvg(c, s.id, i); return `<div class="kpi"><b class="${pctClass(a2)}" style="background:none!important">${fmtOn(a2, S.settings.bulletinScale)}<small style="font-size:12px;font-weight:400">/${S.settings.bulletinScale}</small></b><span>${esc(p.name)}</span></div>`; }).join('')}
         <div class="kpi"><b class="${pctClass(annualAvg(c, s.id))}" style="background:none!important">${fmtOn(annualAvg(c, s.id), S.settings.bulletinScale)}<small style="font-size:12px;font-weight:400">/${S.settings.bulletinScale}</small></b><span>Année</span></div>
@@ -1176,9 +1183,9 @@ function exportCSV() {
   const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const P = S.settings.periods, bs = S.settings.bulletinScale;
   const num = p => Number.isFinite(p) ? (p / 100 * bs).toFixed(1).replace('.', ',') : '';
-  const lines = [['Nom', 'Prénom', ...cols.map(col => col.type === 'icons' ? `${col.title} (icônes)` : col.type === 'check' ? `${col.title} (remis)` : `${col.title} (/${col.max})`), ...(cpcOn(c) ? P.map(p => `Participation ${p.name} /${S.settings.cpc.max}`) : []), ...P.map(p => `${p.name} /${bs}`), `Année /${bs}`].map(q).join(';')];
+  const lines = [['N°', 'Nom', 'Prénom', ...cols.map(col => col.type === 'icons' ? `${col.title} (icônes)` : col.type === 'check' ? `${col.title} (remis)` : `${col.title} (/${col.max})`), ...(cpcOn(c) ? P.map(p => `Participation ${p.name} /${S.settings.cpc.max}`) : []), ...P.map(p => `${p.name} /${bs}`), `Année /${bs}`].map(q).join(';')];
   for (const s of studs) {
-    lines.push([s.lastName, s.firstName, ...cols.map(col => { const v = c.grades[col.id]?.[s.id]; return isIcon(v) ? `${fmtGrade(v)} ${iconOf(v)?.label || ''}` : fmtGrade(v); }),
+    lines.push([studentNo(s), s.lastName, s.firstName, ...cols.map(col => { const v = c.grades[col.id]?.[s.id]; return isIcon(v) ? `${fmtGrade(v)} ${iconOf(v)?.label || ''}` : fmtGrade(v); }),
       ...(cpcOn(c) ? P.map((p, i) => partCounts(c, i) ? String(cpcNote(c, s.id, i)).replace('.', ',') : '') : []),
       ...P.map((p, i) => num(periodAvg(c, s.id, i))), num(annualAvg(c, s.id))].map(q).join(';'));
   }
@@ -1210,7 +1217,7 @@ function viewParticipationSeance(c) {
         return `${k === firstNeg ? '<span class="cpc-sep"></span>' : ''}<button class="cpc-btn ${it.pts < 0 ? 'neg' : 'pos'}" data-act="cpc-add" data-sid="${s.id}" data-k="${it.key}" title="${esc(it.short)} (${fmtPts(it.pts)})" aria-label="${esc(it.short)} ${fmtPts(it.pts)} pour ${esc(studentName(s))}">${cpcIcon(it.key)}<span class="pts">${fmtPts(it.pts)}</span>${cnt ? `<span class="cnt">${cnt}</span>` : ''}</button>`; }).join('')}</div></div>`;
   }).join('');
   const grid = dates.length ? `<h3 class="section-h">Cote de chaque cours — ${esc(P[pi].name)}</h3><div class="gt-wrap" style="max-height:none"><table class="gt"><thead><tr><th class="name">Élève</th><th>Départ</th>${dates.map(x => `<th class="colh ${x === d ? 'cur-day' : ''}" data-act="part-date-goto" data-d="${x}"><div class="ct">${fmtDate(x, { weekday: 'short', day: 'numeric', month: 'short' })}</div></th>`).join('')}<th>Moyenne de la période</th></tr></thead><tbody>
-    ${studs.map(s => { const r = runningNotes(c, s.id, pi); return `<tr><td class="name">${esc(studentName(s))}</td><td class="avg muted">${fmtNum(clampNote(Number(base) || 0))}</td>${dates.map(x => { const v = r.find(y => y.d === x); if (!v) return '<td></td>'; const dv = v.end - v.start; return `<td class="avg ${v.abs ? 'g-abs' : dv > 0 ? 'g-ok' : dv < 0 ? 'g-bad' : ''}" style="font-weight:600">${v.abs ? '<small>abs</small> ' : ''}${fmtNum(v.end)}${dv ? `<small>${dv > 0 ? '+' : '−'}${fmtNum(Math.abs(dv))}</small>` : ''}</td>`; }).join('')}<td class="avg ${pctClass(cpcNote(c, s.id, pi) / max * 100)}">${fmtNum(cpcNote(c, s.id, pi))}/${max}</td></tr>`; }).join('')}
+    ${studs.map(s => { const r = runningNotes(c, s.id, pi); return `<tr><td class="name">${noHTML(s)}${esc(studentName(s))}</td><td class="avg muted">${fmtNum(clampNote(Number(base) || 0))}</td>${dates.map(x => { const v = r.find(y => y.d === x); if (!v) return '<td></td>'; const dv = v.end - v.start; return `<td class="avg ${v.abs ? 'g-abs' : dv > 0 ? 'g-ok' : dv < 0 ? 'g-bad' : ''}" style="font-weight:600">${v.abs ? '<small>abs</small> ' : ''}${fmtNum(v.end)}${dv ? `<small>${dv > 0 ? '+' : '−'}${fmtNum(Math.abs(dv))}</small>` : ''}</td>`; }).join('')}<td class="avg ${pctClass(cpcNote(c, s.id, pi) / max * 100)}">${fmtNum(cpcNote(c, s.id, pi))}/${max}</td></tr>`; }).join('')}
     </tbody></table></div>` : '';
   return tb + arBanner(c) + `<h3 class="section-h" style="margin-top:0">Cours du ${fmtDate(d, { weekday: 'long', day: 'numeric', month: 'long' })} <span class="tag">${esc(P[pi].name)}</span></h3>
     <p class="legend" style="margin:0 0 12px">Chaque élève démarre ${esc(P[pi].name.toLowerCase())} à <b>${base}/${max}</b>. Chaque cours commence avec la note laissée par le cours précédent, et les icônes du jour s’y ajoutent. La cote du cours est la note à la fin du cours. La note de participation de la période est la <b>moyenne de toutes les cotes de la période</b> (cours où l’élève était absent non comptés) ; on repart à ${base} à la période suivante. Touchez une cote pour la corriger à la main.</p>
@@ -2510,6 +2517,22 @@ const A = {
   'open-dacce': el => { S.ui.studentId = el.dataset.id; renderMain(); setTimeout(() => $('#dacce-card')?.scrollIntoView({ block: 'start' }), 30); },
   'ar-to-dacce': arToDacce,
   'ar-note-done': () => { const s = studentByUI(); if (s?.ar) { s.ar.note = ''; if (!hasAR(s)) delete s.ar; save(); renderMain(); } },
+  'rename-student': () => {
+    const s = studentByUI(); if (!s) return;
+    modal({
+      title: 'Modifier le nom de l’élève',
+      body: `<div class="row2"><label class="field"><span>Nom de famille</span><input class="inp" name="lastName" value="${esc(s.lastName)}" autocapitalize="words"></label>
+        <label class="field"><span>Prénom</span><input class="inp" name="firstName" value="${esc(s.firstName)}" autocapitalize="words"></label></div>
+        <button type="button" class="btn sm ghost" id="rn-swap" style="padding-left:0">⇄ Inverser les deux</button>
+        <p class="small muted">Le nom de famille s’affiche en majuscules et sert à classer les élèves (et donc à leur numéro).</p>`,
+      onOpen: el => $('#rn-swap', el).addEventListener('click', () => { const a = $('[name=lastName]', el), b = $('[name=firstName]', el); [a.value, b.value] = [b.value, a.value]; }),
+      actions: [{ label: 'Annuler' }, { label: 'Enregistrer', cls: 'primary', onClick: el => {
+        const d = formData(el);
+        if (!d.lastName && !d.firstName) { toast('Indiquez au moins un nom'); return false; }
+        s.lastName = d.lastName; s.firstName = d.firstName; save(); render(); toast('Nom modifié');
+      } }]
+    });
+  },
   'swap-names': async () => {
     const c = cls(), ex = sortStudents(c.students).slice(0, 3);
     const show = s2 => `${String(s2.lastName).toUpperCase()} ${s2.firstName}`;
