@@ -394,6 +394,16 @@ const DB = {
   put(store, k, v) { if (!this.ok) { this.mem[store].set(k, v); return Promise.resolve(); } return this._req(store, 'readwrite', s => s.put(v, k)); },
   del(store, k) { if (!this.ok) { this.mem[store].delete(k); return Promise.resolve(); } return this._req(store, 'readwrite', s => s.delete(k)); },
   keys(store) { return this.ok ? this._req(store, 'readonly', s => s.getAllKeys()) : Promise.resolve([...this.mem[store].keys()]); },
+  // toutes les paires clé/valeur dont la clé commence par prefix, en une seule transaction
+  entries(store, prefix) {
+    if (!this.ok) return Promise.resolve([...this.mem[store]].filter(([k]) => String(k).startsWith(prefix)));
+    return new Promise((res, rej) => {
+      const out = [], t = this.db.transaction(store, 'readonly');
+      const r = t.objectStore(store).openCursor(IDBKeyRange.bound(prefix, prefix + '\uffff'));
+      r.onsuccess = () => { const cur = r.result; if (cur) { out.push([cur.key, cur.value]); cur.continue(); } };
+      t.oncomplete = () => res(out); t.onerror = t.onabort = () => rej(t.error);
+    });
+  },
   clear(store) { if (!this.ok) { this.mem[store].clear(); return Promise.resolve(); } return this._req(store, 'readwrite', s => s.clear()); }
 };
 
@@ -478,11 +488,34 @@ function normalize(st) {
 }
 let saveTimer = null;
 function save() { clearTimeout(saveTimer); saveTimer = setTimeout(flush, 250); }
+// Enregistrement : l'état (sans les photos) d'un côté, chaque photo à part et seulement quand elle change.
+// Si iPadOS a coupé la connexion à la base (appli restée en arrière-plan), on la rouvre et on réessaie.
+const photoSaved = new Map();
+let flushing = Promise.resolve();
+async function withRetry(fn) {
+  try { return await fn(); }
+  catch (e) { if (!DB.ok) throw e; await DB.open(); return await fn(); }
+}
+async function doFlush() {
+  const photos = new Map();
+  const json = JSON.stringify(S, function (k, v) { if (k === 'photo' && typeof v === 'string' && this && this.id) { photos.set(this.id, v); return undefined; } return v; });
+  await withRetry(() => DB.put('kv', 'state', JSON.parse(json)));
+  for (const [sid, ph] of photos) if (photoSaved.get(sid) !== ph) { await withRetry(() => DB.put('kv', 'photo:' + sid, ph)); photoSaved.set(sid, ph); }
+  for (const sid of [...photoSaved.keys()]) if (!photos.has(sid)) { await withRetry(() => DB.del('kv', 'photo:' + sid)); photoSaved.delete(sid); }
+}
 function flush() {
   clearTimeout(saveTimer); saveTimer = null;
-  return DB.put('kv', 'state', JSON.parse(JSON.stringify(S))).catch(e => toast('Erreur d’enregistrement : ' + e.message));
+  flushing = flushing.then(doFlush).catch(e => {
+    console.error('Enregistrement', e);
+    const full = e && (e.name === 'QuotaExceededError' || /quota/i.test(e.message || ''));
+    toast(full ? 'Stockage plein : exportez une sauvegarde puis supprimez d’anciennes pièces jointes.' : `Erreur d’enregistrement (${e?.name || ''} ${e?.message || ''}). Vos modifications sont gardées en mémoire.`, { label: 'Réessayer', fn: () => flush() });
+  });
+  return flushing;
 }
-document.addEventListener('visibilitychange', () => { if (document.hidden && saveTimer) flush(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (saveTimer) flush(); }
+  else if (DB.ok) { try { DB.db.transaction('kv', 'readonly'); } catch { DB.open(); } } // connexion coupée pendant la veille
+});
 window.addEventListener('pagehide', () => { if (saveTimer) flush(); });
 
 const cls = () => S.classes.find(c => c.id === S.ui.classId);
@@ -2631,6 +2664,11 @@ async function showStorageEstimate() {
 (async function init() {
   await DB.open();
   try { S = normalize(await DB.get('kv', 'state')); } catch { S = defaultState(); }
+  // photos rangées à part (voir doFlush) ; les anciennes sauvegardes gardaient les photos dans l'état
+  try {
+    const bySid = new Map(S.classes.flatMap(c => c.students.map(st => [st.id, st])));
+    for (const [k, ph] of await DB.entries('kv', 'photo:')) { const sid = String(k).slice(6), st = bySid.get(sid); if (st && !st.photo) st.photo = ph; photoSaved.set(sid, ph); }
+  } catch (e) { console.warn('Photos', e); }
   S.ui.studentId = null;
   if (S.ui.view === 'settings') S.ui.view = 'class';
   render();
