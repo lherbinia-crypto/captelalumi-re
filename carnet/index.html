@@ -320,7 +320,11 @@ table.plain{border-collapse:collapse;width:100%;background:var(--surface);border
   .seg button{min-width:0;flex:1}
   .grid2{grid-template-columns:1fr}
 }
+#print-root{display:none}
 @media print{
+  @page{size:A4 landscape;margin:10mm}
+  body.printing #app,body.printing #modal-root,body.printing #toast,body.printing #update-bar{display:none!important}
+  body.printing #print-root{display:block}
   body{overflow:visible;background:#fff}
   #app{display:block;height:auto}
   #sidebar,.tabs,.toolbar,.menu-btn,.no-print{display:none!important}
@@ -329,6 +333,23 @@ table.plain{border-collapse:collapse;width:100%;background:var(--surface);border
   .gt thead th,.gt .name,.gt tfoot td{position:static}
   .gin{font-size:13px;height:28px}
 }
+#print-root{color:#000;font-family:-apple-system,"Helvetica Neue",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pr-page{page-break-after:always;break-after:page}
+.pr-page:last-child{page-break-after:auto;break-after:auto}
+.pr-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;border-bottom:2px solid #000;padding-bottom:4px;margin-bottom:6px}
+.pr-head h1{font-size:18px;margin:0}
+.pr-head div{font-size:11px;text-align:right}
+.pr-t{border-collapse:collapse;width:100%;font-size:var(--pr-fs,11px)}
+.pr-t th,.pr-t td{border:1px solid #777;padding:2px 4px;text-align:center;vertical-align:middle}
+.pr-t td.nm,.pr-t th.nm{text-align:left;white-space:nowrap}
+.pr-t thead th{background:#eee;font-weight:600}
+.pr-t th.rot{height:96px;vertical-align:bottom;padding:2px 1px}
+.pr-t th.rot>div{writing-mode:vertical-rl;transform:rotate(180deg);margin:0 auto;max-height:94px;overflow:hidden;line-height:1.1;text-align:left}
+.pr-t .tot{background:#f0f0f0;font-weight:700}
+.pr-t .yr{background:#e0e0e0;font-weight:700}
+.pr-t tfoot td{font-weight:600;background:#eee}
+.pr-t .no{color:#b00;font-weight:700}
+.pr-legend{font-size:9px;color:#333;margin-top:4px}
 </style>
 </head>
 <body>
@@ -340,6 +361,7 @@ table.plain{border-collapse:collapse;width:100%;background:var(--surface);border
   </main>
 </div>
 <div id="modal-root"></div>
+<div id="print-root"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -532,7 +554,7 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', () => { if (saveTimer) flush(); });
 
-const APP_VERSION = '26';
+const APP_VERSION = '27';
 const cls = () => S.classes.find(c => c.id === S.ui.classId);
 // Ordre des classes : 1re puis 2e, par lettre (1C, 1D, 1F… 2A, 2B…), les groupes d'option à la fin
 const isOption = c => /option/i.test(c.name || '');
@@ -1113,7 +1135,7 @@ function viewGrades(c) {
   if (S.ui.gradeCat && !cats.includes(S.ui.gradeCat)) S.ui.gradeCat = '';
   const P = S.settings.periods, sp = selPeriod(), cur = periodOfDate(todayISO()), bs = S.settings.bulletinScale;
   const tb = `<div class="toolbar"><button class="btn primary" data-act="add-col">＋ Évaluation${sp != null ? ' en ' + esc(P[sp].name) : ''}</button><button class="btn" data-act="add-check"><span class="ok-mark">OK</span> Travail à remettre</button>
-    <span class="spacer"></span><button class="btn sm" data-act="export-csv">Exporter (CSV)</button><button class="btn sm" data-act="print">Imprimer</button></div>
+    <span class="spacer"></span><button class="btn sm" data-act="export-csv">Exporter (CSV)</button><button class="btn sm" data-act="print-grades">🖨 Imprimer</button></div>
     <div class="toolbar">${P.map((p, i) => `<button class="chip ${sp === i ? 'active' : ''}" data-act="grade-period" data-p="${i}">${esc(p.name)}${i === cur ? ' (en cours)' : ''}</button>`).join('')}
     <button class="chip ${sp == null ? 'active' : ''}" data-act="grade-period" data-p="all">Toute l’année</button>
     ${cats.length ? '<span style="width:12px"></span>' : ''}${cats.length ? `<button class="chip ${!S.ui.gradeCat ? 'active' : ''}" data-act="grade-cat" data-cat="">Toutes</button>${cats.map(k => `<button class="chip ${S.ui.gradeCat === k ? 'active' : ''}" data-act="grade-cat" data-cat="${esc(k)}">${esc(k)}</button>`).join('')}` : ''}</div>`;
@@ -1494,6 +1516,79 @@ function arPaste(btn) {
   });
 }
 const arKey = x => normName(`${x.nom} ${x.prenom}`);
+// ---- Lien avec le Journal de classe CPC : séances, présences, observations et AR ----
+function importJournalCPC(data) {
+  const live = sortedClasses();
+  const guess = jc => { const L = normName(jc.label || jc.id); const cand = live.filter(k => { const n = normName(k.name); return n === L || n.startsWith(L + ' ') || n.split(' ').includes(L); }); return cand.find(k => !k.archived) || cand[0] || null; };
+  const jcs = (data.classes || []).filter(jc => data.seances.some(s => s.classe === jc.id)).sort((a, b) => natural.compare(a.label || a.id, b.label || b.id));
+  const nS = id => data.seances.filter(s => s.classe === id && !s.annule).length;
+  modal({
+    title: 'Importer le Journal de classe CPC', wide: true,
+    body: `<p class="small" style="margin-top:0">Pour chaque classe du Journal, choisissez la classe correspondante du Carnet. Les <b>séances</b> arrivent dans l’onglet Journal de classe, les <b>absences et retards</b> dans les présences, les <b>observations</b> dans le suivi DAccE, et les <b>aménagements raisonnables</b> sur les fiches. Vous pouvez réimporter autant de fois que vous voulez : rien n’est créé en double.</p>
+      <div class="tbl-scroll"><table class="plain"><thead><tr><th>Journal CPC</th><th class="num">Séances</th><th>Classe du Carnet</th></tr></thead><tbody>
+      ${jcs.map(jc => { const g = guess(jc); return `<tr><td><b>${esc(jc.label || jc.id)}</b>${jc.type === 'option' ? ' <span class="tag">option</span>' : jc.semestre ? ` <span class="muted small">S${jc.semestre}</span>` : ''}</td><td class="num">${nS(jc.id)}</td><td><select class="inp" name="m_${esc(jc.id)}"><option value="">— ne pas importer —</option>${live.map(k => `<option value="${k.id}" ${g === k ? 'selected' : ''}>${esc(k.name)}${k.archived ? ' (archivée)' : ''}</option>`).join('')}</select></td></tr>`; }).join('')}
+      </tbody></table></div>
+      <p class="small muted">Les absences notées dans le Carnet sont gardées ; une absence notée dans le Journal est ajoutée. Les cours « non donnés » ne sont pas repris.</p>`,
+    actions: [{ label: 'Annuler' }, { label: 'Importer', cls: 'primary', onClick: el => {
+      const f = formData(el), map = {};
+      for (const jc of jcs) { const k = S.classes.find(x => x.id === f['m_' + jc.id]); if (k) map[jc.id] = k; }
+      const r = runJournalImport(data, jcs, map);
+      save(); render();
+      setTimeout(() => modal({ title: 'Journal CPC importé', body: `<ul style="margin:0;padding-left:18px"><li><b>${r.nJ}</b> séance(s) dans le journal de classe</li><li><b>${r.nD}</b> cours repris dans les présences, dont <b>${r.nA}</b> absence(s) ou retard(s)</li><li><b>${r.nO}</b> observation(s) ajoutée(s) au suivi</li><li><b>${r.nAR}</b> élève(s) avec aménagements raisonnables${r.later ? ` · ${r.later} en attente (pas encore dans le Carnet)` : ''}</li></ul>
+        ${r.miss.length ? `<p class="small"><b>${r.miss.length} élève(s) du Journal pas retrouvé(s)</b> dans la classe choisie : ${r.miss.map(esc).join(' ; ')}.<br><span class="muted">Vérifiez l’orthographe du nom dans le Carnet, puis réimportez.</span></p>` : ''}`, actions: [{ label: 'OK', cls: 'primary' }] }), 50);
+    } }]
+  });
+}
+function runJournalImport(data, jcs, map) {
+  const r = { nJ: 0, nD: 0, nA: 0, nO: 0, nAR: 0, later: 0, miss: [] };
+  const full = e => normName(`${e.nom} ${e.prenom}`);
+  const inClass = (c, e) => c.students.find(k => normName(`${k.lastName} ${k.firstName}`) === full(e) || normName(`${k.firstName} ${k.lastName}`) === full(e))
+    || (() => { const same = c.students.filter(k => normName(k.lastName) === normName(e.nom)); return same.length === 1 ? same[0] : null; })();
+  const where = {}; // clé élève du Journal -> { c, sid } (classe obligatoire de préférence)
+  for (const jc of jcs) {
+    const c = map[jc.id]; if (!c) continue;
+    const keyToSid = {};
+    for (const e of jc.eleves || []) {
+      if (e.parti) continue;
+      const s = inClass(c, e);
+      if (!s) { r.miss.push(`${jc.label || jc.id} · ${e.nom} ${e.prenom}`); continue; }
+      keyToSid[e.key] = s.id;
+      if (!where[e.key] || jc.type !== 'option') where[e.key] = { c, sid: s.id };
+    }
+    for (const se of data.seances.filter(s => s.classe === jc.id && s.date && !s.annule)) {
+      if (se.theme || se.contenu || se.devoirs) {
+        const src = `jcpc:${jc.id}_${se.date}`;
+        let j = c.journal.find(x => x.src === src) || c.journal.find(x => !x.src && x.date === se.date && normName(x.title) === normName(se.theme));
+        if (!j) { j = { id: uid(), date: se.date, period: '', title: '', content: '', homework: '', due: '', attachments: [], comps: [] }; c.journal.push(j); }
+        const content = [se.contenu, (se.axes || []).length ? 'Axes travaillés : ' + se.axes.join(' · ') : ''].filter(Boolean).join('\n\n');
+        Object.assign(j, { src, title: se.theme || j.title, content: content || j.content, homework: se.devoirs || j.homework });
+        r.nJ++;
+      }
+      const day = (c.attendance[se.date] ||= {}); r.nD++;
+      for (const [k, sid] of Object.entries(keyToSid)) {
+        const v = se.pres?.[k], code = v === 'A' ? 'A' : v === 'R' ? 'R' : v === 'E' ? 'J' : 'P', cur = day[sid];
+        if (!cur || (code !== 'P' && cur.s === 'P') || (cur.jcpc && cur.s !== code)) day[sid] = { s: code, n: cur?.n || '', jcpc: 1 };
+        if (code !== 'P') r.nA++;
+      }
+    }
+  }
+  for (const e of data.eleves || []) {
+    const w = where[e.key];
+    if (w) for (const o of e.obs || []) {
+      if (!o?.txt || !o.d) continue;
+      const src = `jcpc:obs:${e.key}:${o.d}:${normName(o.txt).slice(0, 60)}`;
+      if (w.c.dossier.some(x => x.src === src)) continue;
+      w.c.dossier.push({ id: uid(), sid: w.sid, date: o.d, type: 'Observation', text: o.txt, follow: '', attachments: [], src }); r.nO++;
+    }
+    if (e.ar && ((e.ar.liste || []).length || e.ar.note || e.ar.motif)) {
+      const x = { classe: e.classe, nom: e.nom, prenom: e.prenom, ...e.ar };
+      const s = (w && w.c.students.find(k => k.id === w.sid)) || findStudentFor(x);
+      if (s) { applyAR(s, x); r.nAR++; }
+      else { S.pendingAR = [...S.pendingAR.filter(y => arKey(y) !== arKey(x)), x]; r.later++; }
+    }
+  }
+  return r;
+}
 // AR des élèves pas encore dans le Carnet (ex. 2e semestre) : appliqués dès que l'élève arrive
 function applyPendingAR(silent) {
   let n = 0;
@@ -1506,6 +1601,7 @@ async function importAR() {
   if (!f) return;
   let data;
   try { data = JSON.parse(await f.text()); } catch { return toast('Fichier illisible'); }
+  if (data?.app === 'journal-cpc' && Array.isArray(data.seances)) return importJournalCPC(data);
   if (data?.app !== 'journal-cpc-ar' || !Array.isArray(data.eleves)) return toast('Ce fichier ne contient pas d’aménagements raisonnables du Journal CPC');
   const plan = [], later = [];
   for (const x of data.eleves) {
@@ -1526,6 +1622,64 @@ async function importAR() {
       save(); render(); toast(`AR importés pour ${plan.length} élève(s)${later.length ? ` · ${later.length} en attente` : ''}`);
     } }]
   });
+}
+
+// ---------- Impression du carnet de cotes ----------
+function printGrades() {
+  const c0 = cls(), P = S.settings.periods, sp = selPeriod();
+  const all = sortedClasses().filter(k => !k.archived);
+  modal({
+    title: 'Imprimer le carnet de cotes', wide: true,
+    body: `<label class="field"><span>Que faut-il imprimer ?</span><select class="inp" name="per">${P.map((p, i) => `<option value="${i}" ${sp === i ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}<option value="all" ${sp == null ? 'selected' : ''}>Toute l’année (les 3 périodes et la moyenne annuelle)</option><option value="tot">Résumé : totaux des périodes et de l’année seulement</option></select></label>
+      <div class="field"><span>Classes</span><div class="files" style="gap:6px">${all.map(k => `<label class="chip" style="cursor:pointer"><input type="checkbox" name="cl_${k.id}" ${k === c0 ? 'checked' : ''} style="margin:0"> ${esc(k.name)}</label>`).join('')}</div>
+        <div style="margin-top:6px"><button type="button" class="btn sm" data-allcl="1">Toutes</button> <button type="button" class="btn sm" data-allcl="0">Aucune</button></div></div>
+      <div class="field"><span>Options</span>
+        <label class="small" style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="part" checked> Colonne participation</label>
+        <label class="small" style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="check" checked> Colonnes « travail à remettre » (OK / non remis)</label>
+        <label class="small" style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="blank"> Ajouter 6 colonnes vides (pour noter à la main)</label></div>
+      <p class="small muted">Une page par classe, en A4 paysage. Dans la fenêtre d’impression de l’iPad, vous pouvez aussi enregistrer en PDF (bouton Partager ▸ Enregistrer dans Fichiers).</p>`,
+    onOpen: el => el.addEventListener('click', e => { const b = e.target.closest('[data-allcl]'); if (b) $$('[name^=cl_]', el).forEach(i => i.checked = b.dataset.allcl === '1'); }),
+    actions: [{ label: 'Annuler' }, { label: '🖨 Imprimer', cls: 'primary', onClick: el => {
+      const f = formData(el), list = all.filter(k => f['cl_' + k.id]);
+      if (!list.length) { toast('Choisissez au moins une classe'); return false; }
+      doPrint(list.map(k => printGradesHTML(k, f.per, f)).join(''));
+    } }]
+  });
+}
+function doPrint(html) {
+  const root = $('#print-root'); root.innerHTML = html;
+  document.body.classList.add('printing');
+  const done = () => { document.body.classList.remove('printing'); root.innerHTML = ''; window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  setTimeout(() => window.print(), 80);
+}
+function printGradesHTML(c, per, opt) {
+  const P = S.settings.periods, bs = S.settings.bulletinScale, pmax = S.settings.cpc.max, studs = sortStudents(c.students), st = S.settings;
+  const multi = per === 'all' || per === 'tot', part = opt.part && cpcOn(c), pers = multi ? P.map((_, i) => i) : [+per];
+  const colsOf = i => per === 'tot' ? [] : periodCols(c, i).filter(col => opt.check || col.type !== 'check');
+  const groups = pers.map(i => ({ i, cols: colsOf(i) }));
+  const nCols = groups.reduce((n, g) => n + g.cols.length + (part ? 1 : 0) + 1, 0) + (opt.blank ? 6 : 0) + (multi ? 1 : 0);
+  const fs = nCols > 30 ? 8 : nCols > 22 ? 9 : nCols > 14 ? 10 : 11;
+  const pAvg = (sid, i) => periodAvg(c, sid, i, !multi);
+  const cell = (col, v) => col.type === 'check' ? (v === 'OK' ? 'OK' : v === 'NO' ? '<span class="no">✗</span>' : '') : esc(fmtGrade(v));
+  const th = (txt, sub, k = '') => `<th class="rot ${k}"><div>${txt}${sub ? `<br><span style="font-weight:400">${sub}</span>` : ''}</div></th>`;
+  const avgOf = arr => { const v = arr.filter(Number.isFinite); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN; };
+  const blanks = tag => opt.blank ? `<${tag}></${tag}>`.repeat(6) : '';
+  const head = groups.map(g => g.cols.map(col => th(esc(col.title), `${fmtShort(col.date)}${col.type === 'check' || col.type === 'icons' ? '' : ' · /' + fmtNum(col.max, 2)}`)).join('')
+    + (part ? th('Participation', `/${pmax}`) : '') + th(`Total ${esc(P[g.i].name)}`, `/${bs}`, 'tot')).join('')
+    + (opt.blank ? '<th class="rot"><div>&nbsp;</div></th>'.repeat(6) : '') + (multi ? th('Année', `/${bs}`, 'yr') : '');
+  const row = (s, n) => `<tr><td>${n}</td><td class="nm">${esc(s.lastName)} ${esc(s.firstName)}</td>`
+    + groups.map(g => g.cols.map(col => `<td>${cell(col, c.grades[col.id]?.[s.id])}</td>`).join('')
+      + (part ? `<td>${multi && !partCounts(c, g.i) ? '–' : fmtNum(cpcNote(c, s.id, g.i))}</td>` : '') + `<td class="tot">${fmtOn(pAvg(s.id, g.i), bs)}</td>`).join('')
+    + blanks('td') + (multi ? `<td class="yr">${fmtOn(annualAvg(c, s.id), bs)}</td>` : '') + '</tr>';
+  const foot = `<tr><td></td><td class="nm">Moyenne de classe</td>` + groups.map(g => g.cols.map(col => `<td>${esc(colAvgText(c, col))}</td>`).join('')
+      + (part ? `<td>${multi && !partCounts(c, g.i) ? '–' : fmtNum(avgOf(studs.map(s => cpcNote(c, s.id, g.i))))}</td>` : '') + `<td class="tot">${fmtOn(avgOf(studs.map(s => pAvg(s.id, g.i))), bs)}</td>`).join('')
+    + blanks('td') + (multi ? `<td class="yr">${fmtOn(avgOf(studs.map(s => annualAvg(c, s.id))), bs)}</td>` : '') + '</tr>';
+  const title = per === 'all' ? 'Toute l’année' : per === 'tot' ? 'Résumé de l’année' : P[+per].name;
+  const who = [st.teacher, st.school, st.year].filter(Boolean).join(' · ');
+  return `<section class="pr-page" style="--pr-fs:${fs}px"><div class="pr-head"><h1>Carnet de cotes — ${esc(c.name)}${c.subject ? ` · ${esc(c.subject)}` : ''}</h1><div><b>${esc(title)}</b><br>${who ? esc(who) + '<br>' : ''}Imprimé le ${fmtDate(todayISO(), { day: 'numeric', month: 'long', year: 'numeric' })}</div></div>
+    <table class="pr-t"><thead><tr><th style="width:22px">N°</th><th class="nm">Élève</th>${head}</tr></thead><tbody>${studs.map((s, i) => row(s, i + 1)).join('')}</tbody><tfoot>${foot}</tfoot></table>
+    <div class="pr-legend">Totaux sur ${bs} calculés sur le total des points de la période${part ? `, participation comprise (départ ${st.cpc.base}/${pmax}, moyenne des cours)` : ''}. abs = absent · exc = excusé · ne = non évalué${opt.check ? ' · ✗ = travail non remis' : ''}.</div></section>`;
 }
 
 // ---------- Tirage au sort ----------
@@ -1635,7 +1789,7 @@ function viewJournal(c) {
   const today = todayISO();
   const list = [...c.journal].sort((a, b) => b.date.localeCompare(a.date) || (b.period || '').localeCompare(a.period || '', 'fr', { numeric: true }));
   const upcoming = c.journal.filter(j => j.homework && j.due && j.due >= today).sort((a, b) => a.due.localeCompare(b.due));
-  const tb = `<div class="toolbar"><button class="btn primary" data-act="new-journal">＋ Nouvelle séance</button><button class="btn" data-act="epc-ref">Référentiel EPC</button><span class="spacer"></span><button class="btn sm" data-act="print">Imprimer</button></div>`;
+  const tb = `<div class="toolbar"><button class="btn primary" data-act="new-journal">＋ Nouvelle séance</button><button class="btn" data-act="epc-ref">Référentiel EPC</button><button class="btn" data-act="import-ar">⇣ Importer du Journal CPC</button><span class="spacer"></span><button class="btn sm" data-act="print">Imprimer</button></div>`;
   return tb + (upcoming.length ? `<div class="card upcoming"><b>📌 À remettre / à préparer</b><ul>${upcoming.map(j => `<li><b>${fmtDate(j.due, { weekday: 'short', day: 'numeric', month: 'short' })}</b> — ${esc(j.homework)}</li>`).join('')}</ul></div>` : '')
     + (list.length ? `<div class="entries">${list.map(j => `<article class="card entry">
       <div class="entry-h"><div class="ttl">${esc(j.title || 'Séance')}</div><span class="when">${fmtDate(j.date)}${j.period ? ' · ' + esc(j.period) : ''}</span>
@@ -2635,7 +2789,7 @@ function viewSettings() {
       </div>
       <div class="card pad" style="margin-top:16px">
         <h3 class="section-h">Données</h3>
-        <div class="toolbar" style="margin:0 0 10px"><button class="btn" data-act="import-ar">Importer les AR du Journal CPC</button></div>
+        <div class="toolbar" style="margin:0 0 10px"><button class="btn" data-act="import-ar">⇣ Importer le Journal CPC</button><span class="small muted" style="align-self:center">séances, absences, observations et A.R. (fichier « vers le Carnet » du Journal)</span></div>
         ${S.pendingAR.length ? `<details style="margin:0 0 10px"><summary class="small" style="cursor:pointer;font-weight:600">AR en attente : ${S.pendingAR.length} élève(s) pas encore dans le Carnet</summary>
           <ul class="small" style="margin:6px 0;padding-left:18px">${S.pendingAR.map((x, i) => `<li>${esc(x.classe)} · <span class="ln">${esc(x.nom)}</span> ${esc(x.prenom)} ${(x.liste || []).length ? `<span class="muted">(${x.liste.length} AR)</span>` : '<span class="muted">(à compléter)</span>'} <button class="btn sm ghost" data-act="drop-pending" data-i="${i}">retirer</button></li>`).join('')}</ul>
           <p class="small muted" style="margin:0">Ils s’appliqueront dès que l’élève sera importé ou ajouté (le nom doit correspondre).</p></details>` : ''}
@@ -2781,6 +2935,7 @@ const A = {
   'cpc-reset': async () => { if (await confirmDlg('Remettre les noms et les points des icônes comme sur la fiche d’origine (départ 14/20) ?', 'Rétablir', false)) { S.settings.cpc = defaultCpc(); save(); renderMain(); } },
   'export-csv': exportCSV,
   'print': () => window.print(),
+  'print-grades': printGrades,
   'att-shift': el => { S.ui.attDate = addDays(S.ui.attDate || todayISO(), +el.dataset.n, S.settings.skipWeekend); save(); renderMain(); },
   'att-today': () => { S.ui.attDate = todayISO(); save(); renderMain(); },
   'att-goto': el => { S.ui.attDate = el.dataset.d; save(); renderMain(); $('#view').scrollTop = 0; },
