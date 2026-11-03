@@ -186,6 +186,12 @@ table.gt{border-collapse:separate;border-spacing:0;min-width:100%}
 .cpc-btn .pts{font-size:11.5px;font-weight:800;line-height:1}
 .cpc-btn .cnt{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;border-radius:10px;background:var(--text);color:var(--surface);font-size:12px;font-weight:700;display:grid;place-items:center;padding:0 5px}
 .cpc-log{display:grid;gap:4px}
+.cpc-done{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-top:1px dashed var(--line);padding-top:6px;margin-top:2px}
+.cpc-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--surface-2,var(--bg));border-radius:999px;padding:2px 4px 2px 8px;font:inherit;font-size:13px;cursor:pointer;min-height:34px}
+.cpc-chip .cpc-svg{width:20px;height:20px}
+.cpc-chip .x{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--line);font-size:12px;margin-left:2px}
+.cpc-chip:hover .x,.cpc-chip:active .x{background:var(--bad);color:#fff}
+.gt td.goto{cursor:pointer}
 .cpc-log-row{display:flex;align-items:center;gap:10px;padding:4px 6px;border-bottom:1px solid var(--line)}
 .cpc-log-row .cpc-svg{width:24px;height:24px}
 .seg-sm{justify-content:center}
@@ -526,7 +532,7 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', () => { if (saveTimer) flush(); });
 
-const APP_VERSION = '25';
+const APP_VERSION = '26';
 const cls = () => S.classes.find(c => c.id === S.ui.classId);
 // Ordre des classes : 1re puis 2e, par lettre (1C, 1D, 1F… 2A, 2B…), les groupes d'option à la fin
 const isOption = c => /option/i.test(c.name || '');
@@ -1289,10 +1295,11 @@ function viewParticipationSeance(c) {
     return `<div class="cpc-row ${info.abs ? 'cpc-abs' : ''}"><button class="who" data-act="cpc-student" data-sid="${s.id}">${avatar(s, 'sm')}<span><span class="nm">${nameHTML(s)}</span><span class="small muted" style="display:block">moy. ${esc(P[pi].name.toLowerCase())} : <b>${fmtNum(cpcNote(c, s.id, pi))}</b> · début du cours : ${fmtNum(info.start)}/${max}${diff ? ` · <b style="color:var(--${diff > 0 ? 'ok' : 'bad'})">${diff > 0 ? '+' : '−'}${fmtNum(Math.abs(diff))}</b>` : ''}${st === 'A' || st === 'J' ? ' · absent ce jour' : st === 'R' ? ' · en retard' : ''}</span></span></button>
       <button class="cpc-note ${pctClass(n / max * 100)}" data-act="cpc-day" data-sid="${s.id}" title="Taper une cote">${fmtNum(n)}<small>/${max}${info.ov ? ' ✎' : ''}</small></button>
       <div class="cpc-icons">${items.map((it, k) => { const cnt = ev.filter(e => e.k === it.key).length;
-        return `${k === firstNeg ? '<span class="cpc-sep"></span>' : ''}<button class="cpc-btn ${it.pts < 0 ? 'neg' : 'pos'}" data-act="cpc-add" data-sid="${s.id}" data-k="${it.key}" title="${esc(it.short)} (${fmtPts(it.pts)})" aria-label="${esc(it.short)} ${fmtPts(it.pts)} pour ${esc(studentName(s))}">${cpcIcon(it.key)}<span class="pts">${fmtPts(it.pts)}</span>${cnt ? `<span class="cnt">${cnt}</span>` : ''}</button>`; }).join('')}</div></div>`;
+        return `${k === firstNeg ? '<span class="cpc-sep"></span>' : ''}<button class="cpc-btn ${it.pts < 0 ? 'neg' : 'pos'}" data-act="cpc-add" data-sid="${s.id}" data-k="${it.key}" title="${esc(it.short)} (${fmtPts(it.pts)})" aria-label="${esc(it.short)} ${fmtPts(it.pts)} pour ${esc(studentName(s))}">${cpcIcon(it.key)}<span class="pts">${fmtPts(it.pts)}</span>${cnt ? `<span class="cnt">${cnt}</span>` : ''}</button>`; }).join('')}</div>
+      ${ev.length ? `<div class="cpc-done"><span class="small muted">Icônes de ce cours — touchez pour annuler :</span>${[...ev].sort((a, b) => (a.t || 0) - (b.t || 0)).map(e => `<button type="button" class="cpc-chip ${evPts(e) < 0 ? 'neg-ic' : 'pos-ic'}" data-act="cpc-del" data-id="${e.id}" aria-label="Annuler ${esc(evShort(e))} ${fmtPts(evPts(e))}">${cpcIcon(e.k)}<b>${fmtPts(evPts(e))}</b><span class="x">✕</span></button>`).join('')}</div>` : ''}</div>`;
   }).join('');
   const grid = dates.length ? `<h3 class="section-h">Cote de chaque cours — ${esc(P[pi].name)}</h3><div class="gt-wrap" style="max-height:none"><table class="gt"><thead><tr><th class="name">Élève</th><th>Départ</th>${dates.map(x => `<th class="colh ${x === d ? 'cur-day' : ''}" data-act="part-date-goto" data-d="${x}"><div class="ct">${fmtDate(x, { weekday: 'short', day: 'numeric', month: 'short' })}</div></th>`).join('')}<th>Moyenne de la période</th></tr></thead><tbody>
-    ${studs.map(s => { const r = runningNotes(c, s.id, pi); return `<tr><td class="name">${noHTML(s)}${esc(studentName(s))}</td><td class="avg muted">${fmtNum(clampNote(Number(base) || 0))}</td>${dates.map(x => { const v = r.find(y => y.d === x); if (!v) return '<td></td>'; const dv = v.end - v.start; return `<td class="avg ${v.abs ? 'g-abs' : dv > 0 ? 'g-ok' : dv < 0 ? 'g-bad' : ''}" style="font-weight:600">${v.abs ? '<small>abs</small> ' : ''}${fmtNum(v.end)}${dv ? `<small>${dv > 0 ? '+' : '−'}${fmtNum(Math.abs(dv))}</small>` : ''}</td>`; }).join('')}<td class="avg ${pctClass(cpcNote(c, s.id, pi) / max * 100)}">${fmtNum(cpcNote(c, s.id, pi))}/${max}</td></tr>`; }).join('')}
+    ${studs.map(s => { const r = runningNotes(c, s.id, pi); return `<tr><td class="name">${noHTML(s)}${esc(studentName(s))}</td><td class="avg muted">${fmtNum(clampNote(Number(base) || 0))}</td>${dates.map(x => { const v = r.find(y => y.d === x); if (!v) return '<td></td>'; const dv = v.end - v.start; return `<td class="avg goto ${v.abs ? 'g-abs' : dv > 0 ? 'g-ok' : dv < 0 ? 'g-bad' : ''}" style="font-weight:600" data-act="part-date-goto" data-d="${x}" title="Ouvrir ce cours">${v.abs ? '<small>abs</small> ' : ''}${fmtNum(v.end)}${dv ? `<small>${dv > 0 ? '+' : '−'}${fmtNum(Math.abs(dv))}</small>` : ''}</td>`; }).join('')}<td class="avg ${pctClass(cpcNote(c, s.id, pi) / max * 100)}">${fmtNum(cpcNote(c, s.id, pi))}/${max}</td></tr>`; }).join('')}
     </tbody></table></div>` : '';
   return tb + arBanner(c) + `<h3 class="section-h" style="margin-top:0">Cours du ${fmtDate(d, { weekday: 'long', day: 'numeric', month: 'long' })} <span class="tag">${esc(P[pi].name)}</span></h3>
     <p class="legend" style="margin:0 0 12px">Chaque élève démarre ${esc(P[pi].name.toLowerCase())} à <b>${base}/${max}</b>. Chaque cours commence avec la note laissée par le cours précédent, et les icônes du jour s’y ajoutent. La cote du cours est la note à la fin du cours. La note de participation de la période est la <b>moyenne de toutes les cotes de la période</b> (cours où l’élève était absent non comptés) ; on repart à ${base} à la période suivante. Touchez une cote pour la corriger à la main.</p>
@@ -1365,6 +1372,15 @@ function cpcStudent(sid) {
         save(); draw(el);
       });
     }
+  });
+}
+// Retirer une icône déjà donnée (même des semaines plus tard), avec possibilité de la remettre
+function cpcDel(id) {
+  const c = cls(), i = c.cpc.events.findIndex(e => e.id === id); if (i < 0) return;
+  const [ev] = c.cpc.events.splice(i, 1), s = c.students.find(x => x.id === ev.sid);
+  save(); const y = $('#view').scrollTop; renderMain(); $('#view').scrollTop = y;
+  toast(`Icône retirée pour ${s?.firstName || s?.lastName || 'l’élève'} (${evShort(ev)} ${fmtPts(evPts(ev))}) → ${fmtNum(dayNote(c, ev.sid, ev.date))}/${S.settings.cpc.max}`, {
+    label: 'Remettre', fn: () => { c.cpc.events.push(ev); save(); const y2 = $('#view').scrollTop; renderMain(); $('#view').scrollTop = y2; }
   });
 }
 function cpcAdd(el) {
@@ -2748,6 +2764,7 @@ const A = {
   'grade-period': el => { S.ui.gradePeriod = el.dataset.p === String(periodOfDate(todayISO())) ? '' : el.dataset.p; save(); renderMain(); },
   'pick-icon': pickIcon,
   'cpc-add': cpcAdd,
+  'cpc-del': el => cpcDel(el.dataset.id),
   'part-goto-period': el => { const i = +el.dataset.p, P = S.settings.periods, end = P[i].end || todayISO(); S.ui.partDate = periodOfDate(todayISO()) === i ? todayISO() : (lessonDates(cls(), i).pop() || (end < todayISO() ? end : (periodStart(i) || todayISO()))); save(); renderMain(); },
   'cpc-day': el => cpcDayEdit(el.dataset.sid),
   'part-date-today': () => { S.ui.partDate = todayISO(); save(); renderMain(); },
