@@ -138,6 +138,9 @@ body.ph-tres{--av:96px;--av-sm:68px;--av-lg:180px}
 .av.sm{width:var(--av-sm);height:var(--av-sm);font-size:calc(var(--av-sm) * .36)}
 .st-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
 .st-card{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);background:var(--surface);border-radius:var(--radius);text-align:left;box-shadow:var(--shadow);min-height:68px}
+.st-card{cursor:pointer}
+.st-cam{border:1px solid var(--line);background:var(--surface-2);border-radius:12px;width:48px;height:48px;font-size:22px;flex:none}
+.side-arch summary{list-style:none}
 .st-card .nm{font-weight:600;line-height:1.25}
 .st-card .meta{font-size:13px;color:var(--muted);margin-top:2px}
 .st-no{display:inline-block;min-width:1.6em;margin-right:6px;padding:0 4px;border-radius:6px;background:var(--neutral-soft);color:var(--muted);font-size:.8em;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;vertical-align:1px}
@@ -940,10 +943,13 @@ function renderSidebar() {
   $('#sidebar').innerHTML = `
     <div class="brand"><div class="brand-mark">C</div><div><b>Carnet du prof</b><small>${esc(S.settings.year || S.settings.school || 'Ma classe sur iPad')}</small></div></div>
     <div class="side-h">Mes classes</div>
-    ${sortedClasses().map(c => `<button class="cls-item ${S.ui.view === 'class' && c.id === S.ui.classId ? 'active' : ''}" style="--dot:${c.color}" data-act="select-class" data-id="${c.id}">
+    ${sortedClasses().filter(c => !c.archived).map(c => `<button class="cls-item ${S.ui.view === 'class' && c.id === S.ui.classId ? 'active' : ''}" style="--dot:${c.color}" data-act="select-class" data-id="${c.id}">
       <span class="dot"></span><span><span class="nm">${esc(c.name)}</span><span class="sub">${esc(c.subject || '')}${c.subject ? ' · ' : ''}${c.students.length} élève${c.students.length > 1 ? 's' : ''}</span></span></button>`).join('')}
     <button class="side-btn" data-act="new-class">＋ Nouvelle classe</button>
+    <button class="side-btn" data-act="import-lists">⬇︎ Importer des classes (Excel)</button>
     <button class="side-btn" data-act="import-idoceo">⬇︎ Importer depuis iDoceo</button>
+    ${S.classes.some(c => c.archived) ? `<details class="side-arch" ${S.classes.some(c => c.archived && c.id === S.ui.classId) ? 'open' : ''}><summary class="side-h" style="cursor:pointer">Classes archivées (${S.classes.filter(c => c.archived).length})</summary>
+      ${sortedClasses().filter(c => c.archived).map(c => `<button class="cls-item ${S.ui.view === 'class' && c.id === S.ui.classId ? 'active' : ''}" style="--dot:${c.color};opacity:.75" data-act="select-class" data-id="${c.id}"><span class="dot"></span><span><span class="nm">${esc(c.name)}</span><span class="sub">${c.students.length} élèves · archivée</span></span></button>`).join('')}</details>` : ''}
     <div class="side-foot">
       ${warn ? `<div class="backup-warn">⚠︎ Pensez à faire une sauvegarde${Number.isFinite(days) ? ` (dernière il y a ${Math.floor(days)} j)` : ''}.</div>` : ''}
       <button class="side-btn ${S.ui.view === 'settings' ? 'active' : ''}" data-act="settings">⚙︎ Réglages &amp; sauvegarde</button>
@@ -961,7 +967,7 @@ function renderMain() {
     return;
   }
   if (!c) {
-    if (S.classes.length) { S.ui.classId = sortedClasses()[0].id; return renderMain(); }
+    if (S.classes.length) { S.ui.classId = (sortedClasses().find(k => !k.archived) || sortedClasses()[0]).id; return renderMain(); }
     top.innerHTML = `<div class="top-row">${menu}<h1>Bienvenue</h1></div><div style="height:10px"></div>`;
     view.innerHTML = `<div class="empty"><h2>Bienvenue dans votre carnet</h2>
       <p>Créez une première classe pour y ajouter vos élèves, vos cotes, les présences, le journal de classe et le DAccE.<br>Toutes les données restent sur cet iPad.</p>
@@ -1002,7 +1008,7 @@ function viewStudents(c) {
     if (nd) bits.push(`${nd} obs.`);
     const nr = c.columns.filter(col => col.type === 'check' && c.grades[col.id]?.[s.id] === 'NO').length;
     if (nr) bits.push(`<span class="tag bad">${nr} non remis</span>`);
-    return `<button class="st-card" data-act="open-student" data-id="${s.id}">${avatar(s)}<span><span class="nm">${nameHTML(s)}</span><span class="meta" style="display:block">${bits.join(' · ') || '&nbsp;'}</span></span></button>`;
+    return `<div class="st-card" role="button" tabindex="0" data-act="open-student" data-id="${s.id}">${avatar(s)}<span style="flex:1;min-width:0"><span class="nm">${nameHTML(s)}</span><span class="meta" style="display:block">${bits.join(' · ') || '&nbsp;'}</span></span>${s.photo ? '' : `<button type="button" class="st-cam" data-act="quick-photo" data-id="${s.id}" aria-label="Prendre la photo de ${esc(studentName(s))}">📷</button>`}</div>`;
   }).join('')}</div>`;
 }
 
@@ -1921,7 +1927,7 @@ function editClass(c) {
     if (!d.name) { toast('Donnez un nom à la classe'); return false; }
     const pts = parseFloat(String(d.points).replace(',', '.'));
     if (color !== c.color) c.colorUser = color !== groupColor({ name: d.name });
-    Object.assign(c, { name: d.name, subject: d.subject, color, level: d.level || '' });
+    Object.assign(c, { name: d.name, subject: d.subject, color, level: d.level || '', archived: !!d.archived });
     if (!c.colorUser) c.color = groupColor(c) || c.color;
     c.cpc = { ...c.cpc, enabled: !!d.cpcOn, userSet: !d.cpcOn, points: pts > 0 ? pts : 20 };
     if (isNew) { Object.assign(c, normalize({ classes: [{ ...c, id: uid() }] }).classes[0]); S.classes.push(c); S.ui.classId = c.id; S.ui.tab = 'eleves'; S.ui.view = 'class'; }
@@ -1933,6 +1939,7 @@ function editClass(c) {
       <div class="row2"><label class="field"><span>Cours / matière</span><input class="inp" name="subject" value="${esc(c.subject)}" placeholder="Ex. Philosophie et citoyenneté"></label>
       <label class="field"><span>Année (référentiel EPC)</span><select class="inp" name="level">${[['', 'Selon le nom de la classe'], ['S1', '1re secondaire'], ['S2', '2e secondaire']].map(([k, l]) => `<option value="${k}" ${(c.level || '') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
       <div class="field"><span>Couleur</span><div class="swatches">${COLORS.map(col => `<label><input type="radio" name="color" value="${col}" ${col === c.color ? 'checked' : ''}><span style="background:${col}"></span></label>`).join('')}</div></div>
+      <label class="check"><input type="checkbox" name="archived" ${c.archived ? 'checked' : ''}> Classe terminée (archivée en bas de la liste, toujours consultable)</label>
       <label class="check"><input type="checkbox" name="cpcOn" ${c.cpc?.enabled ? 'checked' : ''}> Coter la participation avec les icônes (départ à ${S.settings.cpc.base}/${S.settings.cpc.max} à chaque période)</label>
       <label class="field"><span>La participation compte pour … points dans le total de la période</span><input class="inp" name="points" inputmode="decimal" value="${esc(c.cpc?.points ?? 20)}"></label>
       <p class="small muted" style="margin-top:-4px">Exemple : participation 16/20, devoir 7/10 et recherche 15/20 → (16 + 7 + 15) / (20 + 10 + 20) = 38/50 = 15,2/20.</p>`
@@ -1980,7 +1987,7 @@ function parseNameLine(line) {
 }
 // ---------- Import Excel / CSV ----------
 // Lecteur .xlsx minimal (un .xlsx est un zip de fichiers XML) : lit la première feuille.
-async function readXlsx(buf) {
+async function readXlsx(buf, opts = {}) {
   const dv = new DataView(buf), u8 = new Uint8Array(buf), dec = new TextDecoder();
   let e = u8.length - 22;
   while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
@@ -2015,28 +2022,35 @@ async function readXlsx(buf) {
   const xml = str => new DOMParser().parseFromString(str || '<x/>', 'application/xml');
   const texts = el => [...el.getElementsByTagName('t')].map(t => t.textContent).join('');
   const shared = [...xml(await read('xl/sharedStrings.xml')).getElementsByTagName('si')].map(texts);
-  let sheetPath = 'xl/worksheets/sheet1.xml';
+  // feuilles du classeur (nom + chemin), dans l'ordre
+  const sheets = [];
   try {
-    const rid = xml(await read('xl/workbook.xml')).getElementsByTagName('sheet')[0].getAttribute('r:id');
-    for (const r of xml(await read('xl/_rels/workbook.xml.rels')).getElementsByTagName('Relationship')) {
-      if (r.getAttribute('Id') === rid) { const t = r.getAttribute('Target'); sheetPath = t.startsWith('/') ? t.slice(1) : 'xl/' + t.replace(/^\.\//, ''); }
-    }
+    const rels = {};
+    for (const r of xml(await read('xl/_rels/workbook.xml.rels')).getElementsByTagName('Relationship')) { const t = r.getAttribute('Target'); rels[r.getAttribute('Id')] = t.startsWith('/') ? t.slice(1) : 'xl/' + t.replace(/^\.\//, ''); }
+    for (const sh of xml(await read('xl/workbook.xml')).getElementsByTagName('sheet')) { const pth = rels[sh.getAttribute('r:id')]; if (pth) sheets.push({ name: sh.getAttribute('name') || '', path: pth }); }
   } catch {}
+  if (!sheets.length) sheets.push({ name: '', path: 'xl/worksheets/sheet1.xml' });
   const colIdx = ref => [...ref.replace(/\d+/g, '')].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
-  const rows = [];
-  for (const row of xml(await read(sheetPath)).getElementsByTagName('row')) {
-    const rn = parseInt(row.getAttribute('r'), 10);
-    const cells = [];
-    for (const cell of row.getElementsByTagName('c')) {
-      const t = cell.getAttribute('t'), v = cell.getElementsByTagName('v')[0]?.textContent ?? '';
-      const val = t === 's' ? shared[+v] ?? '' : t === 'inlineStr' ? texts(cell) : v;
-      const i = colIdx(cell.getAttribute('r') || '');
-      cells[i >= 0 ? i : cells.length] = String(val).trim();
+  const readRows = async path => {
+    const rows = [];
+    for (const row of xml(await read(path)).getElementsByTagName('row')) {
+      const rn = parseInt(row.getAttribute('r'), 10);
+      const cells = [];
+      for (const cell of row.getElementsByTagName('c')) {
+        const t = cell.getAttribute('t'), v = cell.getElementsByTagName('v')[0]?.textContent ?? '';
+        const val = t === 's' ? shared[+v] ?? '' : t === 'inlineStr' ? texts(cell) : v;
+        const i = colIdx(cell.getAttribute('r') || '');
+        cells[i >= 0 ? i : cells.length] = String(val).trim();
+      }
+      const arr = Array.from(cells, x => x ?? '');
+      if (rn > 0) rows[rn - 1] = arr; else rows.push(arr);
     }
-    const arr = Array.from(cells, x => x ?? '');
-    if (rn > 0) rows[rn - 1] = arr; else rows.push(arr);
-  }
-  for (let i = 0; i < rows.length; i++) rows[i] ||= [];
+    for (let i = 0; i < rows.length; i++) rows[i] ||= [];
+    return rows;
+  };
+  if (opts.all) { const out = []; for (const sh of sheets) out.push({ name: sh.name, rows: await readRows(sh.path) }); return out; }
+  const sheetPath = sheets[0].path;
+  const rows = await readRows(sheetPath);
   // images ancrées dans la feuille (ex. photos des élèves exportées par iDoceo)
   rows.images = [];
   try {
@@ -2057,6 +2071,99 @@ async function readXlsx(buf) {
     }
   } catch (e) { console.warn('Images non lues', e); }
   return rows;
+}
+// ---------- Import de classes depuis les listes Excel de l'école ----------
+const normH = x => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+function analyseSchoolSheet(rows) {
+  rows = rows.map(r => (r || []).map(x => String(x ?? '').trim()));
+  // ligne d'en-tête : celle (parmi les 15 premières) qui contient « nom » et/ou « prénom »
+  let h = -1, col = {};
+  for (let i = 0; i < Math.min(15, rows.length) && h < 0; i++) {
+    const r = rows[i].map(normH), find = re => r.findIndex(x => re.test(x));
+    const fi = find(/^(prenom|prenoms|first name)$/), nomPrenom = find(/^(nom (et )?prenom|nom prenom|eleve|eleves|nom de l eleve)$/);
+    const li = find(/^(nom|nom de famille|last name)$/);
+    if (li >= 0 || nomPrenom >= 0) {
+      h = i;
+      col = { last: li, first: fi, both: li < 0 ? nomPrenom : -1, classe: find(/^(classe|groupe|class)$/), info: find(/^(info|infos|remarque|remarques|particularite|ar|amenagement)/), no: find(/^(n|no|num|numero|n°)$/) };
+    }
+  }
+  if (h < 0) {
+    // pas d'en-tête : colonne A = nom, colonne B = prénom (ou une seule colonne « NOM Prénom »)
+    const data = rows.filter(r => r.some(Boolean));
+    return data.map(r => { const c2 = r.filter(x => x && !/^\d+$/.test(x)); return c2.length >= 2 ? { lastName: c2[0], firstName: c2[1], classe: '', info: '' } : c2.length ? { ...parseNameLine(c2[0]), classe: '', info: '' } : null; }).filter(Boolean);
+  }
+  return rows.slice(h + 1).filter(r => r.some(Boolean)).map(r => {
+    let st;
+    if (col.last >= 0 && col.first >= 0) st = { lastName: r[col.last] || '', firstName: r[col.first] || '' };
+    else { const v = r[col.both >= 0 ? col.both : col.last] || ''; st = v.includes(',') ? { lastName: v.split(',')[0].trim(), firstName: v.split(',').slice(1).join(',').trim() } : parseNameLine(v) || { lastName: v, firstName: '' }; }
+    if (!st.lastName && !st.firstName) return null;
+    return { ...st, classe: col.classe >= 0 ? r[col.classe] || '' : '', info: col.info >= 0 ? r[col.info] || '' : '' };
+  }).filter(Boolean);
+}
+const genericSheet = n => !n || /^(feuil|sheet|tabelle|hoja|blad)\s*\d*$/i.test(n.trim());
+async function importSchoolLists() {
+  const files = await pickFiles({ accept: '.xlsx,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv', multiple: true });
+  if (!files.length) return;
+  const groups = new Map(); // nom de classe -> élèves
+  for (const f of files) {
+    try {
+      const buf = await f.arrayBuffer(), u8 = new Uint8Array(buf, 0, 2);
+      const sheets = u8[0] === 0x50 && u8[1] === 0x4b ? await readXlsx(buf, { all: true }) : [{ name: '', rows: parseCSV(new TextDecoder().decode(buf).replace(/^\ufeff/, '')) }];
+      const base = f.name.replace(/\.[^.]+$/, '').trim();
+      for (const sh of sheets) {
+        const list = analyseSchoolSheet(sh.rows);
+        for (const st of list) {
+          // classe : colonne « Classe », sinon nom de la feuille, sinon nom du fichier
+          const name = (st.classe || (genericSheet(sh.name) ? base : sh.name) || base).trim();
+          if (!groups.has(name)) groups.set(name, []);
+          groups.get(name).push(st);
+        }
+      }
+    } catch (e) { toast(`${f.name} : ${e.message}`); }
+  }
+  if (!groups.size) return toast('Aucun élève trouvé : vérifiez que le fichier a des colonnes « Nom » et « Prénom »');
+  const items = [...groups].sort((a, b) => natural.compare(a[0], b[0])).map(([name, list]) => {
+    const exists = S.classes.find(c => !c.archived && collator.compare(c.name, name) === 0);
+    return { name, list, exists, newName: exists ? `${name} S2` : name };
+  });
+  modal({
+    title: `Importer ${items.length} classe${items.length > 1 ? 's' : ''} depuis Excel`, wide: true,
+    body: `<p class="small muted" style="margin-top:0">Vérifiez les noms : le nom de famille doit apparaître en majuscules. Sinon, cochez « inverser ».</p>
+      ${items.map((it, n) => `<div class="card pad" style="margin-bottom:10px">
+        <div class="toolbar" style="margin:0 0 6px"><label class="check" style="min-height:36px"><input type="checkbox" data-xon="${n}" checked> Importer</label>
+          <input class="inp" style="width:auto;flex:0 1 200px" data-xname="${n}" value="${esc(it.newName)}"><b>${it.list.length} élèves</b>
+          ${it.list.some(x => /\bar\b|amenag/i.test(normH(x.info))) ? `<span class="ar-tag todo">${it.list.filter(x => /\bar\b|amenag/i.test(normH(x.info))).length} AR</span>` : ''}</div>
+        ${it.exists ? `<div class="small" style="color:var(--warn);margin-bottom:4px">Une classe « ${esc(it.name)} » existe déjà : celle-ci sera créée sous le nom indiqué (vous pouvez le changer).</div>` : ''}
+        <div class="small"><span data-xex="${n}">${it.list.slice(0, 4).map(x => `<span class="ln">${esc(x.lastName)}</span> ${esc(x.firstName)}`).join(' · ')}</span>${it.list.length > 4 ? ' …' : ''}</div>
+        <label class="check small" style="min-height:32px"><input type="checkbox" data-xswap="${n}"> Inverser nom et prénom</label></div>`).join('')}
+      <label class="check"><input type="checkbox" id="x-archive"> Archiver les classes actuelles (fin du semestre) : elles restent consultables en bas de la liste</label>`,
+    onOpen: el => el.addEventListener('change', e => {
+      const n = e.target.dataset.xswap; if (n == null) return;
+      const sw = e.target.checked;
+      $(`[data-xex="${n}"]`, el).innerHTML = items[+n].list.slice(0, 4).map(x => { const [l, f] = sw ? [x.firstName, x.lastName] : [x.lastName, x.firstName]; return `<span class="ln">${esc(l)}</span> ${esc(f)}`; }).join(' · ');
+    }),
+    actions: [{ label: 'Annuler' }, { label: 'Importer', cls: 'primary', onClick: el => {
+      if ($('#x-archive', el).checked) S.classes.forEach(c => { c.archived = true; });
+      let first = null, n2 = 0;
+      items.forEach((it, n) => {
+        if (!$(`[data-xon="${n}"]`, el).checked) return;
+        const sw = $(`[data-xswap="${n}"]`, el).checked;
+        const c = normalize({ classes: [{ id: uid(), name: $(`[data-xname="${n}"]`, el).value.trim() || it.name, subject: 'CPC' }] }).classes[0];
+        c.students = it.list.map(x => {
+          const [l, f] = sw ? [x.firstName, x.lastName] : [x.lastName, x.firstName];
+          const st = { id: uid(), lastName: l, firstName: f, files: [] };
+          const inf = normH(x.info);
+          if (/\bar\b|amenag/.test(inf)) st.ar = { motif: '', liste: [], source: 'Liste de l’école', note: 'AR signalé dans la liste de l’école : liste à recopier.' };
+          if (x.info && !/^ar$/i.test(x.info.trim())) st.notes = `Liste de l’école : ${x.info}`;
+          return st;
+        });
+        S.classes.push(c); first ||= c; n2++;
+      });
+      if (!first) return;
+      S.ui.classId = first.id; S.ui.view = 'class'; S.ui.tab = 'eleves'; S.ui.studentId = null;
+      save(); render(); toast(`${n2} classe(s) importée(s) — touchez 📷 sur un élève pour prendre sa photo`);
+    } }]
+  });
 }
 function parseCSV(text) {
   const first = text.split(/\r?\n/)[0] || '';
@@ -2450,6 +2557,7 @@ const A = {
   'toggle-side': () => document.body.classList.toggle('side-open'),
   'select-class': el => { S.ui.view = 'class'; S.ui.classId = el.dataset.id; S.ui.studentId = null; document.body.classList.remove('side-open'); save(); render(); $('#view').scrollTop = 0; },
   'new-class': () => { document.body.classList.remove('side-open'); editClass(); },
+  'import-lists': () => { document.body.classList.remove('side-open'); importSchoolLists(); },
   'import-idoceo': () => { document.body.classList.remove('side-open'); importIdoceo(); },
   'edit-class': () => editClass(cls()),
   'settings': () => { S.ui.view = 'settings'; document.body.classList.remove('side-open'); save(); render(); showStorageEstimate(); },
@@ -2469,6 +2577,11 @@ const A = {
     S.ui.studentId = null; save(); render();
   },
   'student-photo': () => { const s = studentByUI(); if (s) photoMenu(s); },
+  'quick-photo': async el => {
+    const c = cls(), s2 = c?.students.find(x => x.id === el.dataset.id); if (!s2) return;
+    const ph = await takePhoto(); if (!ph) return;
+    s2.photo = ph; save(); const y = $('#view').scrollTop; renderMain(); $('#view').scrollTop = y; toast(`Photo de ${s2.firstName || s2.lastName} enregistrée`);
+  },
   'photo-session': el => photoSession(el.dataset.missing === '1'),
   'student-add-file': async () => { const s = studentByUI(); const fs = await pickFiles(); if (s && fs.length) { s.files.push(...await storeFiles(fs)); save(); renderMain(); } },
   'student-add-photo': async () => { const s = studentByUI(); const fs = await pickFiles({ accept: 'image/*', capture: 'environment', multiple: false }); if (s && fs.length) { s.files.push(...await storeFiles(fs)); save(); renderMain(); } },
