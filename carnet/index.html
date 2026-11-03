@@ -948,6 +948,7 @@ function viewStudents(c) {
   const list = S.ui.onlyAR ? all.filter(hasAR) : all;
   const tb = `<div class="toolbar"><button class="btn primary" data-act="add-student">＋ Élève</button>
     <button class="btn" data-act="import-students">Importer une liste</button>
+    ${all.length ? '<button class="btn" data-act="swap-names" title="Si les prénoms ont été pris pour des noms de famille">⇄ Inverser nom / prénom</button>' : ''}
     ${list.length ? `<button class="btn" data-act="photo-session" data-missing="${list.some(s => !s.photo) && list.some(s => s.photo) ? 1 : 0}">📷 Photos des élèves</button>` : ''}${nAR ? `<button class="chip ${S.ui.onlyAR ? 'active' : ''}" data-act="only-ar"><span class="ar-tag">AR</span> ${nAR} élève${nAR > 1 ? 's' : ''}</button>` : ''}<span class="spacer"></span>
     <span class="muted small">${all.length} élève${all.length > 1 ? 's' : ''}</span></div>`;
   if (!list.length) return tb + `<div class="empty"><h2>Aucun élève</h2><p>Ajoutez vos élèves un par un ou collez une liste (par exemple depuis Excel ou un PDF).</p></div>`;
@@ -1316,7 +1317,7 @@ async function importAR() {
     const c = S.classes.find(k => normName(k.name) === normName(x.classe));
     if (!c) { noClass.add(x.classe); continue; }
     const full = normName(`${x.nom} ${x.prenom}`);
-    let s = c.students.find(k => normName(`${k.lastName} ${k.firstName}`) === full);
+    let s = c.students.find(k => normName(`${k.lastName} ${k.firstName}`) === full || normName(`${k.firstName} ${k.lastName}`) === full);
     if (!s) { const same = c.students.filter(k => normName(k.lastName) === normName(x.nom)); if (same.length === 1) s = same[0]; }
     if (!s) { missing.push(`${x.classe} · ${x.nom} ${x.prenom}`); continue; }
     plan.push({ s, x });
@@ -2210,11 +2211,18 @@ async function importIdoceo() {
   const kept = k => k === 'grade' || k === 'presence' || k === 'icons' || (k === 'iconsum' && false);
   modal({
     title: items.length > 1 ? `Importer ${items.length} classes depuis iDoceo` : 'Importer depuis iDoceo', wide: true,
+    onOpen: el => el.addEventListener('change', e => {
+      const n = e.target.dataset.iswap; if (n == null) return;
+      const sw = e.target.checked, st = items[+n].c.students.slice(0, 3);
+      $(`[data-iex="${n}"]`, el).innerHTML = st.map(x => { const [l, f] = sw ? [x.firstName, x.lastName] : [x.lastName, x.firstName]; return `<span class="ln">${esc(l)}</span> ${esc(f)}`; }).join(' · ');
+    }),
     body: items.map((it, n) => {
       const { an, c } = it, att = Object.values(c.attendance).reduce((t, d) => t + Object.keys(d).length, 0);
       const presCols = an.cols.filter(x => x.kind === 'presence');
       return `<div class="card pad" style="margin-bottom:12px">
         <label class="field"><span>Nom de la classe (fichier « ${esc(it.file)} »)</span><input class="inp" data-iname="${n}" value="${esc(an.name)}"></label>
+        <div class="small" style="margin:-4px 0 10px"><b>Premiers élèves :</b> <span data-iex="${n}">${c.students.slice(0, 3).map(x => `<span class="ln">${esc(x.lastName)}</span> ${esc(x.firstName)}`).join(' · ')}</span>
+          <label class="check" style="min-height:36px"><input type="checkbox" data-iswap="${n}"> Le fichier donne d’abord le prénom : inverser nom et prénom (le nom de famille doit être en majuscules)</label></div>
         ${it.existing ? `<label class="check" style="background:var(--accent-soft);border-radius:10px;padding:4px 12px;margin-bottom:10px"><input type="checkbox" data-iupd="${n}" checked> La classe « ${esc(it.existing.name)} » existe déjà : la compléter (photos manquantes et nouveaux élèves) au lieu d’en créer une deuxième. Vos cotes, présences et icônes ne sont pas touchées.</label>` : ''}
         <div class="files" style="margin:0 0 8px">${c.students.slice(0, 12).map(s => avatar(s, 'sm')).join('')}${c.students.length > 12 ? `<span class="muted small" style="align-self:center">+${c.students.length - 12}</span>` : ''}</div>
         <p style="margin:0 0 8px"><b>${c.students.length} élèves</b> · ${c.students.filter(s => s.photo).length} photo(s) · ${c.columns.length} évaluation(s) · ${c.cpc.events.length} icône(s) de participation · ${att} présence(s) encodée(s)</p>
@@ -2230,10 +2238,11 @@ async function importIdoceo() {
       const key = s2 => `${s2.lastName} ${s2.firstName}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
       let firstId = null, msg = [];
       items.forEach((it, n) => {
+        if ($(`[data-iswap="${n}"]`, el)?.checked) it.c.students.forEach(x => { [x.lastName, x.firstName] = [x.firstName, x.lastName]; });
         if (it.existing && $(`[data-iupd="${n}"]`, el)?.checked) {
           let ph = 0, added = 0;
           for (const ns of it.c.students) {
-            const old = it.existing.students.find(o => key(o) === key(ns));
+            const old = it.existing.students.find(o => key(o) === key(ns) || key(o) === key({ lastName: ns.firstName, firstName: ns.lastName }));
             if (old) { if (!old.photo && ns.photo) { old.photo = ns.photo; ph++; } }
             else { it.existing.students.push(ns); added++; }
           }
@@ -2501,6 +2510,13 @@ const A = {
   'open-dacce': el => { S.ui.studentId = el.dataset.id; renderMain(); setTimeout(() => $('#dacce-card')?.scrollIntoView({ block: 'start' }), 30); },
   'ar-to-dacce': arToDacce,
   'ar-note-done': () => { const s = studentByUI(); if (s?.ar) { s.ar.note = ''; if (!hasAR(s)) delete s.ar; save(); renderMain(); } },
+  'swap-names': async () => {
+    const c = cls(), ex = sortStudents(c.students).slice(0, 3);
+    const show = s2 => `${String(s2.lastName).toUpperCase()} ${s2.firstName}`;
+    if (!await confirmDlg(`Inverser le nom de famille et le prénom de tous les élèves de « ${c.name} » ?\n\n${ex.map(x => `${show(x)}  →  ${show({ lastName: x.firstName, firstName: x.lastName })}`).join('\n')}\n\nLa liste sera ensuite triée par nom de famille. Vous pouvez refaire l’opération pour revenir en arrière.`, 'Inverser', false)) return;
+    c.students.forEach(x => { [x.lastName, x.firstName] = [x.firstName, x.lastName]; });
+    save(); render(); toast(`Noms et prénoms inversés pour ${c.students.length} élèves`);
+  },
   'only-ar': () => { S.ui.onlyAR = !S.ui.onlyAR; renderMain(); },
   'load-demo': () => { const c = demoClass(); S.classes.push(c); S.ui.classId = c.id; S.ui.view = 'class'; S.ui.tab = 'cotes'; save(); render(); toast('Classe d’exemple ajoutée'); },
   'wipe-all': async () => {
