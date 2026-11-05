@@ -59,6 +59,8 @@ h1,h2,h3{margin:0;line-height:1.2}
 .cls-item.active{background:var(--side-2);box-shadow:inset 3px 0 0 var(--dot,#3d7bff)}
 .cls-item .dot{width:12px;height:12px;border-radius:50%;background:var(--dot);flex:none}
 .cls-item .nm{font-weight:600;display:block}
+.sem-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;padding:1px 5px;border-radius:6px;margin-left:6px;vertical-align:2px;background:rgba(255,255,255,.16);color:inherit;border:1px solid rgba(255,255,255,.35)}
+.tag.nc{background:var(--neutral-soft,#eee);color:var(--muted);font-weight:700}
 .cls-item .sub{font-size:12.5px;color:var(--side-muted)}
 .side-btn{display:flex;align-items:center;gap:10px;width:100%;border:1px dashed #ffffff33;background:none;border-radius:10px;padding:10px;margin-top:8px;color:var(--side-text);min-height:44px}
 .side-foot{margin-top:auto;padding-top:14px;display:grid;gap:6px}
@@ -518,6 +520,7 @@ function normalize(st) {
     c.cpc = { enabled: true, points: 20, events: [], self: {}, over: {}, ...(c.cpc || {}) };
     if (!c.cpc.userSet) c.cpc.enabled = true; // participation dans toutes les classes, sauf si désactivée dans « Modifier »
     c.drawn ||= [];
+    if (!SEMESTERS[c.semester]) c.semester = 'year'; // anciennes sauvegardes : toute l'année
     for (const s of c.students) s.files ||= [];
   }
   return st;
@@ -554,7 +557,7 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', () => { if (saveTimer) flush(); });
 
-const APP_VERSION = '27';
+const APP_VERSION = '28';
 const cls = () => S.classes.find(c => c.id === S.ui.classId);
 // Ordre des classes : 1re puis 2e, par lettre (1C, 1D, 1F… 2A, 2B…), les groupes d'option à la fin
 const isOption = c => /option/i.test(c.name || '');
@@ -648,12 +651,17 @@ function cpcNote(c, sid, i) {
   return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : clampNote(Number(S.settings.cpc.base) || 0);
 }
 const cpcOn = c => !!c?.cpc?.enabled;
+// Semestre de la classe : S1 → 3e période non cotée (NC), S2 → 1re période NC, toute l'année → aucune
+const SEMESTERS = { year: 'Toute l’année', S1: 'Semestre 1', S2: 'Semestre 2' };
+const isNC = (c, i) => (c?.semester === 'S1' && i === 2) || (c?.semester === 'S2' && i === 0);
+const ncCell = '<span class="tag nc" title="Période non cotée pour cette classe">NC</span>';
 // Note de période : participation (si activée) + évaluations de la période, selon la part choisie
 // Points d'une période : évaluations de la période + participation (comptée comme une évaluation)
 // La participation compte dès que la période a commencé ou contient déjà une évaluation ou un cours
 // (force = toujours, pour l'affichage du carnet de cotes)
-const partCounts = (c, i) => periodStarted(i) || periodCols(c, i).length > 0 || lessonDates(c, i).length > 0;
+const partCounts = (c, i) => !isNC(c, i) && (periodStarted(i) || periodCols(c, i).length > 0 || lessonDates(c, i).length > 0);
 function periodPoints(c, sid, i, force) {
+  if (isNC(c, i)) return { got: 0, max: 0, nc: true }; // période non cotée : ni évaluations ni participation
   const r = pointsOf(c, sid, periodCols(c, i));
   if (cpcOn(c) && (force || partCounts(c, i))) {
     const pts = Number(c.cpc.points) || 20;
@@ -677,6 +685,7 @@ function rowAvg(c, sid) {
 function avgCellHTML(c, sid) {
   const avg = rowAvg(c, sid), bs = S.settings.bulletinScale, m = gradeMode();
   const r = m === 'period' ? periodPoints(c, sid, selPeriod(), true) : m === 'filter' ? pointsOf(c, sid, visibleCols(c)) : null;
+  if (m === 'period' && isNC(c, selPeriod())) return ncCell;
   return Number.isFinite(avg) ? `${fmtOn(avg, bs)}<span style="font-weight:500;font-size:13px">/${bs}</span>${r ? `<small>${fmtPtsTotal(r)}</small>` : ''}` : '–';
 }
 const periodCols = (c, i) => sortedCols(c).filter(col => colPeriod(col) === i);
@@ -971,6 +980,7 @@ function applyTheme() {
 }
 function render() { applyTheme(); renderSidebar(); renderMain(); }
 
+const semBadge = c => c.semester === 'S1' || c.semester === 'S2' ? `<span class="sem-badge" title="${SEMESTERS[c.semester]}">${c.semester}</span>` : '';
 function renderSidebar() {
   const days = S.settings.lastBackup ? (Date.now() - new Date(S.settings.lastBackup)) / 864e5 : Infinity;
   const warn = S.classes.length && days > 7;
@@ -978,12 +988,12 @@ function renderSidebar() {
     <div class="brand"><div class="brand-mark">C</div><div><b>Carnet du prof</b><small>${esc(S.settings.year || S.settings.school || 'Ma classe sur iPad')}</small></div></div>
     <div class="side-h">Mes classes</div>
     ${sortedClasses().filter(c => !c.archived).map(c => `<button class="cls-item ${S.ui.view === 'class' && c.id === S.ui.classId ? 'active' : ''}" style="--dot:${c.color}" data-act="select-class" data-id="${c.id}">
-      <span class="dot"></span><span><span class="nm">${esc(c.name)}</span><span class="sub">${esc(c.subject || '')}${c.subject ? ' · ' : ''}${c.students.length} élève${c.students.length > 1 ? 's' : ''}</span></span></button>`).join('')}
+      <span class="dot"></span><span><span class="nm">${esc(c.name)}${semBadge(c)}</span><span class="sub">${esc(c.subject || '')}${c.subject ? ' · ' : ''}${c.students.length} élève${c.students.length > 1 ? 's' : ''}</span></span></button>`).join('')}
     <button class="side-btn" data-act="new-class">＋ Nouvelle classe</button>
     <button class="side-btn" data-act="import-lists">⬇︎ Importer des classes (Excel)</button>
     <button class="side-btn" data-act="import-idoceo">⬇︎ Importer depuis iDoceo</button>
     ${S.classes.some(c => c.archived) ? `<details class="side-arch" ${S.classes.some(c => c.archived && c.id === S.ui.classId) ? 'open' : ''}><summary class="side-h" style="cursor:pointer">Classes archivées (${S.classes.filter(c => c.archived).length})</summary>
-      ${sortedClasses().filter(c => c.archived).map(c => `<button class="cls-item ${S.ui.view === 'class' && c.id === S.ui.classId ? 'active' : ''}" style="--dot:${c.color};opacity:.75" data-act="select-class" data-id="${c.id}"><span class="dot"></span><span><span class="nm">${esc(c.name)}</span><span class="sub">${c.students.length} élèves · archivée</span></span></button>`).join('')}</details>` : ''}
+      ${sortedClasses().filter(c => c.archived).map(c => `<button class="cls-item ${S.ui.view === 'class' && c.id === S.ui.classId ? 'active' : ''}" style="--dot:${c.color};opacity:.75" data-act="select-class" data-id="${c.id}"><span class="dot"></span><span><span class="nm">${esc(c.name)}${semBadge(c)}</span><span class="sub">${c.students.length} élèves · archivée</span></span></button>`).join('')}</details>` : ''}
     <div class="side-foot">
       ${warn ? `<div class="backup-warn">⚠︎ Pensez à faire une sauvegarde${Number.isFinite(days) ? ` (dernière il y a ${Math.floor(days)} j)` : ''}.</div>` : ''}
       <button class="side-btn ${S.ui.view === 'settings' ? 'active' : ''}" data-act="settings">⚙︎ Réglages &amp; sauvegarde</button>
@@ -1034,9 +1044,9 @@ function viewStudents(c) {
     <span class="muted small">${all.length} élève${all.length > 1 ? 's' : ''}</span></div>`;
   if (!list.length) return tb + `<div class="empty"><h2>Aucun élève</h2><p>Ajoutez vos élèves un par un ou collez une liste (par exemple depuis Excel ou un PDF).</p></div>`;
   return tb + `<div class="st-grid">${list.map(s => {
-    const avg = annualAvg(c, s.id), a = attStats(c, s.id), nd = c.dossier.filter(d => d.sid === s.id).length;
+    const curP = periodOfDate(todayISO()), useCur = !isNC(c, curP), avg = useCur ? periodAvg(c, s.id, curP) : annualAvg(c, s.id), a = attStats(c, s.id), nd = c.dossier.filter(d => d.sid === s.id).length;
     const bits = [];
-    if (Number.isFinite(avg)) bits.push(`<span class="tag ${pctClass(avg).replace('g-', '')}">${fmtOn(avg, S.settings.bulletinScale)}/${S.settings.bulletinScale}</span>`);
+    if (Number.isFinite(avg)) bits.push(`<span class="tag ${pctClass(avg).replace('g-', '')}" title="${useCur ? esc(S.settings.periods[curP].name) : 'Moyenne annuelle'}">${useCur ? 'P' + (curP + 1) + ' · ' : 'Année · '}${fmtOn(avg, S.settings.bulletinScale)}/${S.settings.bulletinScale}</span>`);
     if (a.A) bits.push(`${a.A} abs.`);
     if (a.R) bits.push(`${a.R} ret.`);
     if (s.dacc?.suivi) bits.push('<span class="tag bad">DAccE</span>');
@@ -1088,7 +1098,7 @@ function viewStudent(c, s) {
       <button class="photo-btn" data-act="student-photo" aria-label="Changer la photo">${avatar(s, 'lg')}</button>
       <div style="flex:1;min-width:200px"><div class="nm">${nameHTML(s)}${s.dacc?.suivi ? ' <span class="tag bad">DAccE</span>' : ''}</div><button class="btn sm" data-act="rename-student" style="margin-top:6px">✎ Modifier le nom</button><div class="muted">${esc(c.name)}${s.birth ? ' · né(e) le ' + fmtDate(s.birth, { day: 'numeric', month: 'long', year: 'numeric' }) : ''}</div></div>
       <div class="kpis">
-        ${S.settings.periods.map((p, i) => { const a2 = periodAvg(c, s.id, i); return `<div class="kpi"><b class="${pctClass(a2)}" style="background:none!important">${fmtOn(a2, S.settings.bulletinScale)}<small style="font-size:12px;font-weight:400">/${S.settings.bulletinScale}</small></b><span>${esc(p.name)}</span></div>`; }).join('')}
+        ${S.settings.periods.map((p, i) => { const a2 = periodAvg(c, s.id, i); if (isNC(c, i)) return `<div class="kpi"><b class="muted">NC</b><span>${esc(p.name)}</span></div>`; return `<div class="kpi"><b class="${pctClass(a2)}" style="background:none!important">${fmtOn(a2, S.settings.bulletinScale)}<small style="font-size:12px;font-weight:400">/${S.settings.bulletinScale}</small></b><span>${esc(p.name)}</span></div>`; }).join('')}
         <div class="kpi"><b class="${pctClass(annualAvg(c, s.id))}" style="background:none!important">${fmtOn(annualAvg(c, s.id), S.settings.bulletinScale)}<small style="font-size:12px;font-weight:400">/${S.settings.bulletinScale}</small></b><span>Année</span></div>
         <div class="kpi"><b>${a.A || 0}</b><span>Absences</span></div>
         <div class="kpi"><b>${a.J || 0}</b><span>Justifiées</span></div>
@@ -1140,7 +1150,8 @@ function viewGrades(c) {
     <button class="chip ${sp == null ? 'active' : ''}" data-act="grade-period" data-p="all">Toute l’année</button>
     ${cats.length ? '<span style="width:12px"></span>' : ''}${cats.length ? `<button class="chip ${!S.ui.gradeCat ? 'active' : ''}" data-act="grade-cat" data-cat="">Toutes</button>${cats.map(k => `<button class="chip ${S.ui.gradeCat === k ? 'active' : ''}" data-act="grade-cat" data-cat="${esc(k)}">${esc(k)}</button>`).join('')}` : ''}</div>`;
   if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2><p>Ajoutez des élèves dans l’onglet « Élèves » pour commencer à coter.</p><button class="btn" data-act="tab" data-tab="eleves">Aller aux élèves</button></div>`;
-  const showPart = gradeMode() === 'period' && cpcOn(c);
+  const showPart = gradeMode() === 'period' && cpcOn(c) && !isNC(c, sp);
+  const ncBanner = gradeMode() === 'period' && isNC(c, sp) ? `<div class="hw" style="margin:0 0 12px"><b>${esc(P[sp].name)} : NC (non cotée)</b> pour cette classe du ${SEMESTERS[c.semester].toLowerCase()}. Les cotes éventuelles restent visibles mais ne comptent ni dans le bulletin ni dans la moyenne annuelle.</div>` : '';
   if (!cols.length && !showPart) return tb + `<div class="empty"><h2>Aucune évaluation${sp != null ? ' en ' + esc(P[sp].name) : ''}</h2><p>Touchez « ＋ Évaluation » pour créer une colonne (devoir, recherche, interro…) avec ses points.</p></div>`;
   const classAvg = () => { const v = studs.map(s => rowAvg(c, s.id)).filter(Number.isFinite); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN; };
   const ca = classAvg();
@@ -1151,7 +1162,7 @@ function viewGrades(c) {
   const partFoot = () => { if (!showPart) return ''; const v = studs.map(s => cpcNote(c, s.id, sp)); return `<td>${fmtNum(v.reduce((a, b) => a + b, 0) / v.length)}/${pmax}</td>`; };
   const sus = suspectPartCols(c);
   const susBanner = sus.length ? `<div class="hw no-print" style="margin:0 0 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span><b>À vérifier :</b> ${sus.map(col => `« ${esc(col.title)} »`).join(', ')} ressemble${sus.length > 1 ? 'nt' : ''} à des points de participation iDoceo (−1, −2…), pas à des évaluations.</span><span class="spacer" style="flex:1"></span><button class="btn sm primary" data-act="convert-part">Convertir en participation</button><button class="btn sm ghost" data-act="keep-cols">Ce sont des évaluations</button></div>` : '';
-  return tb + susBanner + arBanner(c) + `<div class="gt-wrap"><table class="gt">
+  return tb + ncBanner + susBanner + arBanner(c) + `<div class="gt-wrap"><table class="gt">
     <thead><tr><th class="name">Élève</th>${cols.map(col => `<th class="colh" data-act="edit-col" data-id="${col.id}" title="Modifier"><div class="ct">${esc(col.title)}</div><div class="cm">${fmtShort(col.date)} · ${col.type === 'icons' ? 'icônes' : col.type === 'check' ? 'remis ?' : '/' + fmtNum(col.max, 2)}${col.type !== 'check' && Number(col.weight) !== 1 ? ' · ×' + fmtNum(Number(col.weight), 2) : ''}</div><div class="cm">P${colPeriod(col) + 1}${col.category ? ' · ' + esc(col.category) : ''}</div></th>`).join('')}${partHead}<th>${avgTitle}<div class="cm" style="font-weight:400">sur ${bs}</div></th></tr></thead>
     <tbody>${studs.map((s, ri) => { const avg = rowAvg(c, s.id);
       return `<tr><td class="name"><button class="namebtn" data-act="open-student" data-id="${s.id}">${avatar(s, 'sm')}<span>${nameHTML(s)}</span></button></td>
@@ -1160,7 +1171,7 @@ function viewGrades(c) {
         if (col.type === 'icons') return `<td class="cell ${gradeClass(v, col)}"><button type="button" class="gin icon-cell" data-act="pick-icon" data-col="${col.id}" data-sid="${s.id}" data-r="${ri}" data-c="${ci}" aria-label="${esc(studentName(s))} — ${esc(col.title)}">${v == null ? '<span class="muted">＋</span>' : esc(fmtGrade(v))}</button></td>`;
         return `<td class="cell ${gradeClass(v, col)}"><input class="gin" data-col="${col.id}" data-sid="${s.id}" data-r="${ri}" data-c="${ci}" value="${esc(fmtGrade(v))}" inputmode="decimal" enterkeyhint="next" autocomplete="off" autocorrect="off" aria-label="${esc(studentName(s))} — ${esc(col.title)}"></td>`; }).join('')}
       ${partCell(s.id)}<td class="avg ${pctClass(avg)}" data-avg="${s.id}">${avgCellHTML(c, s.id)}</td></tr>`; }).join('')}</tbody>
-    <tfoot><tr><td class="name">Moyenne de classe</td>${cols.map(col => col.type === 'check' ? `<td data-cavg="${col.id}"><button type="button" class="pcell" style="font-size:13px" data-act="check-all" data-col="${col.id}" title="Marquer OK les élèves sans réponse">${colAvgText(c, col)}</button></td>` : `<td data-cavg="${col.id}">${colAvgText(c, col)}</td>`).join('')}${partFoot()}<td data-gavg>${Number.isFinite(ca) ? fmtOn(ca, bs) + '/' + bs : '–'}</td></tr></tfoot>
+    <tfoot><tr><td class="name">Moyenne de classe</td>${cols.map(col => col.type === 'check' ? `<td data-cavg="${col.id}"><button type="button" class="pcell" style="font-size:13px" data-act="check-all" data-col="${col.id}" title="Marquer OK les élèves sans réponse">${colAvgText(c, col)}</button></td>` : `<td data-cavg="${col.id}">${colAvgText(c, col)}</td>`).join('')}${partFoot()}<td data-gavg>${gradeMode() === 'period' && isNC(c, sp) ? 'NC' : Number.isFinite(ca) ? fmtOn(ca, bs) + '/' + bs : '–'}</td></tr></tfoot>
   </table></div>
   <p class="legend">Touchez une case pour coter. Saisie possible : <b>14,5</b> · <b>7/10</b> (converti) · <b>abs</b> (absent) · <b>exc</b> (excusé, non compté) · <b>ne</b> (non évalué). Touchez l’en-tête d’une colonne pour la modifier. La note sur ${bs} se calcule sur le <b>total des points</b> (points obtenus ÷ points possibles)${showPart ? `, la participation comptant pour ${ppts} points` : ''}. ${S.settings.absZero ? 'Les « abs » comptent pour 0.' : 'Les « abs » ne sont pas comptés dans la moyenne.'}</p>`;
 }
@@ -1289,8 +1300,8 @@ function exportCSV() {
   const lines = [['N°', 'Nom', 'Prénom', ...cols.map(col => col.type === 'icons' ? `${col.title} (icônes)` : col.type === 'check' ? `${col.title} (remis)` : `${col.title} (/${col.max})`), ...(cpcOn(c) ? P.map(p => `Participation ${p.name} /${S.settings.cpc.max}`) : []), ...P.map(p => `${p.name} /${bs}`), `Année /${bs}`].map(q).join(';')];
   for (const s of studs) {
     lines.push([studentNo(s), s.lastName, s.firstName, ...cols.map(col => { const v = c.grades[col.id]?.[s.id]; return isIcon(v) ? `${fmtGrade(v)} ${iconOf(v)?.label || ''}` : fmtGrade(v); }),
-      ...(cpcOn(c) ? P.map((p, i) => partCounts(c, i) ? String(cpcNote(c, s.id, i)).replace('.', ',') : '') : []),
-      ...P.map((p, i) => num(periodAvg(c, s.id, i))), num(annualAvg(c, s.id))].map(q).join(';'));
+      ...(cpcOn(c) ? P.map((p, i) => isNC(c, i) ? 'NC' : partCounts(c, i) ? String(cpcNote(c, s.id, i)).replace('.', ',') : '') : []),
+      ...P.map((p, i) => isNC(c, i) ? 'NC' : num(periodAvg(c, s.id, i))), num(annualAvg(c, s.id))].map(q).join(';'));
   }
   saveBlob(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv' }), `cotes-${c.name.replace(/[^\w-]+/g, '_')}-${todayISO()}.csv`);
 }
@@ -1310,6 +1321,7 @@ function viewParticipationSeance(c) {
       <input class="inp" type="date" id="part-date" value="${d}"><button class="btn" data-act="part-date-shift" data-n="1" aria-label="Cours suivant">›</button></div>
       <button class="btn" data-act="part-date-today">Aujourd’hui</button><span class="spacer"></span><button class="btn sm" data-act="cpc-legend">Légende</button></div>`;
   if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2></div>`;
+  if (isNC(c, pi)) return tb + `<div class="empty"><h2>${esc(P[pi].name)} : NC</h2><p>Cette classe est une classe du ${esc(SEMESTERS[c.semester].toLowerCase())} : cette période n’est pas cotée, il n’y a donc pas de participation à noter.<br>Le réglage se change dans « Modifier » (en haut à droite).</p></div>`;
   const firstNeg = items.findIndex(it => it.pts < 0);
   const rows = studs.map(s => {
     const info = dayInfo(c, s.id, d), n = info.end, ev = c.cpc.events.filter(e => e.sid === s.id && e.date === d);
@@ -1362,7 +1374,7 @@ function cpcStudent(sid) {
     const self = c.cpc.self?.[pi]?.[sid] || {};
     const choices = [['r', 'rarement'], ['p', 'parfois'], ['s', 'souvent']];
     $('.mbody', el).innerHTML = `<div class="toolbar">${P.map((p, i) => `<button type="button" class="chip ${pi === i ? 'active' : ''}" data-pp="${i}">${esc(p.name)}</button>`).join('')}</div>
-      <div class="kpis" style="margin-bottom:14px"><div class="kpi"><b class="${pctClass(cpcNote(c, sid, pi) / max * 100)}" style="background:none!important">${fmtNum(cpcNote(c, sid, pi))}/${max}</b><span>Participation</span></div>
+      <div class="kpis" style="margin-bottom:14px"><div class="kpi">${isNC(c, pi) ? '<b class="muted">NC</b>' : `<b class="${pctClass(cpcNote(c, sid, pi) / max * 100)}" style="background:none!important">${fmtNum(cpcNote(c, sid, pi))}/${max}</b>`}<span>Participation</span></div>
         <div class="kpi"><b>${base}</b><span>Départ</span></div><div class="kpi"><b style="color:var(--ok)">+${plus}</b><span>Points gagnés</span></div><div class="kpi"><b style="color:var(--bad)">${minus ? '−' + Math.abs(minus) : '0'}</b><span>Points perdus</span></div></div>
       <h3 class="section-h">Auto-évaluation de mi-période</h3>
       <p class="small muted" style="margin-top:0">Encodez ce que l’élève a coché, puis comparez avec votre relevé.</p>
@@ -1670,10 +1682,10 @@ function printGradesHTML(c, per, opt) {
     + (opt.blank ? '<th class="rot"><div>&nbsp;</div></th>'.repeat(6) : '') + (multi ? th('Année', `/${bs}`, 'yr') : '');
   const row = (s, n) => `<tr><td>${n}</td><td class="nm">${esc(s.lastName)} ${esc(s.firstName)}</td>`
     + groups.map(g => g.cols.map(col => `<td>${cell(col, c.grades[col.id]?.[s.id])}</td>`).join('')
-      + (part ? `<td>${multi && !partCounts(c, g.i) ? '–' : fmtNum(cpcNote(c, s.id, g.i))}</td>` : '') + `<td class="tot">${fmtOn(pAvg(s.id, g.i), bs)}</td>`).join('')
+      + (part ? `<td>${isNC(c, g.i) ? 'NC' : multi && !partCounts(c, g.i) ? '–' : fmtNum(cpcNote(c, s.id, g.i))}</td>` : '') + `<td class="tot">${isNC(c, g.i) ? 'NC' : fmtOn(pAvg(s.id, g.i), bs)}</td>`).join('')
     + blanks('td') + (multi ? `<td class="yr">${fmtOn(annualAvg(c, s.id), bs)}</td>` : '') + '</tr>';
   const foot = `<tr><td></td><td class="nm">Moyenne de classe</td>` + groups.map(g => g.cols.map(col => `<td>${esc(colAvgText(c, col))}</td>`).join('')
-      + (part ? `<td>${multi && !partCounts(c, g.i) ? '–' : fmtNum(avgOf(studs.map(s => cpcNote(c, s.id, g.i))))}</td>` : '') + `<td class="tot">${fmtOn(avgOf(studs.map(s => pAvg(s.id, g.i))), bs)}</td>`).join('')
+      + (part ? `<td>${isNC(c, g.i) ? 'NC' : multi && !partCounts(c, g.i) ? '–' : fmtNum(avgOf(studs.map(s => cpcNote(c, s.id, g.i))))}</td>` : '') + `<td class="tot">${isNC(c, g.i) ? 'NC' : fmtOn(avgOf(studs.map(s => pAvg(s.id, g.i))), bs)}</td>`).join('')
     + blanks('td') + (multi ? `<td class="yr">${fmtOn(avgOf(studs.map(s => annualAvg(c, s.id))), bs)}</td>` : '') + '</tr>';
   const title = per === 'all' ? 'Toute l’année' : per === 'tot' ? 'Résumé de l’année' : P[+per].name;
   const who = [st.teacher, st.school, st.year].filter(Boolean).join(' · ');
@@ -1694,7 +1706,7 @@ function drawStudent() {
     el2.innerHTML = `<div class="draw-box">
       <div class="draw-face">${picked ? avatar(picked, 'xl') : '<span class="av xl" style="background:var(--neutral-soft);color:var(--muted)">?</span>'}</div>
       <div class="draw-name">${picked ? nameHTML(picked) : 'Touchez « Tirer au sort »'}</div>
-      ${picked && cpcOn(c) && !rolling ? `<div class="cpc-icons" style="justify-content:center">${S.settings.cpc.items.map(it => `<button class="cpc-btn ${it.pts < 0 ? 'neg' : 'pos'}" data-act="cpc-add" data-sid="${picked.id}" data-k="${it.key}" title="${esc(it.short)}">${cpcIcon(it.key)}<span class="pts">${fmtPts(it.pts)}</span></button>`).join('')}</div>` : ''}
+      ${picked && cpcOn(c) && !rolling && !isNC(c, curPartPeriod()) ? `<div class="cpc-icons" style="justify-content:center">${S.settings.cpc.items.map(it => `<button class="cpc-btn ${it.pts < 0 ? 'neg' : 'pos'}" data-act="cpc-add" data-sid="${picked.id}" data-k="${it.key}" title="${esc(it.short)}">${cpcIcon(it.key)}<span class="pts">${fmtPts(it.pts)}</span></button>`).join('')}</div>` : ''}
       <button type="button" class="btn primary draw-go" data-draw ${rolling ? 'disabled' : ''}>🎲 ${picked ? 'Un autre élève' : 'Tirer au sort'}</button>
       <div class="draw-opts">
         <label class="check"><input type="checkbox" data-opt="drawNoRepeat" ${st.drawNoRepeat ? 'checked' : ''}> Chacun son tour (pas deux fois le même avant que tout le monde soit passé)</label>
@@ -1742,7 +1754,7 @@ function drawStudent() {
 // ---------- Bulletins ----------
 function viewBulletins(c) {
   const P = S.settings.periods, bs = S.settings.bulletinScale, studs = sortStudents(c.students);
-  const tb = `<div class="toolbar"><span class="muted small">Note de période sur ${bs} = total des points de la période (points obtenus ÷ points possibles)${cpcOn(c) ? `, participation comprise (elle compte pour ${Number(c.cpc.points) || 20} points)` : ''}. L’année est la moyenne des périodes${P.some(p => Number(p.weight) !== 1) ? ' (pondérées : ' + P.map(p => '×' + fmtNum(Number(p.weight), 2)).join(', ') + ')' : ''}. Dates et pondérations dans Réglages.</span>
+  const tb = `<div class="toolbar"><span class="muted small">Note de période sur ${bs} = total des points de la période (points obtenus ÷ points possibles)${cpcOn(c) ? `, participation comprise (elle compte pour ${Number(c.cpc.points) || 20} points)` : ''}. L’année est la moyenne des périodes cotées${c.semester !== 'year' ? ` (${SEMESTERS[c.semester].toLowerCase()} : ${c.semester === 'S1' ? esc(P[2]?.name || '3e période') : esc(P[0]?.name || '1re période')} NC)` : ''}${P.some(p => Number(p.weight) !== 1) ? ' (pondérées : ' + P.map(p => '×' + fmtNum(Number(p.weight), 2)).join(', ') + ')' : ''}. Dates et pondérations dans Réglages.</span>
     <span class="spacer"></span><button class="btn sm" data-act="export-csv">Exporter (CSV)</button><button class="btn sm" data-act="print">Imprimer</button></div>`;
   if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2></div>`;
   const cell = (p, sub = '') => `<td class="num ${pctClass(p)}"><b>${fmtOn(p, bs)}</b>${Number.isFinite(p) ? `<small class="muted"> /${bs}</small>` : ''}${sub}</td>`;
@@ -1750,10 +1762,11 @@ function viewBulletins(c) {
   const partSub = (n, i, s) => { const r = periodPoints(c, s.id, i); return r.max ? `<div class="small muted">${fmtPtsTotal(r)}${n == null ? '' : ` · particip. ${fmtNum(n)}/${S.settings.cpc.max}`}</div>` : ''; };
   const mean = arr => { const v = arr.filter(Number.isFinite); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN; };
   let start = '';
-  const head = P.map((p, i) => { const r = `${start ? 'du ' + fmtShort(start) + ' ' : ''}au ${fmtShort(p.end)}`; start = p.end ? addDays(p.end, 1) : ''; return `<th class="num">${esc(p.name)}<div class="small muted" style="font-weight:400">${r} · ${periodCols(c, i).length} éval.</div></th>`; }).join('');
+  const head = P.map((p, i) => { const r = `${start ? 'du ' + fmtShort(start) + ' ' : ''}au ${fmtShort(p.end)}`; start = p.end ? addDays(p.end, 1) : ''; return `<th class="num">${esc(p.name)}<div class="small muted" style="font-weight:400">${r} · ${isNC(c, i) ? 'non cotée' : periodCols(c, i).length + ' éval.'}</div></th>`; }).join('');
+  const pcell = (p, i, sub) => isNC(c, i) ? `<td class="num">${ncCell}</td>` : cell(p, sub);
   return tb + `<div class="tbl-scroll"><table class="plain bull"><thead><tr><th>Élève</th>${head}<th class="num">Année</th></tr></thead><tbody>
-    ${rows.map(r => `<tr><td><button class="namebtn" style="border:0;background:none;padding:0" data-act="open-student" data-id="${r.s.id}">${avatar(r.s, 'sm')}${nameHTML(r.s)}</button></td>${r.per.map((p, i) => cell(p, partSub(r.part[i], i, r.s))).join('')}${cell(r.year)}</tr>`).join('')}
-    </tbody><tfoot><tr><td><b>Moyenne de classe</b></td>${P.map((p, i) => cell(mean(rows.map(r => r.per[i])))).join('')}${cell(mean(rows.map(r => r.year)))}</tr></tfoot></table></div>`;
+    ${rows.map(r => `<tr><td><button class="namebtn" style="border:0;background:none;padding:0" data-act="open-student" data-id="${r.s.id}">${avatar(r.s, 'sm')}${nameHTML(r.s)}</button></td>${r.per.map((p, i) => pcell(p, i, partSub(r.part[i], i, r.s))).join('')}${cell(r.year)}</tr>`).join('')}
+    </tbody><tfoot><tr><td><b>Moyenne de classe</b></td>${P.map((p, i) => pcell(mean(rows.map(r => r.per[i])), i)).join('')}${cell(mean(rows.map(r => r.year)))}</tr></tfoot></table></div>`;
 }
 
 // ---------- Présences ----------
@@ -2211,7 +2224,7 @@ function exportDacceCSV() {
 // ---------- Classes & élèves ----------
 function editClass(c) {
   const isNew = !c;
-  c ||= { name: '', subject: '', color: COLORS[S.classes.length % COLORS.length], cpc: { enabled: true, points: 20, events: [], self: {} } };
+  c ||= { name: '', subject: '', semester: 'year', color: COLORS[S.classes.length % COLORS.length], cpc: { enabled: true, points: 20, events: [], self: {} } };
   const actions = [];
   if (!isNew) actions.push({ label: 'Supprimer la classe', cls: 'danger left', onClick: async () => {
     if (!await confirmDlg(`Supprimer définitivement la classe « ${c.name} » avec ses élèves, cotes, présences, journal et DAccE ?`)) return false;
@@ -2223,7 +2236,7 @@ function editClass(c) {
     if (!d.name) { toast('Donnez un nom à la classe'); return false; }
     const pts = parseFloat(String(d.points).replace(',', '.'));
     if (color !== c.color) c.colorUser = color !== groupColor({ name: d.name });
-    Object.assign(c, { name: d.name, subject: d.subject, color, level: d.level || '', archived: !!d.archived });
+    Object.assign(c, { name: d.name, subject: d.subject, color, level: d.level || '', archived: !!d.archived, semester: SEMESTERS[d.semester] ? d.semester : 'year' });
     if (!c.colorUser) c.color = groupColor(c) || c.color;
     c.cpc = { ...c.cpc, enabled: !!d.cpcOn, userSet: !d.cpcOn, points: pts > 0 ? pts : 20 };
     if (isNew) { Object.assign(c, normalize({ classes: [{ ...c, id: uid() }] }).classes[0]); S.classes.push(c); S.ui.classId = c.id; S.ui.tab = 'eleves'; S.ui.view = 'class'; }
@@ -2234,6 +2247,7 @@ function editClass(c) {
     body: `<label class="field"><span>Nom de la classe</span><input class="inp" name="name" value="${esc(c.name)}" placeholder="Ex. 3e A"></label>
       <div class="row2"><label class="field"><span>Cours / matière</span><input class="inp" name="subject" value="${esc(c.subject)}" placeholder="Ex. Philosophie et citoyenneté"></label>
       <label class="field"><span>Année (référentiel EPC)</span><select class="inp" name="level">${[['', 'Selon le nom de la classe'], ['S1', '1re secondaire'], ['S2', '2e secondaire']].map(([k, l]) => `<option value="${k}" ${(c.level || '') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>
+      <label class="field"><span>Semestre</span><select class="inp" name="semester">${Object.entries(SEMESTERS).map(([k, l]) => `<option value="${k}" ${(c.semester || 'year') === k ? 'selected' : ''}>${l}${k === 'S1' ? ' (3e période NC)' : k === 'S2' ? ' (1re période NC)' : ''}</option>`).join('')}</select></label>
       <div class="field"><span>Couleur</span><div class="swatches">${COLORS.map(col => `<label><input type="radio" name="color" value="${col}" ${col === c.color ? 'checked' : ''}><span style="background:${col}"></span></label>`).join('')}</div></div>
       <label class="check"><input type="checkbox" name="archived" ${c.archived ? 'checked' : ''}> Classe terminée (archivée en bas de la liste, toujours consultable)</label>
       <label class="check"><input type="checkbox" name="cpcOn" ${c.cpc?.enabled ? 'checked' : ''}> Coter la participation avec les icônes (départ à ${S.settings.cpc.base}/${S.settings.cpc.max} à chaque période)</label>
