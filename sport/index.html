@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Mon programme salle</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#7a3e6c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Ma Salle">
@@ -18,11 +19,12 @@
   --chip:#f4ebe6;--shadow:0 2px 10px rgba(60,30,50,.08);
 }
 @media (prefers-color-scheme: dark){
-  :root{--bg:#1c171d;--card:#2a232b;--ink:#f3ecef;--soft:#b9adb6;--line:#3d343e;--plum:#c98ab9;--plum2:#dba6cd;--coral:#f0947c;--mint:#6cc4ac;--sun:#f2bf5e;--red:#ef7a6f;--chip:#352d36;--shadow:0 2px 10px rgba(0,0,0,.35)}
+  :root:not([data-theme="light"]){color-scheme:dark;--bg:#1c171d;--card:#2a232b;--ink:#f3ecef;--soft:#b9adb6;--line:#3d343e;--plum:#c98ab9;--plum2:#dba6cd;--coral:#f0947c;--mint:#6cc4ac;--sun:#f2bf5e;--red:#ef7a6f;--chip:#352d36;--shadow:0 2px 10px rgba(0,0,0,.35)}
 }
+:root[data-theme="dark"]{color-scheme:dark;--bg:#1c171d;--card:#2a232b;--ink:#f3ecef;--soft:#b9adb6;--line:#3d343e;--plum:#c98ab9;--plum2:#dba6cd;--coral:#f0947c;--mint:#6cc4ac;--sun:#f2bf5e;--red:#ef7a6f;--chip:#352d36;--shadow:0 2px 10px rgba(0,0,0,.35)}
 html{-webkit-text-size-adjust:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.5;min-height:100vh;padding-bottom:calc(80px + env(safe-area-inset-bottom))}
-.app{max-width:640px;margin:0 auto;padding:0 16px}
+.app{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 h1{font-size:1.5rem;line-height:1.25}
 h2{font-size:1.2rem;margin:1.4rem 0 .6rem}
 h3{font-size:1.05rem}
@@ -118,6 +120,8 @@ details[open] summary::before{content:"－ "}
 .mt{margin-top:14px}
 .chart{display:flex;align-items:flex-end;gap:4px;height:80px;margin:8px 0}
 .chart i{flex:1;background:var(--plum2);border-radius:4px 4px 0 0;min-height:4px}
+.modal{position:fixed;inset:0;background:rgba(20,10,20,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:60}
+.modal-box{background:var(--card);color:var(--ink);border-radius:16px;padding:20px;max-width:420px;width:100%;box-shadow:var(--shadow)}
 .toast{position:fixed;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;z-index:50;font-weight:600;font-size:.95rem;max-width:90vw}
 </style>
 </head>
@@ -140,6 +144,14 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toISOString().slice(0, 10);
 const fmtDate = d => new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+function ask(msg, yes = 'Oui', no = 'Annuler') {
+  return new Promise(res => {
+    const d = document.createElement('div'); d.className = 'modal';
+    d.innerHTML = `<div class="modal-box" role="dialog" aria-modal="true"><p>${esc(msg)}</p><div class="row mt"><button type="button" class="btn grow" data-r="0">${esc(no)}</button><button type="button" class="btn primary grow" data-r="1">${esc(yes)}</button></div></div>`;
+    d.onclick = e => { const b = e.target.closest('[data-r]'); if (!b && e.target !== d) return; d.remove(); res(b?.dataset.r === '1'); };
+    document.body.append(d); d.querySelector('[data-r="1"]').focus();
+  });
+}
 function toast(msg) { document.querySelectorAll('.toast').forEach(x => x.remove()); const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 2600); }
 
 /* ===================== EXERCICES ===================== */
@@ -610,7 +622,9 @@ function viewSettings() {
     <label class="f">Séances par semaine</label><div class="choices" id="st-days">${[2, 3].map(d => `<button type="button" class="choice ${p.days === d ? 'on' : ''}" data-d="${d}">${d} séances</button>`).join('')}</div>
     <button type="button" class="btn primary block mt" id="st-save">Enregistrer</button></div>
   <div class="card"><h3>Sauvegarde</h3><p class="soft" style="font-size:.92rem">Vos données sont sur ce téléphone uniquement. Exportez-les de temps en temps (Fichiers, iCloud, e-mail).</p>
-    <div class="row wrap mt"><button type="button" class="btn grow" id="st-export">⬇️ Exporter</button><label class="btn grow" for="st-import" style="cursor:pointer">⬆️ Restaurer</label><input type="file" id="st-import" accept=".json,application/json" hidden></div></div>
+    <div class="row wrap mt"><button type="button" class="btn grow" id="st-export">⬇️ Exporter</button><label class="btn grow" for="st-import" style="cursor:pointer">⬆️ Restaurer</label><input type="file" id="st-import" accept=".json,application/json" hidden></div>
+    <div id="st-out" hidden><p class="soft mt" style="font-size:.9rem">Si aucun fichier n'a été enregistré, copiez ce texte et gardez-le (note, e-mail à vous-même).</p><textarea id="st-json" readonly></textarea><button type="button" class="btn block mt" id="st-copy">Copier la sauvegarde</button></div>
+    <details><summary>Restaurer en collant un texte</summary><textarea id="st-pasted" placeholder="Collez ici le texte de sauvegarde"></textarea><button type="button" class="btn block mt" id="st-paste">Restaurer</button></details></div>
   <div class="card"><h3>Installer sur le téléphone</h3><p style="font-size:.95rem"><b>iPhone</b> : dans Safari, touchez Partager puis « Sur l'écran d'accueil ».<br><b>Android</b> : dans Chrome, menu ⋮ puis « Installer l'application » ou « Ajouter à l'écran d'accueil ».</p><p class="soft" style="font-size:.9rem">Elle marche ensuite sans connexion, même dans une salle sans réseau.</p></div>
   <div class="card"><h3>Recommencer</h3><button type="button" class="btn ghost block mt" id="st-reset">Effacer toutes mes données</button></div>
   <p class="soft center" style="font-size:.8rem">Version ${APP_VERSION}</p>`;
@@ -622,7 +636,7 @@ function bind() {
   if (view === 'home') {
     let gentle = false;
     document.querySelectorAll('#mood .choice').forEach(b => b.onclick = () => { gentle = b.dataset.g === '1'; document.querySelectorAll('#mood .choice').forEach(x => x.classList.toggle('on', x === b)); $('#mood-hint').style.display = gentle ? 'block' : 'none'; });
-    const start = k => { if (S.current && !confirm('Une séance est déjà en cours. La remplacer par une nouvelle ?')) return; stopCardio(true); S.current = buildSession(k, gentle || daysSinceLast() >= 10); openEx = 'cd-warm'; save(); view = 'session'; render(); window.scrollTo(0, 0); };
+    const start = async k => { if (S.current && !(await ask('Une séance est déjà en cours. La remplacer par une nouvelle ?', 'Remplacer'))) return; stopCardio(true); S.current = buildSession(k, gentle || daysSinceLast() >= 10); openEx = 'cd-warm'; save(); view = 'session'; render(); window.scrollTo(0, 0); };
     $('#go').onclick = () => start(nextKey());
     document.querySelectorAll('[data-other]').forEach(b => b.onclick = () => start(b.dataset.other));
   }
@@ -668,12 +682,12 @@ function bindSession() {
   document.querySelectorAll('[data-sfeel]').forEach(b => b.onclick = () => { c.feel = b.dataset.sfeel; c.note = $('#snote').value; save(); render(); });
   $('#snote').oninput = e => { c.note = e.target.value; save(); };
   $('#finish').onclick = finish;
-  $('#abandon').onclick = () => { if (confirm('Abandonner cette séance ? Elle ne sera pas comptée.')) { stopCardio(true); stopRest(); S.current = null; save(); view = 'home'; render(); } };
+  $('#abandon').onclick = async () => { if (await ask('Abandonner cette séance ? Elle ne sera pas comptée.', 'Abandonner', 'Continuer')) { stopCardio(true); stopRest(); S.current = null; save(); view = 'home'; render(); } };
 }
-function finish() {
+async function finish() {
   const c = S.current;
   const anySet = c.ex.some(e => e.sets.some(s => s.done));
-  if (!anySet && !c.cardio.done && !confirm('Aucun exercice n\'est coché. Terminer quand même ?')) return;
+  if (!anySet && !c.cardio.done && !(await ask('Aucun exercice n\'est coché. Terminer quand même ?', 'Terminer'))) return;
   stopCardio(true); stopRest();
   c.ex.forEach(e => {
     const kgs = e.sets.filter(s => s.done && s.kg).map(s => s.kg);
@@ -696,14 +710,17 @@ function bindSettings() {
   $('#st-save').onclick = () => { S.profile.name = $('#st-name').value.trim(); S.profile.days = days; save(); toast('Enregistré'); render(); };
   $('#st-export').onclick = () => {
     const blob = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ma-salle-${today()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    try { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ma-salle-${today()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); } catch {}
+    $('#st-out').hidden = false; $('#st-json').value = JSON.stringify(S);
   };
+  $('#st-copy').onclick = async () => { const t = $('#st-json'); try { await navigator.clipboard.writeText(t.value); toast('Copié : collez-le dans une note ou un e-mail'); } catch { t.select(); toast('Texte sélectionné : copiez-le'); } };
+  $('#st-paste').onclick = async () => { const txt = $('#st-pasted').value.trim(); if (!txt) return; try { const d = JSON.parse(txt); if (!d.profile || !Array.isArray(d.logs)) throw 0; if (await ask('Remplacer les données de ce téléphone par cette sauvegarde ?', 'Remplacer')) { S = { kg: {}, feel: {}, current: null, ...d }; save(); toast('Sauvegarde restaurée'); view = 'home'; render(); } } catch { toast('Ce texte n\'est pas une sauvegarde valide'); } };
   $('#st-import').onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
-    try { const d = JSON.parse(await f.text()); if (!d.profile || !Array.isArray(d.logs)) throw 0; if (confirm('Remplacer les données de ce téléphone par cette sauvegarde ?')) { S = { kg: {}, feel: {}, current: null, ...d }; save(); toast('Sauvegarde restaurée'); view = 'home'; render(); } }
+    try { const d = JSON.parse(await f.text()); if (!d.profile || !Array.isArray(d.logs)) throw 0; if (await ask('Remplacer les données de ce téléphone par cette sauvegarde ?', 'Remplacer')) { S = { kg: {}, feel: {}, current: null, ...d }; save(); toast('Sauvegarde restaurée'); view = 'home'; render(); } }
     catch { toast('Ce fichier n\'est pas une sauvegarde valide'); }
   };
-  $('#st-reset').onclick = () => { if (confirm('Effacer tout votre historique ? Pensez à exporter avant.') && confirm('Vraiment tout effacer ?')) { localStorage.removeItem(KEY); S = { profile: null, logs: [], kg: {}, feel: {}, current: null }; view = 'home'; render(); } };
+  $('#st-reset').onclick = async () => { if (await ask('Effacer tout votre historique ? Pensez à exporter avant.', 'Effacer') && await ask('Vraiment tout effacer ?', 'Tout effacer')) { localStorage.removeItem(KEY); S = { profile: null, logs: [], kg: {}, feel: {}, current: null }; view = 'home'; render(); } };
 }
 
 if (S.current) { view = 'session'; openEx = null; }
