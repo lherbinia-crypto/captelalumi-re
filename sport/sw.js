@@ -1,6 +1,6 @@
 // Service worker : met l'application en cache pour un usage hors ligne (salle sans réseau).
-const CACHE = 'ma-salle-v1';
-const ASSETS = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+const CACHE = 'ma-salle-v2';
+const ASSETS = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'figures.js', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));

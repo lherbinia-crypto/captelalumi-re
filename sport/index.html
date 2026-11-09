@@ -17,11 +17,12 @@
   --bg:#fbf6f2;--card:#ffffff;--ink:#2b2230;--soft:#6d6170;--line:#eadfd8;
   --plum:#7a3e6c;--plum2:#9d5a8d;--coral:#e0785e;--mint:#3f9c86;--sun:#e8a93a;--red:#c8463b;
   --chip:#f4ebe6;--shadow:0 2px 10px rgba(60,30,50,.08);
+  --body:#3b2d40;--hot:#e0785e;--mach:#d9ccd3;--mach2:#a8949f;--good:#3f9c86;--figbg:#fdfaf8;
 }
 @media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){color-scheme:dark;--bg:#1c171d;--card:#2a232b;--ink:#f3ecef;--soft:#b9adb6;--line:#3d343e;--plum:#c98ab9;--plum2:#dba6cd;--coral:#f0947c;--mint:#6cc4ac;--sun:#f2bf5e;--red:#ef7a6f;--chip:#352d36;--shadow:0 2px 10px rgba(0,0,0,.35)}
+  :root:not([data-theme="light"]){color-scheme:dark;--bg:#1c171d;--card:#2a232b;--ink:#f3ecef;--soft:#b9adb6;--line:#3d343e;--plum:#c98ab9;--plum2:#dba6cd;--coral:#f0947c;--mint:#6cc4ac;--sun:#f2bf5e;--red:#ef7a6f;--chip:#352d36;--shadow:0 2px 10px rgba(0,0,0,.35);--body:#efe4ea;--hot:#f0947c;--mach:#4a3f4b;--mach2:#7c6a78;--good:#6cc4ac;--figbg:#231d24}
 }
-:root[data-theme="dark"]{color-scheme:dark;--bg:#1c171d;--card:#2a232b;--ink:#f3ecef;--soft:#b9adb6;--line:#3d343e;--plum:#c98ab9;--plum2:#dba6cd;--coral:#f0947c;--mint:#6cc4ac;--sun:#f2bf5e;--red:#ef7a6f;--chip:#352d36;--shadow:0 2px 10px rgba(0,0,0,.35)}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#1c171d;--card:#2a232b;--ink:#f3ecef;--soft:#b9adb6;--line:#3d343e;--plum:#c98ab9;--plum2:#dba6cd;--coral:#f0947c;--mint:#6cc4ac;--sun:#f2bf5e;--red:#ef7a6f;--chip:#352d36;--shadow:0 2px 10px rgba(0,0,0,.35);--body:#efe4ea;--hot:#f0947c;--mach:#4a3f4b;--mach2:#7c6a78;--good:#6cc4ac;--figbg:#231d24}
 html{-webkit-text-size-adjust:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.5;min-height:100vh;padding-bottom:calc(80px + env(safe-area-inset-bottom))}
 .app{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -122,6 +123,22 @@ details[open] summary::before{content:"－ "}
 .chart i{flex:1;background:var(--plum2);border-radius:4px 4px 0 0;min-height:4px}
 .modal{position:fixed;inset:0;background:rgba(20,10,20,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:60}
 .modal-box{background:var(--card);color:var(--ink);border-radius:16px;padding:20px;max-width:420px;width:100%;box-shadow:var(--shadow)}
+.fig{margin:6px 0 10px;background:var(--figbg);border:1px solid var(--line);border-radius:14px;padding:6px 6px 8px}
+.fig svg{display:block;width:100%;height:auto;max-height:260px}
+.fig figcaption{text-align:center;font-weight:700;font-size:1rem;color:var(--plum);min-height:1.5em}
+.thumb{margin:0;width:56px;height:44px;flex:none;background:var(--figbg);border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative}
+.thumb svg{width:100%;height:100%;display:block}
+.ex.done .thumb::after{content:"✓";position:absolute;inset:0;background:color-mix(in srgb,var(--mint) 78%,transparent);color:#fff;font-size:1.5rem;font-weight:800;display:flex;align-items:center;justify-content:center}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--soft);justify-content:center;margin-bottom:6px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:4px;vertical-align:-1px;margin-right:4px}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.gallery button{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px;text-align:left;font:inherit;color:var(--ink);cursor:pointer}
+.gallery button .fig{margin:0 0 4px;padding:2px}
+.gallery button b{font-size:.88rem;display:block;line-height:1.25}
+.stretch-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stretch-grid .fig{margin:0}
+.stretch-grid p{font-size:.85rem;margin:4px 2px 0;line-height:1.35}
+.modal-box.wide{max-width:560px;max-height:88vh;overflow:auto}
 .toast{position:fixed;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;z-index:50;font-weight:600;font-size:.95rem;max-width:90vw}
 </style>
 </head>
@@ -129,9 +146,10 @@ details[open] summary::before{content:"－ "}
 <div class="app" id="app"></div>
 <div id="rest"><div class="grow"><div style="font-size:.8rem;opacity:.85">Récupération</div><div class="t" id="rest-t">1:00</div></div><button type="button" id="rest-plus">+15 s</button><button type="button" id="rest-stop">Passer</button></div>
 <nav class="tabs" id="tabs"></nav>
+<script src="figures.js"></script>
 <script>
 'use strict';
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 const KEY = 'ma-salle-v1';
 
 /* ===================== DONNÉES ===================== */
@@ -328,6 +346,15 @@ const SESSIONS = {
   B: { title: 'Dos, bras & posture', sub: 'Haut du corps + vélo', warm: 'warm-ellip', ex: ['tirage', 'developpe', 'rowing', 'epaules', 'oiseau', 'deadbug'], cardio: 'velo' },
   C: { title: 'Corps entier & équilibre', sub: 'Tout le corps + tapis', warm: 'warm-tapis', ex: ['stepup', 'squat', 'rowhaltere', 'pompes', 'legext', 'adducteurs', 'birddog', 'equilibre'], cardio: 'tapis' },
 };
+const LEGEND = '<div class="legend"><span><i style="background:var(--hot)"></i>muscles qui travaillent</span><span><i style="background:var(--body);opacity:.2"></i>position d\'arrivée</span><span><i style="background:var(--mach)"></i>machine</span></div>';
+const STRETCH = [
+  ['st-mollets', 'Mollets', 'mains au mur, jambe arrière tendue, talon au sol'],
+  ['st-quadri', 'Avant des cuisses', 'une main au mur, tirez le talon vers les fesses'],
+  ['st-ischios', 'Arrière des cuisses', 'au bord du banc, jambe tendue, penchez-vous dos droit'],
+  ['st-fessiers', 'Fessiers', 'allongée, ramenez un genou vers la poitrine'],
+  ['st-poitrine', 'Poitrine', 'avant-bras contre un montant, avancez doucement'],
+  ['st-enfant', 'Dos', 'à genoux, fesses vers les talons, bras devant'],
+];
 const isHold = id => id === 'planche' || id === 'equilibre';
 const noKg = id => ['pont', 'planche', 'deadbug', 'birddog', 'equilibre', 'pompes', 'mollets'].includes(id);
 
@@ -457,15 +484,8 @@ function viewSession() {
   ${cardioCard('cardio', c.cardio)}
   <h2>Étirements</h2>
   <div class="ex ${c.stretch ? 'done' : ''} ${openEx === 'stretch' ? 'open' : ''}" data-ex-wrap="stretch">
-    <div class="ex-head" data-open="stretch"><div class="ex-emo">🤸‍♀️</div><div class="grow"><div class="ex-title">Étirements doux · 5 min</div><div class="soft" style="font-size:.88rem">30 secondes par position, sans forcer</div></div><span>${c.stretch ? '✅' : '›'}</span></div>
-    <div class="ex-body"><div class="how"><ul>
-      <li><b>Mollets</b> : mains au mur, une jambe tendue derrière, talon au sol.</li>
-      <li><b>Avant des cuisses</b> : debout, une main au mur, attrapez la cheville et rapprochez le talon des fesses.</li>
-      <li><b>Arrière des cuisses</b> : assise au bord d'un banc, une jambe tendue, penchez-vous dos droit.</li>
-      <li><b>Fessiers</b> : allongée, cheville posée sur le genou opposé, tirez la cuisse vers vous.</li>
-      <li><b>Poitrine</b> : avant-bras sur un montant de porte, avancez doucement le buste.</li>
-      <li><b>Dos</b> : à genoux, fesses vers les talons, bras allongés devant (posture de l'enfant).</li>
-      <li>Terminez par 5 grandes respirations lentes.</li></ul></div>
+    <div class="ex-head" data-open="stretch">${FIG.svg('st-enfant', 'thumb', true)}<div class="grow"><div class="ex-title">Étirements doux · 5 min</div><div class="soft" style="font-size:.88rem">30 secondes par position, sans forcer</div></div><span>${c.stretch ? '✅' : '›'}</span></div>
+    <div class="ex-body">${openEx === 'stretch' ? `<div class="stretch-grid">${STRETCH.map(([id, t, d]) => `<div>${FIG.svg(id, 'fig', true)}<p><b>${t}</b> · ${d}</p></div>`).join('')}</div><p class="soft mt" style="font-size:.9rem">30 secondes par position, sans à-coups. Terminez par 5 grandes respirations lentes.</p>` : ''}
       <button type="button" class="btn block ${c.stretch ? '' : 'primary'}" data-stretch>${c.stretch ? 'Fait ✓' : 'J\'ai terminé les étirements'}</button></div>
   </div>
   <div class="card"><h3>Pour finir</h3>
@@ -489,8 +509,9 @@ function exCard(e, i, ph) {
     else sugg = `<div class="hint mint">Dernière charge : <b>${esc(S.kg[e.id])}</b>. Gardez-la ; si toutes les séries passent bien, un cran de plus la prochaine fois.</div>`;
   }
   return `<div class="ex ${done ? 'done' : ''} ${openEx === i ? 'open' : ''}" data-ex-wrap="${i}">
-    <div class="ex-head" data-open="${i}"><div class="ex-emo">${done ? '✅' : x.emo}</div><div class="grow"><div class="ex-title">${x.name}</div><div class="soft" style="font-size:.88rem">${e.sets.length} × ${repsLabel} · ${x.zone}</div></div><span>${openEx === i ? '⌄' : '›'}</span></div>
+    <div class="ex-head" data-open="${i}">${FIG.svg(e.id, 'thumb', true)}<div class="grow"><div class="ex-title">${x.name}</div><div class="soft" style="font-size:.88rem">${e.sets.length} × ${repsLabel} · ${x.zone}</div></div><span>${openEx === i ? '⌄' : '›'}</span></div>
     <div class="ex-body">
+      ${openEx === i ? FIG.svg(e.id) + LEGEND : ''}
       <div class="how"><b>Réglage</b><p>${x.setup}</p><b>Mouvement</b><ul>${x.how.map(h => `<li>${h}</li>`).join('')}</ul><p>🌬️ <b>Respiration :</b> ${x.breath}</p><p>⚠️ <b>À éviter :</b> ${x.avoid}</p><p>🌱 <b>Plus facile :</b> ${x.easy}</p></div>
       ${sugg}
       <div class="sets">${e.sets.map((s, j) => `<div class="set"><span class="n">Série ${j + 1}</span>
@@ -509,8 +530,9 @@ function cardioCard(which, c) {
   const rows = segs.map(s => { const a = acc; acc += s.m * 60; const st = el >= acc ? 'past' : el >= a ? 'now' : ''; return `<div class="seg ${st}"><b>${fmtMin(s.m)}</b><span class="grow">${s.txt}<br><small style="color:inherit;opacity:.85">${s.set}</small></span><span class="pill">${s.rpe}/10</span></div>`; }).join('');
   const tot = total(segs) * 60;
   return `<div class="ex ${c.done ? 'done' : ''} ${open ? 'open' : ''}">
-    <div class="ex-head" data-open="${id}"><div class="ex-emo">${c.done ? '✅' : CARDIO_NAMES[c.kind].split(' ')[0]}</div><div class="grow"><div class="ex-title">${CARDIO_NAMES[c.kind].slice(CARDIO_NAMES[c.kind].indexOf(' ') + 1)}</div><div class="soft" style="font-size:.88rem">${Math.round(total(segs))} min${which === 'warm' ? ' · prépare les articulations' : ''}</div></div><span>${open ? '⌄' : '›'}</span></div>
+    <div class="ex-head" data-open="${id}">${FIG.svg(c.kind, 'thumb', true)}<div class="grow"><div class="ex-title">${CARDIO_NAMES[c.kind].slice(CARDIO_NAMES[c.kind].indexOf(' ') + 1)}</div><div class="soft" style="font-size:.88rem">${Math.round(total(segs))} min${which === 'warm' ? ' · prépare les articulations' : ''}</div></div><span>${open ? '⌄' : '›'}</span></div>
     <div class="ex-body">
+      ${open ? FIG.svg(c.kind) : ''}
       ${c.kind.includes('tapis') ? '<div class="hint">Accrochez la pince de sécurité à vos vêtements. Tenez les barres seulement pour monter/descendre ou en cas de besoin : marcher sans s\'y appuyer travaille l\'équilibre.</div>' : ''}
       <div class="big" id="cd-clock-${which}">${fmtSec(Math.max(0, tot - el))}</div><div class="center soft" style="font-size:.85rem">restantes</div>
       <div class="segs">${rows}</div>
@@ -610,6 +632,8 @@ function viewTips() {
     ['À la salle, les premières fois', `<ul><li>Demandez à un coach de la salle de vous montrer les réglages des machines : c'est son métier et c'est gratuit dans la plupart des salles.</li><li>Les machines n'ont pas toutes les mêmes chiffres : notez dans l'appli le numéro de la plaque ou les kg affichés, c'est votre repère sur <i>cette</i> machine.</li><li>Si une machine du programme n'existe pas dans votre salle, demandez l'équivalent au coach.</li></ul>`],
   ];
   return `<div class="top"><h1>Conseils</h1><p class="soft">Spécial femmes de plus de 50 ans, périménopause et reprise du sport.</p></div>
+  <div class="card"><h3>Mes exercices en images</h3><p class="soft" style="font-size:.92rem">Touchez un dessin pour le voir bouger. Vous cherchez une machine chez Jims ? Montrez le dessin à quelqu'un de l'équipe.</p>
+    <div class="gallery mt">${Object.keys(EX).map(id => `<button type="button" data-gal="${id}">${FIG.svg(id, 'fig', true)}<b>${EX[id].name}</b></button>`).join('')}${['tapis', 'velo', 'ellip'].map(id => `<button type="button" data-gal="${id}">${FIG.svg(id, 'fig', true)}<b>${{ tapis: 'Tapis de marche', velo: 'Vélo', ellip: 'Elliptique' }[id]}</b></button>`).join('')}</div></div>
   <div class="card">${T.map(([t, b], i) => `<details ${i === 0 ? 'open' : ''}><summary>${t}</summary><div class="tip-body">${b}</div></details>`).join('')}</div>
   <p class="soft center" style="font-size:.85rem">Ces conseils sont généraux et ne remplacent pas l'avis de votre médecin.</p>`;
 }
@@ -642,8 +666,18 @@ function bind() {
   }
   if (view === 'session' && S.current) bindSession();
   if (view === 'settings') bindSettings();
+  document.querySelectorAll('[data-gal]').forEach(b => b.onclick = () => showEx(b.dataset.gal));
+}
+function showEx(id) {
+  const x = EX[id];
+  const d = document.createElement('div'); d.className = 'modal';
+  d.innerHTML = `<div class="modal-box wide" role="dialog" aria-modal="true"><div class="row"><h3 class="grow">${x ? x.name : { tapis: 'Tapis de marche', velo: 'Vélo', ellip: 'Elliptique' }[id]}</h3><button type="button" class="btn sm" data-close>Fermer</button></div>
+    ${FIG.svg(id)}${x ? LEGEND + `<div class="how"><b>Réglage</b><p>${x.setup}</p><b>Mouvement</b><ul>${x.how.map(h => `<li>${h}</li>`).join('')}</ul><p>🌬️ <b>Respiration :</b> ${x.breath}</p><p>⚠️ <b>À éviter :</b> ${x.avoid}</p></div>` : '<p class="soft">Les consignes de vitesse et de résistance sont dans chaque séance.</p>'}</div>`;
+  d.onclick = e => { if (e.target === d || e.target.closest('[data-close]')) d.remove(); };
+  document.body.append(d);
 }
 function daysSinceLast() { const l = S.logs[S.logs.length - 1]; return l ? Math.round((new Date(today()) - new Date(l.date)) / 864e5) : 0; }
+function scrollToOpen() { requestAnimationFrame(() => { const el = typeof openEx === 'number' ? document.querySelector(`[data-ex-wrap="${openEx}"]`) : openEx && document.querySelector(`[data-open="${openEx}"]`); el?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }); }
 function bindSession() {
   const c = S.current, ph = PHASES.find(p => p.weeks.includes(Math.min(c.week, 12)));
   document.querySelectorAll('[data-open]').forEach(h => h.onclick = () => {
@@ -663,19 +697,18 @@ function bindSession() {
     const allDone = c.ex[i].sets.every(s => s.done);
     if (set.done && !allDone) startRest(ph.rest);
     else if (allDone) { stopRest(); toast('Exercice terminé 👏'); if (!c.ex[i].feel) { render(); return; } openEx = c.ex.findIndex(e => !e.sets.every(s => s.done)); if (openEx < 0) openEx = 'cd-cardio'; }
-    render();
+    render(); if (allDone && c.ex[i].feel) scrollToOpen();
   });
   document.querySelectorAll('[data-efeel]').forEach(b => b.onclick = () => {
     const [i, k] = b.dataset.efeel.split('.'); c.ex[+i].feel = k; save();
-    if (c.ex[+i].sets.every(s => s.done)) { openEx = c.ex.findIndex(e => !e.sets.every(s => s.done)); if (openEx < 0) openEx = 'cd-cardio'; }
-    render();
+    if (c.ex[+i].sets.every(s => s.done)) { openEx = c.ex.findIndex(e => !e.sets.every(s => s.done)); if (openEx < 0) openEx = 'cd-cardio'; scrollToOpen(); }
   });
   document.querySelectorAll('[data-cd-start]').forEach(b => b.onclick = () => { beep(1); startCardio(b.dataset.cdStart); });
   document.querySelectorAll('[data-cd-pause]').forEach(b => b.onclick = () => stopCardio());
   document.querySelectorAll('[data-cd-end]').forEach(b => b.onclick = () => {
     const w = b.dataset.cdEnd; if (cardioRun?.which === w) stopCardio(true);
     c[w].done = true; if (!c[w].elapsed) c[w].elapsed = total(cardioPlan(c[w].kind, c.phase, c.gentle)) * 60;
-    openEx = w === 'warm' ? 0 : 'stretch'; save(); render();
+    openEx = w === 'warm' ? 0 : 'stretch'; save(); render(); scrollToOpen();
   });
   document.querySelectorAll('[data-cd-redo]').forEach(b => b.onclick = () => { const w = b.dataset.cdRedo; c[w].done = false; c[w].elapsed = 0; save(); render(); });
   $('[data-stretch]').onclick = () => { c.stretch = !c.stretch; save(); render(); };
@@ -725,6 +758,7 @@ function bindSettings() {
 
 if (S.current) { view = 'session'; openEx = null; }
 render();
+FIG.start();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 document.addEventListener('visibilitychange', () => { if (!document.hidden && cardioRun) tickCardio(); });
 </script>
