@@ -232,6 +232,29 @@
       hot: ['shin', 'thigh', 'glute'], effort: 'hold',
       bg: () => line([138, 20], [138, 136], 6, MD),
     },
+    // ---------- Versions sans appui sur les genoux ----------
+    planchebanc: {
+      a: { hip: [89.6, 93.4], torso: -45, W: [141, 100], ws: 1, A: [50, 133], ft: 25 },
+      b: { hip: [89.6, 92.6], torso: -44.5, W: [141, 100], ws: 1, A: [50, 133], ft: 25 },
+      hot: ['torso'], effort: 'hold',
+      bg: () => rect(126, 101, 50, 7, M, 3) + line([132, 108], [132, 136], 5, MD) + line([170, 108], [170, 136], 5, MD),
+      fg: () => line([46, 120], [130, 54], 1.5, 'var(--good)', 'stroke-dasharray="4 4"'),
+    },
+    birddogdebout: {
+      a: { hip: [100, 77], torso: -40, head: -30, W: [148, 93], ws: 1, W2: [144, 93], ws2: 1, A: [106, 133], ft: 0, A2: [100, 133], ft2: 0 },
+      b: { hip: [100, 77], torso: -40, head: -30, W: [170, 42], ws: 1, W2: [144, 93], ws2: 1, A: [106, 133], ft: 0, A2: [48, 98], ft2: 180 },
+      hot: ['arm', 'thigh2', 'shin2', 'glute'], effort: 'ab',
+      bg: () => line([134, 95], [158, 95], 6, M) + line([152, 95], [152, 136], 5, MD) + line([156, 95], [156, 60], 5, MD),
+      arrow: [[66, 124], [44, 112]],
+    },
+    rowdebout: {
+      a: { hip: [80, 80], torso: -20, W: [112, 108], ws: 1, W2: [126, 103], ws2: 1, A: [94, 133], ft: 0, A2: [62, 133], ft2: 0 },
+      b: { hip: [80, 80], torso: -20, W: [98, 80], ws: 1, W2: [126, 103], ws2: 1, A: [94, 133], ft: 0, A2: [62, 133], ft2: 0 },
+      hot: ['arm', 'torso'], effort: 'ab',
+      bg: () => rect(118, 104, 56, 6, M, 3) + line([124, 110], [124, 136], 5, MD) + line([168, 110], [168, 136], 5, MD),
+      fg: J => rect(J.w[0] - 7, J.w[1] - 3, 14, 6, MD, 2),
+      arrow: [[104, 122], [104, 98]],
+    },
     // ---------- Cardio (cycles) ----------
     tapis: {
       cycle: 1.2,
@@ -259,6 +282,7 @@
     'st-ischios': { p: { hip: [80, 102], torso: -48, head: -30, W: [116, 106], ws: 1, A: [133, 126], ft: -70, A2: [100, 133], ft2: 0 }, hot: ['thigh'], bg: () => rect(52, 107, 38, 29, M, 4) },
     'st-fessiers': { p: { hip: [106, 126], torso: 180, W: [92, 100], ws: -1, th: -128, kn: -8, ft: -100, A2: [160, 129], ft2: -80 }, hot: ['glute'], bg: () => rect(28, 134, 150, 4, MD, 2) },
     'st-poitrine': { p: { hip: [110, 77], torso: -86, W: [90, 18], ws: -1, A: [126, 133], ft: 0, A2: [100, 133], ft2: 0 }, hot: ['torso', 'arm'], bg: () => rect(80, 4, 6, 132, MD, 2) },
+    'st-dos': { p: { hip: [80, 102], torso: -45, head: 30, W: [116, 126], ws: 1, A: [112, 133], ft: 0 }, hot: ['torso'], bg: () => rect(52, 107, 36, 29, M, 4) },
     'st-enfant': { p: { hip: [82, 120], torso: -6, head: 25, W: [160, 129], ws: 1, th: 16, kn: 180, ft: 185 }, hot: ['torso'], bg: () => rect(30, 134, 150, 4, MD, 2) },
   };
   Object.assign(F, Object.fromEntries(Object.entries(ST).map(([k, v]) => [k, { a: v.p, b: v.p, hot: v.hot, bg: v.bg, effort: 'static' }])));

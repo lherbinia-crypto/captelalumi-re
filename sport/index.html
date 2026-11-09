@@ -144,12 +144,12 @@ details[open] summary::before{content:"－ "}
 </head>
 <body>
 <div class="app" id="app"></div>
-<div id="rest"><div class="grow"><div style="font-size:.8rem;opacity:.85">Récupération</div><div class="t" id="rest-t">1:00</div></div><button type="button" id="rest-plus">+15 s</button><button type="button" id="rest-stop">Passer</button></div>
+<div id="rest"><div class="grow"><div style="font-size:.8rem;opacity:.85" id="rest-lbl">Récupération</div><div class="t" id="rest-t">1:00</div></div><button type="button" id="rest-plus">+15 s</button><button type="button" id="rest-stop">Passer</button></div>
 <nav class="tabs" id="tabs"></nav>
 <script src="figures.js"></script>
 <script>
 'use strict';
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const KEY = 'ma-salle-v1';
 
 /* ===================== DONNÉES ===================== */
@@ -289,6 +289,24 @@ const EX = {
     breath: 'Soufflez en tendant.',
     avoid: 'Lever la jambe trop haut et cambrer.',
     easy: 'Seulement la jambe, ou seulement le bras.' },
+  planchebanc: { emo: '🧱', name: 'Gainage mains sur un banc', zone: 'Ventre, dos (sans appui sur les genoux)',
+    setup: 'Debout face à un banc stable (ou une barre à mi-hauteur), mains posées dessus à largeur d\'épaules, pieds reculés.',
+    how: ['Corps bien droit de la tête aux talons, comme une planche.', 'Rentrez doucement le ventre, serrez les fessiers.', 'Tenez le temps indiqué.'],
+    breath: 'Respirez calmement, sans bloquer.',
+    avoid: 'Fesses en arrière ou dos creusé.',
+    easy: 'Mains sur un appui plus haut (mur, espalier). Plus difficile : appui plus bas.' },
+  birddogdebout: { emo: '🐕', name: 'Bird dog debout (appui sur un dossier)', zone: 'Dos, fessiers, équilibre (sans genoux au sol)',
+    setup: 'Une main sur le dossier d\'une chaise, une barre ou le bord d\'une machine. Buste penché en avant, dos plat.',
+    how: ['Tendez le bras libre devant vous et, en même temps, la jambe opposée en arrière.', 'Tenez 2 secondes, dos plat.', 'Revenez, puis changez de côté.'],
+    breath: 'Soufflez en tendant.',
+    avoid: 'Lever la jambe trop haut et cambrer.',
+    easy: 'Seulement la jambe, pointe de pied au sol en arrière.' },
+  rowdebout: { emo: '💪', name: 'Rowing haltère, debout en appui', zone: 'Dos, bras (sans genou sur le banc)',
+    setup: 'Debout, une main sur un banc, pieds au sol en fente légère, dos plat. L\'haltère dans l\'autre main, bras tendu.',
+    how: ['Tirez l\'haltère vers la hanche, coude près du corps.', 'Redescendez lentement.', 'Toutes les répétitions d\'un côté, puis l\'autre.'],
+    breath: 'Soufflez en tirant.',
+    avoid: 'Tourner le buste, arrondir le dos.',
+    easy: 'Haltère plus léger (2–4 kg).' },
   equilibre: { emo: '🦩', name: 'Équilibre sur une jambe', zone: 'Équilibre, chevilles (prévention des chutes)',
     setup: 'Debout près d\'un mur ou d\'une barre.',
     how: ['Levez un pied et tenez le temps indiqué.', 'Puis l\'autre jambe.', 'Quand c\'est facile : fermez les yeux quelques secondes, ou tournez la tête.'],
@@ -305,8 +323,17 @@ const PHASES = [
   { n: 1, name: 'Découverte', weeks: [3, 4], sets: 2, reps: '12 à 15', rest: 60, effort: 'Moyen : les 2–3 dernières répétitions demandent un effort.', hold: 25, msg: 'Même exercices, un peu plus de répétitions. Si tout passe facilement, ajoutez un cran.' },
   { n: 2, name: 'Construction', weeks: [5, 6, 7, 8], sets: 3, reps: '10 à 12', rest: 75, effort: 'Assez dur : 1–2 répétitions en réserve.', hold: 30, msg: 'Trois séries. On monte progressivement les charges : c\'est cela qui protège les muscles et les os.' },
   { n: 3, name: 'Affirmation', weeks: [9, 10, 11, 12], sets: 3, reps: '8 à 10', rest: 90, effort: 'Dur mais propre : 1–2 répétitions en réserve, jamais au détriment de la technique.', hold: 40, msg: 'Des charges plus lourdes, moins de répétitions. La technique reste prioritaire.' },
+  { n: 4, name: 'Élan', weeks: [], sets: 3, reps: '8 à 10', rest: 90, effort: 'Dur : 1 répétition en réserve. Dès que les 3 séries passent, un cran de plus.', hold: 45, msg: 'Vous avez la base : on continue à faire monter les charges et le cardio en côte s\'allonge (toujours en marchant).' },
 ];
-function phaseOf(week) { return PHASES.find(p => p.weeks.includes(Math.min(week, 12))); }
+const PHASE_START = { 1: 1, 2: 5, 3: 9, 4: 13 };
+function phaseOf(week) { return week > 12 ? PHASES[4] : PHASES.find(p => p.weeks.includes(Math.max(1, week))); }
+const LEVELS = [
+  ['debut', 1, 'Je débute', 'Phase 1 · Découverte'],
+  ['regul', 5, 'Je vais à la salle depuis quelques mois', 'Phase 2 · Construction (3 séries)'],
+  ['aise', 9, 'Je suis à l\'aise sur les machines', 'Phase 3 · Affirmation (charges plus lourdes)'],
+];
+// Fait commencer le programme à une semaine donnée sans toucher à l'historique
+function setStartWeek(w) { const d = S.profile.days || 3; S.profile.offset = w - 1 - Math.floor(doneCount() / d); }
 
 /* ===================== CARDIO ===================== */
 // Segments : minutes, consigne vitesse/inclinaison ou résistance, ressenti attendu (échelle 1 à 10).
@@ -323,13 +350,18 @@ function cardioPlan(kind, phase, gentle) {
     else if (phase === 2) segs = [{ m: 4, txt: 'Mise en route', set: '4,8 km/h · incl. 3 %', rpe: 4 },
       ...rep(3, [{ m: 3, txt: 'Côte', set: '4,8 km/h · incl. 7 %', rpe: 6 }, { m: 2, txt: 'Plat', set: '4,8 km/h · incl. 2 %', rpe: 4 }]),
       { m: 1, txt: 'Retour au calme', set: '4,0 km/h · incl. 0 %', rpe: 2 }];
+    else if (phase === 4) segs = [{ m: 4, txt: 'Mise en route', set: '5,0 km/h · incl. 3 %', rpe: 4 },
+      ...rep(5, [{ m: 3, txt: 'Longue côte (en marchant)', set: '5,0 km/h · incl. 10 à 12 %', rpe: 7 }, { m: 2, txt: 'Récupération', set: '4,5 km/h · incl. 2 %', rpe: 4 }]),
+      { m: 2, txt: 'Retour au calme', set: '4,0 km/h · incl. 0 %', rpe: 2 }];
     else segs = [{ m: 4, txt: 'Mise en route', set: '5,0 km/h · incl. 3 %', rpe: 4 },
-      ...rep(6, [{ m: 1.5, txt: 'Effort', set: '5,5 à 6,0 km/h · incl. 8 %', rpe: 7 }, { m: 2, txt: 'Récupération', set: '4,5 km/h · incl. 2 %', rpe: 4 }]),
+      ...rep(6, [{ m: 1.5, txt: 'Côte raide (en marchant)', set: '5,0 à 5,5 km/h · incl. 8 à 10 %', rpe: 7 }, { m: 2, txt: 'Récupération', set: '4,5 km/h · incl. 2 %', rpe: 4 }]),
       { m: 2, txt: 'Retour au calme', set: '4,0 km/h · incl. 0 %', rpe: 2 }];
   } else if (kind === 'velo') {
     if (phase === 1) segs = [{ m: 12, txt: 'Pédalage régulier', set: 'Résistance faible · 70–80 tr/min', rpe: 4 }, { m: 3, txt: 'Retour au calme', set: 'Résistance minimale', rpe: 2 }];
     else if (phase === 2) segs = [{ m: 5, txt: 'Mise en route', set: 'Résistance faible', rpe: 3 },
       ...rep(5, [{ m: 1, txt: 'Plus dur', set: '+2 à 3 niveaux de résistance', rpe: 6 }, { m: 2, txt: 'Facile', set: 'Résistance de départ', rpe: 4 }]), { m: 2, txt: 'Retour au calme', set: 'Résistance minimale', rpe: 2 }];
+    else if (phase === 4) segs = [{ m: 4, txt: 'Mise en route', set: 'Résistance faible', rpe: 3 },
+      ...rep(5, [{ m: 3, txt: 'Effort soutenu', set: '+4 à 5 niveaux', rpe: 7 }, { m: 2, txt: 'Facile', set: 'Résistance de départ', rpe: 4 }]), { m: 2, txt: 'Retour au calme', set: 'Résistance minimale', rpe: 2 }];
     else segs = [{ m: 4, txt: 'Mise en route', set: 'Résistance faible', rpe: 3 },
       ...rep(4, [{ m: 3, txt: 'Effort soutenu', set: '+3 à 4 niveaux', rpe: 7 }, { m: 2, txt: 'Facile', set: 'Résistance de départ', rpe: 4 }]), { m: 2, txt: 'Retour au calme', set: 'Résistance minimale', rpe: 2 }];
   }
@@ -355,11 +387,16 @@ const STRETCH = [
   ['st-poitrine', 'Poitrine', 'avant-bras contre un montant, avancez doucement'],
   ['st-enfant', 'Dos', 'à genoux, fesses vers les talons, bras devant'],
 ];
-const isHold = id => id === 'planche' || id === 'equilibre';
-const noKg = id => ['pont', 'planche', 'deadbug', 'birddog', 'equilibre', 'pompes', 'mollets'].includes(id);
+const STRETCH_DOS = ['st-dos', 'Dos', 'assise au bord du banc, laissez descendre le buste et les bras vers les pieds'];
+const stretches = () => STRETCH.map(x => x[0] === 'st-enfant' && S.profile?.knees ? STRETCH_DOS : x);
+const isHold = id => id === 'planche' || id === 'planchebanc' || id === 'equilibre';
+// Versions sans appui sur les genoux (réglage « Genoux sensibles »)
+const NO_KNEES = { planche: 'planchebanc', birddog: 'birddogdebout', rowhaltere: 'rowdebout', 'st-enfant': 'st-dos' };
+const kneesOk = id => (S.profile?.knees && NO_KNEES[id]) || id;
+const noKg = id => ['pont', 'planche', 'planchebanc', 'deadbug', 'birddog', 'birddogdebout', 'equilibre', 'pompes', 'mollets'].includes(id);
 
 function doneCount() { return S.logs.length; }
-function progWeek() { const d = S.profile?.days || 3; return Math.floor(doneCount() / d) + 1; }
+function progWeek() { const d = S.profile?.days || 3; return Math.max(1, Math.floor(doneCount() / d) + 1 + (S.profile?.offset || 0)); }
 function nextKey() { const order = ['A', 'B', 'C']; const last = S.logs[S.logs.length - 1]; return last ? order[(order.indexOf(last.key) + 1) % 3] : 'A'; }
 
 function buildSession(key, gentle) {
@@ -368,7 +405,7 @@ function buildSession(key, gentle) {
   return {
     key, date: today(), week, phase: ph.n, gentle: !!gentle, startedAt: Date.now(),
     warm: { kind: sess.warm, done: false },
-    ex: sess.ex.map(id => ({ id, sets: Array.from({ length: id === 'equilibre' ? 2 : sets }, () => ({ kg: noKg(id) ? '' : (S.kg[id] ?? ''), reps: '', done: false })), feel: null })),
+    ex: sess.ex.map(kneesOk).map(id => ({ id, sets: Array.from({ length: id === 'equilibre' ? 2 : sets }, () => ({ kg: noKg(id) ? '' : (S.kg[id] ?? ''), reps: '', done: false })), feel: null })),
     cardio: { kind: sess.cardio, done: false },
     stretch: false, feel: null, note: '',
   };
@@ -398,16 +435,35 @@ const HEALTH = [
   'J\'ai une ostéoporose connue, une prothèse ou une douleur articulaire importante (dos, genou, hanche, épaule)',
   'J\'ai des fuites urinaires ou une sensation de pesanteur dans le bas-ventre',
   'Je prends un traitement qui peut jouer sur le cœur ou l\'équilibre',
+  'J\'ai un problème de circulation (retour veineux, varices, jambes lourdes) ou j\'ai déjà eu une phlébite',
 ];
+function levelForm(p = {}) {
+  const lv = p.level || 'debut';
+  return `<label class="f">Où en êtes-vous ?</label>
+    <div class="choices" id="lv">${LEVELS.map(([k, , t, sub]) => `<button type="button" class="choice ${lv === k ? 'on' : ''}" data-lv="${k}" style="text-align:left">${t}<br><small style="color:inherit;opacity:.8;font-weight:500">${sub}</small></button>`).join('')}</div>
+    <label class="check mt"><input type="checkbox" id="lv-knees" ${p.knees ? 'checked' : ''}><span><b>Me mettre à genoux est parfois compliqué</b><br><small class="soft">Les exercices à genoux sont remplacés par des versions debout ou sur un banc.</small></span></label>
+    <label class="check"><input type="checkbox" id="lv-veins" ${p.veins ? 'checked' : ''}><span><b>J'ai un problème de retour veineux</b><br><small class="soft">Pas de course, conseils pour les jambes, chevilles qui bougent pendant les pauses.</small></span></label>`;
+}
+function bindLevelForm() {
+  document.querySelectorAll('#lv .choice').forEach(b => b.onclick = () => document.querySelectorAll('#lv .choice').forEach(x => x.classList.toggle('on', x === b)));
+}
+function readLevelForm() {
+  return { level: document.querySelector('#lv .choice.on')?.dataset.lv || 'debut', knees: $('#lv-knees').checked, veins: $('#lv-veins').checked };
+}
+function applyLevel(f, changeWeek = true) {
+  const old = S.profile.level; Object.assign(S.profile, f);
+  if (changeWeek && old !== f.level) setStartWeek(LEVELS.find(l => l[0] === f.level)[1]);
+}
 function viewOnboard() {
   return `<div class="top"><div class="hello">Bienvenue</div><h1>Mon programme salle</h1></div>
   <div class="card hero"><h3>12 semaines pour (re)trouver force et énergie</h3>
-  <p class="soft">Pensé pour une femme de plus de 50 ans qui débute, en périménopause : renforcement sur machines (muscles et os), cardio doux sur tapis et vélo, équilibre et gainage. 45 à 55 minutes par séance, guidées pas à pas.</p></div>
+  <p class="soft">Pensé pour une femme de plus de 50 ans qui débute ou reprend, en périménopause : renforcement sur machines (muscles et os), cardio doux sur tapis et vélo, équilibre et gainage. 45 à 55 minutes par séance, guidées pas à pas.</p></div>
   <div class="card">
     <label class="f" for="ob-name">Votre prénom</label><input type="text" id="ob-name" placeholder="Prénom" autocomplete="given-name">
     <label class="f">Combien de séances par semaine ?</label>
     <div class="choices" id="ob-days"><button type="button" class="choice" data-d="2">2 séances</button><button type="button" class="choice on" data-d="3">3 séances</button></div>
-    <p class="soft" style="font-size:.9rem">Conseil : 2 au début si vous n'avez jamais fait de sport, avec au moins un jour de repos entre deux séances. Vous pourrez changer plus tard.</p>
+    <p class="soft" style="font-size:.9rem">Conseil : au moins un jour de repos entre deux séances. Vous pourrez changer plus tard.</p>
+    ${levelForm()}
   </div>
   <div class="card"><h3>Avant de commencer</h3><p class="soft" style="font-size:.95rem">Cochez ce qui vous concerne. Ces questions ne remplacent pas un avis médical.</p>
     ${HEALTH.map((h, i) => `<label class="check"><input type="checkbox" data-h="${i}"><span>${h}</span></label>`).join('')}
@@ -422,30 +478,33 @@ function bindOnboard() {
   const upd = () => {
     const any = [...document.querySelectorAll('[data-h]')].filter(c => c.checked).map(c => +c.dataset.h);
     $('#ob-advice').innerHTML = any.length
-      ? `<div class="hint red mt"><b>Parlez-en à votre médecin avant de commencer</b> et montrez-lui ce programme. ${any.includes(5) ? 'Pour les fuites ou la pesanteur, une rééducation du périnée (kiné ou sage-femme) est très efficace et se combine bien avec ce programme.' : ''}${any.includes(4) ? ' Pour une ostéoporose, le renforcement est recommandé mais demandez quels mouvements éviter (flexions du dos en charge, torsions).' : ''}</div>`
+      ? `<div class="hint red mt"><b>Parlez-en à votre médecin avant de commencer</b> et montrez-lui ce programme. ${any.includes(5) ? 'Pour les fuites ou la pesanteur, une rééducation du périnée (kiné ou sage-femme) est très efficace et se combine bien avec ce programme.' : ''}${any.includes(7) ? ' Retour veineux : la marche, le vélo et les mollets sont vos alliés. Demandez si des bas de contention sont conseillés pendant le sport. Après une phlébite ou une embolie, l\'avis du médecin est indispensable.' : ''}${any.includes(4) ? ' Pour une ostéoporose, le renforcement est recommandé mais demandez quels mouvements éviter (flexions du dos en charge, torsions).' : ''}</div>`
       : `<div class="hint mint mt">Rien de coché : vous pouvez démarrer en douceur. Un bilan chez votre médecin reste une bonne idée quand on reprend une activité après 50 ans.</div>`;
   };
-  document.querySelectorAll('[data-h]').forEach(c => c.onchange = upd); upd();
+  document.querySelectorAll('[data-h]').forEach(c => c.onchange = upd); upd(); bindLevelForm();
+  $('[data-h="7"]').addEventListener('change', e => { if (e.target.checked) $('#lv-veins').checked = true; });
   $('#ob-go').onclick = () => {
     const health = [...document.querySelectorAll('[data-h]')].filter(c => c.checked).map(c => +c.dataset.h);
-    S.profile = { name: $('#ob-name').value.trim(), days, start: today(), health };
+    S.profile = { name: $('#ob-name').value.trim(), days, start: today(), health, offset: 0 };
+    applyLevel(readLevelForm()); S.profile.offset = LEVELS.find(l => l[0] === S.profile.level)[1] - 1;
     save(); view = 'home'; render();
   };
 }
 function viewHome() {
   const week = progWeek(), ph = phaseOf(week), d = S.profile.days, k = nextKey(), s = SESSIONS[k];
-  const inWeek = doneCount() % d, pct = Math.min(100, Math.round(doneCount() / (12 * d) * 100));
+  const inWeek = doneCount() % d, pct = Math.min(100, Math.round((week - 1) / 12 * 100));
   const last = S.logs[S.logs.length - 1];
   const daysSince = last ? Math.round((new Date(today()) - new Date(last.date)) / 864e5) : null;
   let restHint = '';
-  if (last && daysSince === 0) restHint = `<div class="hint mint">Séance faite aujourd'hui, bravo ! Le repos fait partie du programme : les muscles se construisent entre les séances.</div>`;
+  if (last && daysSince === 0) restHint = `<div class="hint mint">Séance faite aujourd'hui, bravo ! Le repos fait partie du programme : les muscles se construisent entre les séances.${S.profile.veins ? '<br>🦵 Ce soir, 10 minutes jambes surélevées font du bien.' : ''}</div>`;
   else if (daysSince !== null && daysSince >= 10) restHint = `<div class="hint">Cela fait ${daysSince} jours. Aucun souci : reprenez avec la version « Jour en douceur » pour cette séance.</div>`;
   const nm = S.profile.name ? ', ' + esc(S.profile.name) : '';
-  return `<div class="top"><div class="hello">Bonjour${nm}</div><h1>${week > 12 ? 'Programme terminé, on continue !' : `Semaine ${week} sur 12`}</h1></div>
+  return `<div class="top"><div class="hello">Bonjour${nm}</div><h1>${week > 12 ? 'Les 12 semaines sont faites : on continue !' : `Semaine ${week} sur 12`}</h1></div>
+  ${S.profile.level ? '' : `<div class="card"><h3>Mettons l'appli à votre niveau</h3><p class="soft" style="font-size:.92rem">Nouveau : vous pouvez démarrer plus loin dans le programme et adapter les exercices.</p>${levelForm(S.profile)}<button type="button" class="btn primary block mt" id="lv-save">Enregistrer</button></div>`}
   <div class="card hero">
     <div class="row"><span class="pill" style="background:#ffffff30;color:#fff">Phase ${ph.n} · ${ph.name}</span></div>
     <div class="week">${Array.from({ length: d }, (_, i) => `<span class="${i < inWeek ? 'on' : ''}">${i < inWeek ? '✓' : 'Séance ' + (i + 1)}</span>`).join('')}</div>
-    <div class="bar"><i style="width:${pct}%"></i></div><div class="soft" style="font-size:.85rem">${doneCount()} séance${doneCount() > 1 ? 's' : ''} faite${doneCount() > 1 ? 's' : ''} · ${pct} % du programme</div>
+    <div class="bar"><i style="width:${pct}%"></i></div><div class="soft" style="font-size:.85rem">${doneCount()} séance${doneCount() > 1 ? 's' : ''} faite${doneCount() > 1 ? 's' : ''}${week <= 12 ? ` · ${pct} % du programme` : ''}</div>
   </div>
   ${S.current ? `<div class="card"><b>Séance ${S.current.key} en cours</b><button type="button" class="btn primary block mt" data-tab-go="session">Reprendre ma séance</button></div>` : restHint}
   <div class="card"><div class="row"><div class="dot ${k}">${k}</div><div class="grow"><div class="soft" style="font-size:.85rem">Prochaine séance</div><h3>${s.title}</h3><div class="soft" style="font-size:.9rem">${s.sub} · ~50 min</div></div></div>
@@ -459,8 +518,11 @@ function viewHome() {
   <div class="card"><h3>Les repères de cette phase</h3>
     <div class="grid2 mt"><div><div class="soft" style="font-size:.8rem">SÉRIES × RÉPÉTITIONS</div><b>${ph.sets} × ${ph.reps}</b></div><div><div class="soft" style="font-size:.8rem">RÉCUPÉRATION</div><b>${ph.rest} s</b></div></div>
     <p class="mt" style="font-size:.95rem"><b>Effort :</b> ${ph.effort}</p>
-    <p style="font-size:.95rem"><b>Cardio :</b> vous devez pouvoir parler en phrases courtes. Si vous ne pouvez plus parler, ralentissez.</p>
+    <p style="font-size:.95rem"><b>Cardio :</b> toujours en marchant. Vous devez pouvoir parler en phrases courtes ; sinon, baissez l'inclinaison.</p>
+    ${ph.n < 4 ? `${easyStreak() ? '<div class="hint mint">Vos 3 dernières séances étaient faciles : vous êtes peut-être prête pour la phase suivante.</div>' : ''}<button type="button" class="btn ${easyStreak() ? 'primary' : 'ghost'} block mt" id="lvl-up">Ça devient facile ? Passer à la phase ${ph.n + 1} · ${PHASES[ph.n === 1 ? 2 : ph.n === 2 ? 3 : 4].name}</button>` : ''}
   </div>`;
+}
+function easyStreak() { const l = S.logs.slice(-3); return l.length === 3 && l.every(x => x.feel === 'facile') && phaseOf(progWeek()).n === phaseOf(l[0].week || 1).n;
 }
 
 /* ---------- Séance ---------- */
@@ -471,7 +533,7 @@ function viewSession() {
     return `<div class="top"><h1>Séance</h1></div><div class="card center"><p>Aucune séance en cours.</p><button type="button" class="btn primary block mt" data-tab-go="home">Choisir ma séance</button></div>
     <div class="card"><h3>Le déroulé d'une séance</h3><ol style="padding-left:1.2rem;margin-top:8px"><li>8 min d'échauffement cardio</li><li>6 à 8 exercices de renforcement</li><li>12 à 25 min de cardio sur tapis ou vélo</li><li>5 min d'étirements</li></ol></div>`;
   }
-  const s = SESSIONS[c.key], ph = PHASES.find(p => p.weeks.includes(Math.min(c.week, 12)));
+  const s = SESSIONS[c.key], ph = phaseOf(c.week);
   const exDone = c.ex.filter(e => e.sets.every(x => x.done)).length;
   const steps = 2 + c.ex.length + 1, stepsDone = (c.warm.done ? 1 : 0) + exDone + (c.cardio.done ? 1 : 0) + (c.stretch ? 1 : 0);
   return `<div class="top"><div class="hello">Séance ${c.key} · semaine ${c.week}${c.gentle ? ' · en douceur 🌙' : ''}</div><h1>${s.title}</h1>
@@ -485,7 +547,7 @@ function viewSession() {
   <h2>Étirements</h2>
   <div class="ex ${c.stretch ? 'done' : ''} ${openEx === 'stretch' ? 'open' : ''}" data-ex-wrap="stretch">
     <div class="ex-head" data-open="stretch">${FIG.svg('st-enfant', 'thumb', true)}<div class="grow"><div class="ex-title">Étirements doux · 5 min</div><div class="soft" style="font-size:.88rem">30 secondes par position, sans forcer</div></div><span>${c.stretch ? '✅' : '›'}</span></div>
-    <div class="ex-body">${openEx === 'stretch' ? `<div class="stretch-grid">${STRETCH.map(([id, t, d]) => `<div>${FIG.svg(id, 'fig', true)}<p><b>${t}</b> · ${d}</p></div>`).join('')}</div><p class="soft mt" style="font-size:.9rem">30 secondes par position, sans à-coups. Terminez par 5 grandes respirations lentes.</p>` : ''}
+    <div class="ex-body">${openEx === 'stretch' ? `<div class="stretch-grid">${stretches().map(([id, t, d]) => `<div>${FIG.svg(id, 'fig', true)}<p><b>${t}</b> · ${d}</p></div>`).join('')}</div><p class="soft mt" style="font-size:.9rem">30 secondes par position, sans à-coups. Terminez par 5 grandes respirations lentes.</p>` : ''}
       <button type="button" class="btn block ${c.stretch ? '' : 'primary'}" data-stretch>${c.stretch ? 'Fait ✓' : 'J\'ai terminé les étirements'}</button></div>
   </div>
   <div class="card"><h3>Pour finir</h3>
@@ -533,6 +595,8 @@ function cardioCard(which, c) {
     <div class="ex-head" data-open="${id}">${FIG.svg(c.kind, 'thumb', true)}<div class="grow"><div class="ex-title">${CARDIO_NAMES[c.kind].slice(CARDIO_NAMES[c.kind].indexOf(' ') + 1)}</div><div class="soft" style="font-size:.88rem">${Math.round(total(segs))} min${which === 'warm' ? ' · prépare les articulations' : ''}</div></div><span>${open ? '⌄' : '›'}</span></div>
     <div class="ex-body">
       ${open ? FIG.svg(c.kind) : ''}
+      ${c.kind.includes('tapis') ? '<div class="hint mint"><b>Toujours en marchant, jamais en courant.</b> Pour plus d\'effort, montez l\'inclinaison plutôt que la vitesse.</div>' : ''}
+      ${S.profile.veins && which === 'cardio' ? '<div class="hint">🦵 <b>Retour veineux :</b> buvez régulièrement et terminez par le retour au calme plutôt que de vous arrêter net.</div>' : ''}
       ${c.kind.includes('tapis') ? '<div class="hint">Accrochez la pince de sécurité à vos vêtements. Tenez les barres seulement pour monter/descendre ou en cas de besoin : marcher sans s\'y appuyer travaille l\'équilibre.</div>' : ''}
       <div class="big" id="cd-clock-${which}">${fmtSec(Math.max(0, tot - el))}</div><div class="center soft" style="font-size:.85rem">restantes</div>
       <div class="segs">${rows}</div>
@@ -579,7 +643,7 @@ let rest = null;
 function startRest(sec) {
   clearInterval(rest?.timer);
   rest = { end: Date.now() + sec * 1000 };
-  $('#rest').classList.add('show'); document.body.classList.add('resting');
+  $('#rest-lbl').textContent = S.profile?.veins ? 'Récupération · bougez les chevilles 🦶' : 'Récupération'; $('#rest').classList.add('show'); document.body.classList.add('resting');
   const tick = () => { const left = Math.ceil((rest.end - Date.now()) / 1000); $('#rest-t').textContent = fmtSec(Math.max(0, left)); if (left <= 0) { beep(2); stopRest(); toast('Série suivante !'); } };
   rest.timer = setInterval(tick, 250); tick();
 }
@@ -625,6 +689,7 @@ function viewTips() {
     ['Bien doser l\'effort', `<ul><li><b>Renforcement</b> : à la fin d'une série, vous devez pouvoir faire encore 1 à 3 répétitions propres. Si vous pourriez en faire 5 de plus, c'est trop léger : un cran de plus.</li><li><b>Cardio</b> : le test de la parole. Facile = on discute ; moyen = phrases courtes ; dur = quelques mots.</li><li>Des courbatures 24 à 72 h après sont normales au début. Une douleur vive, articulaire ou qui dure ne l'est pas.</li></ul>`],
     ['Bouffées de chaleur à la salle', `<ul><li>Tenue en couches légères, gourde d'eau fraîche, petite serviette.</li><li>Placez-vous près d'un ventilateur ou d'une fenêtre ; évitez les heures où la salle est surchauffée.</li><li>Évitez café très chaud, alcool ou plat épicé juste avant la séance.</li><li>Si une bouffée arrive : ralentissez, respirez lentement, buvez, puis reprenez.</li></ul>`],
     ['Fatigue, sommeil, humeur', `<ul><li>Les jours sans, choisissez la version « Jour en douceur » : on garde l'habitude, c'est l'essentiel.</li><li>L'activité physique régulière aide souvent le sommeil et l'humeur ; évitez seulement les séances intenses tard le soir si votre sommeil est fragile.</li><li>Les règles irrégulières de la périménopause peuvent jouer sur l'énergie : notez-le dans la séance pour repérer vos tendances.</li></ul>`],
+    ['Retour veineux et jambes lourdes', `<ul><li>La marche (même en côte), le vélo, l'elliptique et les exercices de mollets font travailler la « pompe du mollet » : ils aident le sang à remonter. Ils sont vos alliés.</li><li>Pas de course ni de sauts : ce programme n'en contient pas.</li><li>Pendant les pauses, ne restez pas immobile debout : bougez les chevilles, marchez quelques pas.</li><li>Ne bloquez jamais la respiration pendant l'effort : soufflez en poussant.</li><li>Buvez souvent, évitez la grosse chaleur (sauna, hammam, douche très chaude juste après) et les vêtements qui serrent à la taille ou sous le genou.</li><li>Demandez à votre médecin si des bas de contention sont conseillés pour le sport.</li><li>Le soir d'une séance : 10 minutes jambes surélevées.</li></ul><div class="hint red"><b>Consultez rapidement</b> en cas de mollet douloureux, gonflé, chaud ou rouge d'un seul côté, ou d'essoufflement soudain.</div>`],
     ['Le périnée', `<ul><li>Soufflez toujours pendant l'effort et ne bloquez jamais la respiration.</li><li>Si vous ressentez une pesanteur ou des fuites (en toussant, en sautant, en soulevant), ce n'est pas une fatalité : une rééducation chez un·e kiné ou une sage-femme est très efficace. Gardez alors des charges modérées en attendant.</li><li>Ce programme ne contient ni sauts ni abdos « crunch », plus durs pour le périnée.</li></ul>`],
     ['Manger pour progresser', `<ul><li>Une source de protéines à chaque repas (œufs, poisson, viande, yaourt, fromage blanc, légumineuses, tofu) : le muscle en a besoin pour se construire, surtout après 50 ans.</li><li>Calcium (produits laitiers, eaux riches en calcium, amandes, légumes verts) et vitamine D : demandez à votre médecin si un dosage ou un complément est utile pour vous.</li><li>Buvez avant, pendant et après la séance.</li></ul>`],
     ['Le bon rythme de la semaine', `<ul><li>Au moins un jour de repos entre deux séances au début.</li><li>Les autres jours, marchez : 20 à 30 minutes, c'est déjà beaucoup.</li><li>Exemple avec 3 séances : lundi A, mercredi B, vendredi C. Avec 2 : mardi et vendredi, les séances tournent A, B, C.</li><li>Une semaine manquée ? Le programme ne saute rien : il reprend là où vous en étiez.</li></ul>`],
@@ -644,6 +709,9 @@ function viewSettings() {
   return `<div class="top"><h1>Réglages</h1></div>
   <div class="card"><label class="f" for="st-name">Prénom</label><input type="text" id="st-name" value="${esc(p.name)}">
     <label class="f">Séances par semaine</label><div class="choices" id="st-days">${[2, 3].map(d => `<button type="button" class="choice ${p.days === d ? 'on' : ''}" data-d="${d}">${d} séances</button>`).join('')}</div>
+    ${levelForm(p)}
+    <label class="f" for="st-week">Semaine du programme</label>
+    <select id="st-week">${Array.from({ length: 16 }, (_, i) => i + 1).map(w => `<option value="${w}" ${progWeek() === w ? 'selected' : ''}>Semaine ${w}${w > 12 ? ' (Élan)' : ''} · phase ${phaseOf(w).n} ${phaseOf(w).name}</option>`).join('')}</select>
     <button type="button" class="btn primary block mt" id="st-save">Enregistrer</button></div>
   <div class="card"><h3>Sauvegarde</h3><p class="soft" style="font-size:.92rem">Vos données sont sur ce téléphone uniquement. Exportez-les de temps en temps (Fichiers, iCloud, e-mail).</p>
     <div class="row wrap mt"><button type="button" class="btn grow" id="st-export">⬇️ Exporter</button><label class="btn grow" for="st-import" style="cursor:pointer">⬆️ Restaurer</label><input type="file" id="st-import" accept=".json,application/json" hidden></div>
@@ -662,6 +730,12 @@ function bind() {
     document.querySelectorAll('#mood .choice').forEach(b => b.onclick = () => { gentle = b.dataset.g === '1'; document.querySelectorAll('#mood .choice').forEach(x => x.classList.toggle('on', x === b)); $('#mood-hint').style.display = gentle ? 'block' : 'none'; });
     const start = async k => { if (S.current && !(await ask('Une séance est déjà en cours. La remplacer par une nouvelle ?', 'Remplacer'))) return; stopCardio(true); S.current = buildSession(k, gentle || daysSinceLast() >= 10); openEx = 'cd-warm'; save(); view = 'session'; render(); window.scrollTo(0, 0); };
     $('#go').onclick = () => start(nextKey());
+    $('#lv-save') && bindLevelForm();
+    if ($('#lv-save')) $('#lv-save').onclick = () => { applyLevel(readLevelForm()); save(); toast('C\'est enregistré'); render(); };
+    if ($('#lvl-up')) $('#lvl-up').onclick = async () => {
+      const ph = phaseOf(progWeek()), next = PHASE_START[ph.n + 1];
+      if (await ask(`Passer à la phase ${ph.n + 1} ? Les séries, répétitions et le cardio changent dès la prochaine séance. Vous pourrez revenir en arrière dans Réglages.`, 'Passer à la suite')) { setStartWeek(next); save(); toast(`Phase ${ph.n + 1} · ${phaseOf(next).name} 💪`); render(); }
+    };
     document.querySelectorAll('[data-other]').forEach(b => b.onclick = () => start(b.dataset.other));
   }
   if (view === 'session' && S.current) bindSession();
@@ -679,7 +753,7 @@ function showEx(id) {
 function daysSinceLast() { const l = S.logs[S.logs.length - 1]; return l ? Math.round((new Date(today()) - new Date(l.date)) / 864e5) : 0; }
 function scrollToOpen() { requestAnimationFrame(() => { const el = typeof openEx === 'number' ? document.querySelector(`[data-ex-wrap="${openEx}"]`) : openEx && document.querySelector(`[data-open="${openEx}"]`); el?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }); }
 function bindSession() {
-  const c = S.current, ph = PHASES.find(p => p.weeks.includes(Math.min(c.week, 12)));
+  const c = S.current, ph = phaseOf(c.week);
   document.querySelectorAll('[data-open]').forEach(h => h.onclick = () => {
     const k = h.dataset.open, v = /^\d+$/.test(k) ? +k : k;
     openEx = openEx === v ? null : v; render();
@@ -732,15 +806,21 @@ async function finish() {
     ex: c.ex.map(e => ({ id: e.id, kg: e.sets.filter(s => s.done && s.kg).map(s => s.kg).pop() || '', sets: e.sets.filter(s => s.done).length, feel: e.feel })), cardio: c.cardio.done });
   S.current = null; openEx = null; save();
   const n = S.logs.length;
-  const d = S.profile.days;
-  const milestones = { 1: 'Première séance faite ! Le plus dur, c\'était de venir.', [2 * d]: 'Deux semaines de régularité 🌸', [4 * d]: 'Fin de la phase 1 : vous passez à 3 séries.', [8 * d]: 'Fin de la phase 2 : place aux charges plus lourdes 💪', [12 * d]: 'Programme de 12 semaines terminé. Immense bravo 🎉' };
+  const before = phaseOf(c.week), after = phaseOf(progWeek());
   view = 'home'; render(); window.scrollTo(0, 0);
-  toast(milestones[n] || 'Séance enregistrée. Bravo !');
+  toast(n === 1 ? 'Première séance enregistrée. Bravo !' : after.n !== before.n ? `Nouvelle étape : phase ${after.n} · ${after.name} 💪` : 'Séance enregistrée. Bravo !');
 }
 function bindSettings() {
   let days = S.profile.days;
   document.querySelectorAll('#st-days .choice').forEach(b => b.onclick = () => { days = +b.dataset.d; document.querySelectorAll('#st-days .choice').forEach(x => x.classList.toggle('on', x === b)); });
-  $('#st-save').onclick = () => { S.profile.name = $('#st-name').value.trim(); S.profile.days = days; save(); toast('Enregistré'); render(); };
+  bindLevelForm();
+  $('#st-save').onclick = () => {
+    const wk = +$('#st-week').value, wkChanged = wk !== progWeek();
+    S.profile.name = $('#st-name').value.trim(); S.profile.days = days;
+    applyLevel(readLevelForm(), !wkChanged);
+    if (wkChanged) setStartWeek(wk);
+    save(); toast('Enregistré'); render();
+  };
   $('#st-export').onclick = () => {
     const blob = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' });
     try { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ma-salle-${today()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); } catch {}

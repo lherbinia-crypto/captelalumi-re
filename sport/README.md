@@ -14,6 +14,10 @@ Programme de sport en salle de 12 semaines pour une femme de plus de 50 ans qui 
 
 ## Fonctions
 
+- **Niveau de départ** : « Je débute » (phase 1), « Je vais à la salle depuis quelques mois » (phase 2) ou « Je suis à l'aise » (phase 3). Bouton « Passer à la phase suivante », proposé d'office après 3 séances faciles. Phase 4 « Élan » après la semaine 12.
+- **Genoux sensibles** : planche, bird dog, rowing haltère et posture de l'enfant remplacés par des versions debout ou sur un banc.
+- **Retour veineux** : jamais de course (l'effort se fait par l'inclinaison), conseils jambes, rappel « bougez les chevilles » pendant les pauses.
+- Dessins animés de chaque exercice (muscles travaillés, position d'arrivée, respiration synchronisée).
 - Questionnaire santé au démarrage (conseil de voir le médecin selon les réponses).
 - Séance guidée : réglage de chaque machine, mouvement, respiration, erreurs, version plus facile.
 - Charges notées et retenues ; suggestion « un cran de plus » quand l'exercice était trop facile.
