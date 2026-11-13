@@ -568,7 +568,7 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', () => { if (saveTimer) flush(); });
 
-const APP_VERSION = '30';
+const APP_VERSION = '31';
 const cls = () => S.classes.find(c => c.id === S.ui.classId);
 // Ordre des classes : 1re puis 2e, par lettre (1C, 1D, 1F… 2A, 2B…), les groupes d'option à la fin
 const isOption = c => /option/i.test(c.name || '');
@@ -604,7 +604,7 @@ function homeIndex() {
   return homeMap;
 }
 function homeClassOf(s, c = S.classes.find(k => k.students.includes(s))) {
-  if (s.homeClass) return s.homeClass;
+  if (s.homeClass) return c && normName(s.homeClass) === normName(c.name.replace(/\s+S[12]$/i, '')) ? '' : s.homeClass;
   if (!c || !isOption(c)) return '';
   return homeIndex().get(normName(`${s.lastName} ${s.firstName}`)) || '';
 }
@@ -1171,7 +1171,8 @@ function viewStudent(c, s) {
         <div class="card pad">
           <h3 class="section-h">Fiche</h3>
           <div class="row2">${f('lastName', 'Nom')}${f('firstName', 'Prénom')}</div>
-          ${isOption(c) || s.homeClass ? `<label class="field"><span>Sa classe (élève d’option)</span><input class="inp" data-sfield="homeClass" value="${esc(s.homeClass || '')}" placeholder="${esc(homeClassOf(s, c) ? 'Trouvée automatiquement : ' + homeClassOf(s, c) : 'Ex. 2J')}" autocapitalize="characters"></label>` : ''}
+          <label class="field"><span>Sa classe${isOption(c) ? '' : ' (si elle a changé)'}</span><input class="inp" data-sfield="homeClass" value="${esc(s.homeClass || '')}" placeholder="${esc(!s.homeClass && homeClassOf(s, c) ? 'Trouvée automatiquement : ' + homeClassOf(s, c) + ' (tapez pour corriger)' : 'Ex. 2J')}" autocapitalize="characters"></label>
+          <p class="small muted" style="margin:-6px 0 10px">${isOption(c) ? 'Affichée à côté de son nom. Ce que vous tapez ici remplace la classe trouvée automatiquement.' : 'Par exemple pour un élève qui a changé de classe : elle s’affiche alors à côté de son nom. Laissez vide sinon.'}</p>
           <div class="row2">${f('birth', 'Date de naissance', 'date')}${f('email', 'E-mail', 'email')}</div>
           <div class="row2">${f('parents', 'Responsable(s)')}${f('phone', 'Téléphone', 'tel')}</div>
           <label class="field"><span>Remarques</span><textarea class="inp" data-sfield="notes">${esc(s.notes || '')}</textarea></label>
