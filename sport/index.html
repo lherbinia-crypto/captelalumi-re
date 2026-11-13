@@ -161,7 +161,7 @@ const save = () => { S.updatedAt = Date.now(); saveLocal(); cloudPushState(); };
 /* ===================== ENREGISTREMENT SUR LE COMPTE ===================== */
 // Dans Claude, tout est aussi gardé sur le compte de la personne (espace privé) :
 // on retrouve ses séances quel que soit le navigateur ou l'appareil.
-const Cloud = { col: null, status: 'local', chain: Promise.resolve(), timer: null };
+const Cloud = { col: null, status: window.claude?.use ? 'loading' : 'local', chain: Promise.resolve(), timer: null };
 const logId = l => l.id || (l.id = 'l' + String(l.date || '').replace(/-/g, '') + (l.key || '') + (l.minutes || 0) + 'w' + (l.week || 0));
 const stateBody = () => ({ profile: S.profile, kg: S.kg, feel: S.feel, current: S.current, updatedAt: S.updatedAt || 0 });
 function cloudQueue(fn) { Cloud.chain = Cloud.chain.then(fn).then(() => { if (Cloud.status !== 'ok') { Cloud.status = 'ok'; paintCloud(); } }).catch(() => { Cloud.status = 'error'; paintCloud(); }); return Cloud.chain; }
@@ -181,7 +181,7 @@ async function cloudInit() {
   try {
     const [db, user] = await Promise.all([claude.use('db'), claude.use('user')]);
     const uid = db && user ? await user.id() : null;
-    if (!uid) { Cloud.status = 'local'; paintCloud(); return; }
+    if (!uid) { Cloud.status = 'local'; render(); return; }
     const col = db.collection('data/users/' + uid);
     const snap = await Promise.race([col.get(), new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 10000))]);
     let remote = null; const rlogs = new Map();
@@ -202,10 +202,10 @@ async function cloudInit() {
     saveLocal();
     missingRemote.forEach(cloudPushLog);
     if (localNewer && S.profile) cloudPushState();
-    if (rlogs.size > S.logs.length - missingRemote.length || remote) { if (S.current && view === 'home') view = 'session'; render(); }
-    paintCloud();
+    if (S.current && view === 'home') view = 'session';
+    render();
     if (missingRemote.length && rlogs.size) toast(`${missingRemote.length} séance${missingRemote.length > 1 ? 's' : ''} de ce téléphone ajoutée${missingRemote.length > 1 ? 's' : ''} à votre compte`);
-  } catch (e) { Cloud.status = 'error'; paintCloud(); }
+  } catch (e) { Cloud.status = 'error'; render(); }
 }
 let view = 'home';
 
@@ -465,6 +465,7 @@ function buildSession(key, gentle) {
 /* ===================== VUES ===================== */
 function render() {
   const app = $('#app');
+  if (!S.profile && Cloud.status === 'loading') { app.innerHTML = '<div class="top"><h1>Mon programme salle</h1></div><div class="card center"><p style="font-size:1.1rem">☁️ Je récupère vos séances et vos réglages…</p><p class="soft">Quelques secondes.</p></div>'; $('#tabs').innerHTML = ''; return; }
   if (!S.profile) { app.innerHTML = viewOnboard(); bindOnboard(); $('#tabs').innerHTML = ''; return; }
   const v = { home: viewHome, session: viewSession, journal: viewJournal, tips: viewTips, settings: viewSettings }[view] || viewHome;
   app.innerHTML = v();
