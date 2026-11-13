@@ -568,7 +568,7 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', () => { if (saveTimer) flush(); });
 
-const APP_VERSION = '29';
+const APP_VERSION = '30';
 const cls = () => S.classes.find(c => c.id === S.ui.classId);
 // Ordre des classes : 1re puis 2e, par lettre (1C, 1D, 1F… 2A, 2B…), les groupes d'option à la fin
 const isOption = c => /option/i.test(c.name || '');
@@ -600,7 +600,7 @@ function homeIndex() {
   if (homeMap) return homeMap;
   homeMap = new Map();
   for (const k of sortedClasses().filter(x => !isOption(x)).sort((a, b) => a.archived - b.archived))
-    for (const st of k.students) { const key = normName(`${st.lastName} ${st.firstName}`); if (!homeMap.has(key)) homeMap.set(key, k.name.replace(/\s+S[12]$/i, '')); }
+    for (const st of k.students) for (const key of [normName(`${st.lastName} ${st.firstName}`), normName(`${st.firstName} ${st.lastName}`)]) if (!homeMap.has(key)) homeMap.set(key, k.name.replace(/\s+S[12]$/i, '')); // aussi si nom et prénom sont inversés dans une liste
   return homeMap;
 }
 function homeClassOf(s, c = S.classes.find(k => k.students.includes(s))) {
