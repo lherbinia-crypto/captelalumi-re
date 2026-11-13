@@ -59,6 +59,17 @@ h1,h2,h3{margin:0;line-height:1.2}
 .cls-item.active{background:var(--side-2);box-shadow:inset 3px 0 0 var(--dot,#3d7bff)}
 .cls-item .dot{width:12px;height:12px;border-radius:50%;background:var(--dot);flex:none}
 .cls-item .nm{font-weight:600;display:block}
+.home-tag{display:inline-block;font-size:12px;font-weight:700;padding:0 6px;border-radius:6px;background:var(--accent-soft,#e4e9fb);color:var(--accent);margin-left:4px;vertical-align:1px;white-space:nowrap}
+.side-search{position:relative;margin:0 4px 10px}
+.side-search input{width:100%;box-sizing:border-box;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:inherit;padding:10px 12px;font:inherit;font-size:15px}
+.side-search input::placeholder{color:var(--side-muted)}
+.side-results{margin-top:6px;display:flex;flex-direction:column;gap:2px;max-height:50vh;overflow:auto}
+.side-results button{display:flex;align-items:center;gap:8px;border:0;background:rgba(255,255,255,.06);color:inherit;text-align:left;padding:8px;border-radius:8px;font:inherit;min-height:44px}
+.side-results button:hover,.side-results button.sel{background:rgba(255,255,255,.16)}
+.side-results .sub{display:block;font-size:12px;color:var(--side-muted)}
+.side-results .none{font-size:13px;color:var(--side-muted);padding:6px 8px}
+.st-filter{min-width:180px;flex:1 1 200px;max-width:320px}
+.st-card[hidden]{display:none!important}
 .sem-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;padding:1px 5px;border-radius:6px;margin-left:6px;vertical-align:2px;background:rgba(255,255,255,.16);color:inherit;border:1px solid rgba(255,255,255,.35)}
 .tag.nc{background:var(--neutral-soft,#eee);color:var(--muted);font-weight:700}
 .cls-item .sub{font-size:12.5px;color:var(--side-muted)}
@@ -526,7 +537,7 @@ function normalize(st) {
   return st;
 }
 let saveTimer = null;
-function save() { clearTimeout(saveTimer); saveTimer = setTimeout(flush, 250); }
+function save() { homeMap = null; clearTimeout(saveTimer); saveTimer = setTimeout(flush, 250); }
 // Enregistrement : l'état (sans les photos) d'un côté, chaque photo à part et seulement quand elle change.
 // Si iPadOS a coupé la connexion à la base (appli restée en arrière-plan), on la rouvre et on réessaie.
 const photoSaved = new Map();
@@ -557,7 +568,7 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', () => { if (saveTimer) flush(); });
 
-const APP_VERSION = '28';
+const APP_VERSION = '29';
 const cls = () => S.classes.find(c => c.id === S.ui.classId);
 // Ordre des classes : 1re puis 2e, par lettre (1C, 1D, 1F… 2A, 2B…), les groupes d'option à la fin
 const isOption = c => /option/i.test(c.name || '');
@@ -582,7 +593,23 @@ function studentNo(s) {
   return sortStudents(c.students).indexOf(s) + 1;
 }
 const noHTML = s => { const n = studentNo(s); return n ? `<span class="st-no">${n}</span>` : ''; };
-const nameHTML = s => `<span>${noHTML(s)}<span class="ln">${esc(s.lastName)}</span> ${esc(s.firstName)}${arTag(s)}</span>`;
+// Classe d'origine d'un élève d'option : notée sur sa fiche (ou reprise du Journal CPC),
+// sinon retrouvée par son nom dans les autres classes du Carnet
+let homeMap = null;
+function homeIndex() {
+  if (homeMap) return homeMap;
+  homeMap = new Map();
+  for (const k of sortedClasses().filter(x => !isOption(x)).sort((a, b) => a.archived - b.archived))
+    for (const st of k.students) { const key = normName(`${st.lastName} ${st.firstName}`); if (!homeMap.has(key)) homeMap.set(key, k.name.replace(/\s+S[12]$/i, '')); }
+  return homeMap;
+}
+function homeClassOf(s, c = S.classes.find(k => k.students.includes(s))) {
+  if (s.homeClass) return s.homeClass;
+  if (!c || !isOption(c)) return '';
+  return homeIndex().get(normName(`${s.lastName} ${s.firstName}`)) || '';
+}
+const homeTag = s => { const h = homeClassOf(s); return h ? ` <span class="home-tag" title="Sa classe">${esc(h)}</span>` : ''; };
+const nameHTML = s => `<span>${noHTML(s)}<span class="ln">${esc(s.lastName)}</span> ${esc(s.firstName)}${homeTag(s)}${arTag(s)}</span>`;
 function arCard(s) {
   const ar = s.ar || {}, n = (ar.liste || []).length;
   return `<div class="card pad ar-card ${n ? 'ok' : hasAR(s) ? 'todo' : ''}" style="margin-bottom:16px">
@@ -980,12 +1007,43 @@ function applyTheme() {
 }
 function render() { applyTheme(); renderSidebar(); renderMain(); }
 
+// Recherche d'un élève dans toutes les classes, par nom et/ou prénom (accents et majuscules ignorés)
+let searchQ = '';
+function searchStudents(q) {
+  const words = normName(q).split(' ').filter(Boolean); if (!words.length) return [];
+  const out = [];
+  for (const c of sortedClasses().sort((a, b) => a.archived - b.archived)) for (const s of c.students) {
+    const hay = ' ' + normName(`${s.lastName} ${s.firstName} ${homeClassOf(s, c)}`) + ' ';
+    if (!words.every(w => hay.includes(w))) continue;
+    const ln = normName(s.lastName), score = (ln.startsWith(words[0]) ? 0 : 1) + (c.archived ? 2 : 0);
+    out.push({ c, s, score });
+  }
+  return out.sort((a, b) => a.score - b.score || collator.compare(a.s.lastName, b.s.lastName) || collator.compare(a.s.firstName, b.s.firstName)).slice(0, 25);
+}
+function drawSearch() {
+  const box = $('#side-res'); if (!box) return;
+  const res = searchStudents(searchQ);
+  box.innerHTML = !searchQ.trim() ? '' : res.length ? res.map((r, i) => `<button type="button" class="${i === 0 ? 'sel' : ''}" data-act="search-go" data-cid="${r.c.id}" data-sid="${r.s.id}">${avatar(r.s, 'sm')}<span style="min-width:0"><b>${esc(r.s.lastName)}</b> ${esc(r.s.firstName)}<span class="sub">${esc(r.c.name)}${homeClassOf(r.s, r.c) ? ' · classe ' + esc(homeClassOf(r.s, r.c)) : ''}${r.c.archived ? ' · archivée' : ''}</span></span></button>`).join('')
+    : '<div class="none">Aucun élève ne correspond.</div>';
+}
+document.addEventListener('input', e => {
+  if (e.target.id !== 'st-filter') return;
+  const w = normName(e.target.value).split(' ').filter(Boolean);
+  $$('.st-grid .st-card').forEach(card => { card.hidden = !w.every(x => (' ' + card.dataset.q + ' ').includes(x)); });
+});
+document.addEventListener('input', e => { if (e.target.id === 'side-q') { searchQ = e.target.value; drawSearch(); } });
+document.addEventListener('keydown', e => {
+  if (e.target.id !== 'side-q') return;
+  if (e.key === 'Enter') { const b = $('#side-res button'); if (b) { e.preventDefault(); b.click(); } }
+  if (e.key === 'Escape') { searchQ = ''; e.target.value = ''; drawSearch(); }
+});
 const semBadge = c => c.semester === 'S1' || c.semester === 'S2' ? `<span class="sem-badge" title="${SEMESTERS[c.semester]}">${c.semester}</span>` : '';
 function renderSidebar() {
   const days = S.settings.lastBackup ? (Date.now() - new Date(S.settings.lastBackup)) / 864e5 : Infinity;
   const warn = S.classes.length && days > 7;
   $('#sidebar').innerHTML = `
     <div class="brand"><div class="brand-mark">C</div><div><b>Carnet du prof</b><small>${esc(S.settings.year || S.settings.school || 'Ma classe sur iPad')}</small></div></div>
+    <div class="side-search" role="search"><input type="search" id="side-q" placeholder="🔍 Rechercher un élève" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Rechercher un élève par son nom" value="${esc(searchQ)}"><div class="side-results" id="side-res"></div></div>
     <div class="side-h">Mes classes</div>
     ${sortedClasses().filter(c => !c.archived).map(c => `<button class="cls-item ${S.ui.view === 'class' && c.id === S.ui.classId ? 'active' : ''}" style="--dot:${c.color}" data-act="select-class" data-id="${c.id}">
       <span class="dot"></span><span><span class="nm">${esc(c.name)}${semBadge(c)}</span><span class="sub">${esc(c.subject || '')}${c.subject ? ' · ' : ''}${c.students.length} élève${c.students.length > 1 ? 's' : ''}</span></span></button>`).join('')}
@@ -998,6 +1056,7 @@ function renderSidebar() {
       ${warn ? `<div class="backup-warn">⚠︎ Pensez à faire une sauvegarde${Number.isFinite(days) ? ` (dernière il y a ${Math.floor(days)} j)` : ''}.</div>` : ''}
       <button class="side-btn ${S.ui.view === 'settings' ? 'active' : ''}" data-act="settings">⚙︎ Réglages &amp; sauvegarde</button>
     </div>`;
+  drawSearch();
 }
 
 const TABS = [['eleves', 'Élèves'], ['participation', 'Participation'], ['cotes', 'Carnet de cotes'], ['bulletins', 'Bulletins'], ['presences', 'Présences'], ['journal', 'Journal de classe'], ['dacce', 'DAccE']];
@@ -1022,7 +1081,7 @@ function renderMain() {
   }
   top.innerHTML = `<div class="top-row">${menu}<span class="dot" style="width:12px;height:12px;border-radius:50%;background:${c.color}"></span>
       <h1>${esc(c.name)}${c.subject ? `<small>${esc(c.subject)}</small>` : ''}</h1>
-      ${c.students.length ? '<button class="btn sm" data-act="draw">🎲 Au hasard</button>' : ''}<button class="btn sm ghost" data-act="edit-class">Modifier</button></div>
+      <button class="btn sm ghost" data-act="search-open" aria-label="Rechercher un élève" title="Rechercher un élève">🔍</button>${c.students.length ? '<button class="btn sm" data-act="draw">🎲 Au hasard</button>' : ''}<button class="btn sm ghost" data-act="edit-class">Modifier</button></div>
     <nav class="tabs" role="tablist">${TABS.filter(([k]) => k !== 'participation' || cpcOn(c)).map(([k, l]) => `<button class="tab ${S.ui.tab === k ? 'active' : ''}" role="tab" aria-selected="${S.ui.tab === k}" data-act="tab" data-tab="${k}">${l}</button>`).join('')}</nav>`;
   const st = S.ui.studentId && c.students.find(s => s.id === S.ui.studentId);
   if (st) { view.innerHTML = viewStudent(c, st); return; }
@@ -1040,6 +1099,7 @@ function viewStudents(c) {
     <button class="btn" data-act="import-students">Importer une liste</button>
     ${all.length ? '<button class="btn" data-act="ar-paste" data-mode="class">📋 Coller un mail d’A.R.</button>' : ''}
     ${all.length ? '<button class="btn" data-act="swap-names" title="Si les prénoms ont été pris pour des noms de famille">⇄ Inverser nom / prénom</button>' : ''}
+    ${all.length > 1 ? '<input type="search" class="inp st-filter" id="st-filter" placeholder="🔍 Filtrer cette classe" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Filtrer les élèves de la classe">' : ''}
     ${list.length ? `<button class="btn" data-act="photo-session" data-missing="${list.some(s => !s.photo) && list.some(s => s.photo) ? 1 : 0}">📷 Photos des élèves</button>` : ''}${nAR ? `<button class="chip ${S.ui.onlyAR ? 'active' : ''}" data-act="only-ar"><span class="ar-tag">AR</span> ${nAR} élève${nAR > 1 ? 's' : ''}</button>` : ''}<span class="spacer"></span>
     <span class="muted small">${all.length} élève${all.length > 1 ? 's' : ''}</span></div>`;
   if (!list.length) return tb + `<div class="empty"><h2>Aucun élève</h2><p>Ajoutez vos élèves un par un ou collez une liste (par exemple depuis Excel ou un PDF).</p></div>`;
@@ -1053,7 +1113,7 @@ function viewStudents(c) {
     if (nd) bits.push(`${nd} obs.`);
     const nr = c.columns.filter(col => col.type === 'check' && c.grades[col.id]?.[s.id] === 'NO').length;
     if (nr) bits.push(`<span class="tag bad">${nr} non remis</span>`);
-    return `<div class="st-card" role="button" tabindex="0" data-act="open-student" data-id="${s.id}">${avatar(s)}<span style="flex:1;min-width:0"><span class="nm">${nameHTML(s)}</span><span class="meta" style="display:block">${bits.join(' · ') || '&nbsp;'}</span></span>${s.photo ? '' : `<button type="button" class="st-cam" data-act="quick-photo" data-id="${s.id}" aria-label="Prendre la photo de ${esc(studentName(s))}">📷</button>`}</div>`;
+    return `<div class="st-card" role="button" tabindex="0" data-act="open-student" data-id="${s.id}" data-q="${esc(normName(`${s.lastName} ${s.firstName} ${homeClassOf(s, c)}`))}">${avatar(s)}<span style="flex:1;min-width:0"><span class="nm">${nameHTML(s)}</span><span class="meta" style="display:block">${bits.join(' · ') || '&nbsp;'}</span></span>${s.photo ? '' : `<button type="button" class="st-cam" data-act="quick-photo" data-id="${s.id}" aria-label="Prendre la photo de ${esc(studentName(s))}">📷</button>`}</div>`;
   }).join('')}</div>`;
 }
 
@@ -1111,6 +1171,7 @@ function viewStudent(c, s) {
         <div class="card pad">
           <h3 class="section-h">Fiche</h3>
           <div class="row2">${f('lastName', 'Nom')}${f('firstName', 'Prénom')}</div>
+          ${isOption(c) || s.homeClass ? `<label class="field"><span>Sa classe (élève d’option)</span><input class="inp" data-sfield="homeClass" value="${esc(s.homeClass || '')}" placeholder="${esc(homeClassOf(s, c) ? 'Trouvée automatiquement : ' + homeClassOf(s, c) : 'Ex. 2J')}" autocapitalize="characters"></label>` : ''}
           <div class="row2">${f('birth', 'Date de naissance', 'date')}${f('email', 'E-mail', 'email')}</div>
           <div class="row2">${f('parents', 'Responsable(s)')}${f('phone', 'Téléphone', 'tel')}</div>
           <label class="field"><span>Remarques</span><textarea class="inp" data-sfield="notes">${esc(s.notes || '')}</textarea></label>
@@ -1297,9 +1358,10 @@ function exportCSV() {
   const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const P = S.settings.periods, bs = S.settings.bulletinScale;
   const num = p => Number.isFinite(p) ? (p / 100 * bs).toFixed(1).replace('.', ',') : '';
-  const lines = [['N°', 'Nom', 'Prénom', ...cols.map(col => col.type === 'icons' ? `${col.title} (icônes)` : col.type === 'check' ? `${col.title} (remis)` : `${col.title} (/${col.max})`), ...(cpcOn(c) ? P.map(p => `Participation ${p.name} /${S.settings.cpc.max}`) : []), ...P.map(p => `${p.name} /${bs}`), `Année /${bs}`].map(q).join(';')];
+  const opt = isOption(c);
+  const lines = [['N°', 'Nom', 'Prénom', ...(opt ? ['Classe'] : []), ...cols.map(col => col.type === 'icons' ? `${col.title} (icônes)` : col.type === 'check' ? `${col.title} (remis)` : `${col.title} (/${col.max})`), ...(cpcOn(c) ? P.map(p => `Participation ${p.name} /${S.settings.cpc.max}`) : []), ...P.map(p => `${p.name} /${bs}`), `Année /${bs}`].map(q).join(';')];
   for (const s of studs) {
-    lines.push([studentNo(s), s.lastName, s.firstName, ...cols.map(col => { const v = c.grades[col.id]?.[s.id]; return isIcon(v) ? `${fmtGrade(v)} ${iconOf(v)?.label || ''}` : fmtGrade(v); }),
+    lines.push([studentNo(s), s.lastName, s.firstName, ...(opt ? [homeClassOf(s, c)] : []), ...cols.map(col => { const v = c.grades[col.id]?.[s.id]; return isIcon(v) ? `${fmtGrade(v)} ${iconOf(v)?.label || ''}` : fmtGrade(v); }),
       ...(cpcOn(c) ? P.map((p, i) => isNC(c, i) ? 'NC' : partCounts(c, i) ? String(cpcNote(c, s.id, i)).replace('.', ',') : '') : []),
       ...P.map((p, i) => isNC(c, i) ? 'NC' : num(periodAvg(c, s.id, i))), num(annualAvg(c, s.id))].map(q).join(';'));
   }
@@ -1531,7 +1593,12 @@ const arKey = x => normName(`${x.nom} ${x.prenom}`);
 // ---- Lien avec le Journal de classe CPC : séances, présences, observations et AR ----
 function importJournalCPC(data) {
   const live = sortedClasses();
-  const guess = jc => { const L = normName(jc.label || jc.id); const cand = live.filter(k => { const n = normName(k.name); return n === L || n.startsWith(L + ' ') || n.split(' ').includes(L); }); return cand.find(k => !k.archived) || cand[0] || null; };
+  const guess = jc => {
+    const L = normName(jc.label || jc.id);
+    let cand = live.filter(k => { const n = normName(k.name); return n === L || n.startsWith(L + ' ') || n.split(' ').includes(L); });
+    if (!cand.length && jc.type === 'option') { const num = (L.match(/(\d+)\s*$/) || [])[1]; if (num) cand = live.filter(k => isOption(k) && new RegExp('(^|\\D)' + num + '(\\D|$)').test(normName(k.name).replace(/^\d+\s*/, ''))); }
+    return cand.find(k => !k.archived) || cand[0] || null;
+  };
   const jcs = (data.classes || []).filter(jc => data.seances.some(s => s.classe === jc.id)).sort((a, b) => natural.compare(a.label || a.id, b.label || b.id));
   const nS = id => data.seances.filter(s => s.classe === id && !s.annule).length;
   modal({
@@ -1546,7 +1613,7 @@ function importJournalCPC(data) {
       for (const jc of jcs) { const k = S.classes.find(x => x.id === f['m_' + jc.id]); if (k) map[jc.id] = k; }
       const r = runJournalImport(data, jcs, map);
       save(); render();
-      setTimeout(() => modal({ title: 'Journal CPC importé', body: `<ul style="margin:0;padding-left:18px"><li><b>${r.nJ}</b> séance(s) dans le journal de classe</li><li><b>${r.nD}</b> cours repris dans les présences, dont <b>${r.nA}</b> absence(s) ou retard(s)</li><li><b>${r.nO}</b> observation(s) ajoutée(s) au suivi</li><li><b>${r.nAR}</b> élève(s) avec aménagements raisonnables${r.later ? ` · ${r.later} en attente (pas encore dans le Carnet)` : ''}</li></ul>
+      setTimeout(() => modal({ title: 'Journal CPC importé', body: `<ul style="margin:0;padding-left:18px"><li><b>${r.nJ}</b> séance(s) dans le journal de classe</li><li><b>${r.nD}</b> cours repris dans les présences, dont <b>${r.nA}</b> absence(s) ou retard(s)</li><li><b>${r.nO}</b> observation(s) ajoutée(s) au suivi</li>${r.nH ? `<li><b>${r.nH}</b> élève(s) d’option : leur classe est maintenant affichée à côté de leur nom</li>` : ''}<li><b>${r.nAR}</b> élève(s) avec aménagements raisonnables${r.later ? ` · ${r.later} en attente (pas encore dans le Carnet)` : ''}</li></ul>
         ${r.miss.length ? `<p class="small"><b>${r.miss.length} élève(s) du Journal pas retrouvé(s)</b> dans la classe choisie : ${r.miss.map(esc).join(' ; ')}.<br><span class="muted">Vérifiez l’orthographe du nom dans le Carnet, puis réimportez.</span></p>` : ''}`, actions: [{ label: 'OK', cls: 'primary' }] }), 50);
     } }]
   });
@@ -1565,6 +1632,7 @@ function runJournalImport(data, jcs, map) {
       const s = inClass(c, e);
       if (!s) { r.miss.push(`${jc.label || jc.id} · ${e.nom} ${e.prenom}`); continue; }
       keyToSid[e.key] = s.id;
+      if (jc.type === 'option' && e.classe && e.classe !== jc.id && !s.homeClass) { s.homeClass = String(e.classe).toUpperCase(); r.nH = (r.nH || 0) + 1; }
       if (!where[e.key] || jc.type !== 'option') where[e.key] = { c, sid: s.id };
     }
     for (const se of data.seances.filter(s => s.classe === jc.id && s.date && !s.annule)) {
@@ -1680,7 +1748,7 @@ function printGradesHTML(c, per, opt) {
   const head = groups.map(g => g.cols.map(col => th(esc(col.title), `${fmtShort(col.date)}${col.type === 'check' || col.type === 'icons' ? '' : ' · /' + fmtNum(col.max, 2)}`)).join('')
     + (part ? th('Participation', `/${pmax}`) : '') + th(`Total ${esc(P[g.i].name)}`, `/${bs}`, 'tot')).join('')
     + (opt.blank ? '<th class="rot"><div>&nbsp;</div></th>'.repeat(6) : '') + (multi ? th('Année', `/${bs}`, 'yr') : '');
-  const row = (s, n) => `<tr><td>${n}</td><td class="nm">${esc(s.lastName)} ${esc(s.firstName)}</td>`
+  const row = (s, n) => `<tr><td>${n}</td><td class="nm">${esc(s.lastName)} ${esc(s.firstName)}${homeClassOf(s, c) ? ` <b>(${esc(homeClassOf(s, c))})</b>` : ''}</td>`
     + groups.map(g => g.cols.map(col => `<td>${cell(col, c.grades[col.id]?.[s.id])}</td>`).join('')
       + (part ? `<td>${isNC(c, g.i) ? 'NC' : multi && !partCounts(c, g.i) ? '–' : fmtNum(cpcNote(c, s.id, g.i))}</td>` : '') + `<td class="tot">${isNC(c, g.i) ? 'NC' : fmtOn(pAvg(s.id, g.i), bs)}</td>`).join('')
     + blanks('td') + (multi ? `<td class="yr">${fmtOn(annualAvg(c, s.id), bs)}</td>` : '') + '</tr>';
@@ -2869,6 +2937,13 @@ function demoClass() {
 // ============================================================
 const A = {
   'toggle-side': () => document.body.classList.toggle('side-open'),
+  'search-go': el => {
+    const c = S.classes.find(k => k.id === el.dataset.cid); if (!c) return;
+    S.ui.view = 'class'; S.ui.classId = c.id; S.ui.studentId = el.dataset.sid;
+    searchQ = ''; document.body.classList.remove('side-open'); document.activeElement?.blur?.();
+    save(); render(); $('#view').scrollTop = 0;
+  },
+  'search-open': () => { document.body.classList.add('side-open'); setTimeout(() => { const i = $('#side-q'); i?.focus(); i?.select(); }, 60); },
   'select-class': el => { S.ui.view = 'class'; S.ui.classId = el.dataset.id; S.ui.studentId = null; document.body.classList.remove('side-open'); save(); render(); $('#view').scrollTop = 0; },
   'new-class': () => { document.body.classList.remove('side-open'); editClass(); },
   'import-lists': () => { document.body.classList.remove('side-open'); importSchoolLists(); },
@@ -3038,7 +3113,8 @@ document.addEventListener('change', e => {
   if (t.dataset.sfield) {
     const s = studentByUI(); if (!s) return;
     s[t.dataset.sfield] = t.value.trim(); save();
-    if (['lastName', 'firstName', 'birth'].includes(t.dataset.sfield)) { renderSidebar(); const y = $('#view').scrollTop; renderMain(); $('#view').scrollTop = y; }
+    if (t.dataset.sfield === 'homeClass') s.homeClass = s.homeClass.toUpperCase();
+    if (['lastName', 'firstName', 'birth', 'homeClass'].includes(t.dataset.sfield)) { renderSidebar(); const y = $('#view').scrollTop; renderMain(); $('#view').scrollTop = y; }
     return;
   }
   if (t.dataset.setting) {
