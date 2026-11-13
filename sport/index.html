@@ -188,9 +188,12 @@ async function cloudInit() {
     snap.docs.forEach(d => { const v = d.data(); if (!v) return; if (d.id === 'state') remote = v; else if (d.id.startsWith('log-')) rlogs.set(d.id.slice(4), v); });
     // Fusion : on garde toutes les séances des deux côtés, et les réglages les plus récents
     S.logs.forEach(logId);
-    const local = new Set(S.logs.map(l => l.id));
-    const missingRemote = S.logs.filter(l => !rlogs.has(l.id));
-    rlogs.forEach((v, id) => { if (!local.has(id)) S.logs.push({ ...v, id }); });
+    // même jour + même séance = la même séance, même si elle a été enregistrée à deux endroits
+    const dk = l => (l.date || '') + '|' + (l.key || '');
+    const local = new Set(S.logs.map(l => l.id)), localDK = new Set(S.logs.map(dk));
+    const remoteDK = new Set([...rlogs.values()].map(dk));
+    const missingRemote = S.logs.filter(l => !rlogs.has(l.id) && !remoteDK.has(dk(l)));
+    rlogs.forEach((v, id) => { if (!local.has(id) && !localDK.has(dk(v))) S.logs.push({ ...v, id }); });
     S.logs.sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.at || 0) - (b.at || 0));
     const localNewer = !remote || (S.profile && (S.updatedAt || 0) > (remote.updatedAt || 0));
     if (remote && !localNewer && remote.profile) { S.profile = remote.profile; S.kg = remote.kg || {}; S.feel = remote.feel || {}; S.current = remote.current || null; S.updatedAt = remote.updatedAt; }
