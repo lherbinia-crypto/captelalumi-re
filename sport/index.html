@@ -149,13 +149,61 @@ details[open] summary::before{content:"－ "}
 <script src="figures.js"></script>
 <script>
 'use strict';
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 const KEY = 'ma-salle-v1';
 
 /* ===================== DONNÉES ===================== */
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch { return null; } };
 let S = load() || { profile: null, logs: [], kg: {}, feel: {}, current: null };
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { toast("Impossible d'enregistrer sur cet appareil"); } };
+const saveLocal = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
+const save = () => { S.updatedAt = Date.now(); saveLocal(); cloudPushState(); };
+
+/* ===================== ENREGISTREMENT SUR LE COMPTE ===================== */
+// Dans Claude, tout est aussi gardé sur le compte de la personne (espace privé) :
+// on retrouve ses séances quel que soit le navigateur ou l'appareil.
+const Cloud = { col: null, status: 'local', chain: Promise.resolve(), timer: null };
+const logId = l => l.id || (l.id = 'l' + String(l.date || '').replace(/-/g, '') + (l.key || '') + (l.minutes || 0) + 'w' + (l.week || 0));
+const stateBody = () => ({ profile: S.profile, kg: S.kg, feel: S.feel, current: S.current, updatedAt: S.updatedAt || 0 });
+function cloudQueue(fn) { Cloud.chain = Cloud.chain.then(fn).then(() => { if (Cloud.status !== 'ok') { Cloud.status = 'ok'; paintCloud(); } }).catch(() => { Cloud.status = 'error'; paintCloud(); }); return Cloud.chain; }
+function cloudPushState() {
+  if (!Cloud.col) return;
+  clearTimeout(Cloud.timer);
+  Cloud.timer = setTimeout(() => cloudQueue(() => Cloud.col.doc('state').set(JSON.parse(JSON.stringify(stateBody())))), 1200);
+}
+function cloudPushLog(l) { if (Cloud.col) cloudQueue(() => Cloud.col.doc('log-' + logId(l)).set(JSON.parse(JSON.stringify(l)))); }
+function paintCloud() {
+  const el = $('#cloud'); if (!el) return;
+  el.innerHTML = { ok: '☁️ Séances enregistrées sur votre compte Claude', error: '⚠️ Pas de connexion : vos séances sont gardées sur ce téléphone et seront envoyées plus tard', loading: '☁️ Connexion à votre compte…', local: '📱 Séances gardées sur ce téléphone' }[Cloud.status];
+}
+async function cloudInit() {
+  if (!window.claude?.use) return;
+  Cloud.status = 'loading'; paintCloud();
+  try {
+    const [db, user] = await Promise.all([claude.use('db'), claude.use('user')]);
+    const uid = db && user ? await user.id() : null;
+    if (!uid) { Cloud.status = 'local'; paintCloud(); return; }
+    const col = db.collection('data/users/' + uid);
+    const snap = await Promise.race([col.get(), new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 10000))]);
+    let remote = null; const rlogs = new Map();
+    snap.docs.forEach(d => { const v = d.data(); if (!v) return; if (d.id === 'state') remote = v; else if (d.id.startsWith('log-')) rlogs.set(d.id.slice(4), v); });
+    // Fusion : on garde toutes les séances des deux côtés, et les réglages les plus récents
+    S.logs.forEach(logId);
+    const local = new Set(S.logs.map(l => l.id));
+    const missingRemote = S.logs.filter(l => !rlogs.has(l.id));
+    rlogs.forEach((v, id) => { if (!local.has(id)) S.logs.push({ ...v, id }); });
+    S.logs.sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.at || 0) - (b.at || 0));
+    const localNewer = !remote || (S.profile && (S.updatedAt || 0) > (remote.updatedAt || 0));
+    if (remote && !localNewer && remote.profile) { S.profile = remote.profile; S.kg = remote.kg || {}; S.feel = remote.feel || {}; S.current = remote.current || null; S.updatedAt = remote.updatedAt; }
+    else if (remote && remote.kg) S.kg = { ...remote.kg, ...S.kg };
+    Cloud.col = col; Cloud.status = 'ok';
+    saveLocal();
+    missingRemote.forEach(cloudPushLog);
+    if (localNewer && S.profile) cloudPushState();
+    if (rlogs.size > S.logs.length - missingRemote.length || remote) { if (S.current && view === 'home') view = 'session'; render(); }
+    paintCloud();
+    if (missingRemote.length && rlogs.size) toast(`${missingRemote.length} séance${missingRemote.length > 1 ? 's' : ''} de ce téléphone ajoutée${missingRemote.length > 1 ? 's' : ''} à votre compte`);
+  } catch (e) { Cloud.status = 'error'; paintCloud(); }
+}
 let view = 'home';
 
 const $ = s => document.querySelector(s);
@@ -419,6 +467,7 @@ function render() {
   app.innerHTML = v();
   renderTabs();
   bind();
+  paintCloud();
 }
 function renderTabs() {
   const t = [['home', '🏠', 'Accueil'], ['session', '🏋️‍♀️', 'Séance'], ['journal', '📒', 'Journal'], ['tips', '🌿', 'Conseils'], ['settings', '⚙️', 'Réglages']];
@@ -499,7 +548,7 @@ function viewHome() {
   if (last && daysSince === 0) restHint = `<div class="hint mint">Séance faite aujourd'hui, bravo ! Le repos fait partie du programme : les muscles se construisent entre les séances.${S.profile.veins ? '<br>🦵 Ce soir, 10 minutes jambes surélevées font du bien.' : ''}</div>`;
   else if (daysSince !== null && daysSince >= 10) restHint = `<div class="hint">Cela fait ${daysSince} jours. Aucun souci : reprenez avec la version « Jour en douceur » pour cette séance.</div>`;
   const nm = S.profile.name ? ', ' + esc(S.profile.name) : '';
-  return `<div class="top"><div class="hello">Bonjour${nm}</div><h1>${week > 12 ? 'Les 12 semaines sont faites : on continue !' : `Semaine ${week} sur 12`}</h1></div>
+  return `<div class="top"><div class="hello">Bonjour${nm}</div><div class="soft" id="cloud" style="font-size:.82rem"></div><h1>${week > 12 ? 'Les 12 semaines sont faites : on continue !' : `Semaine ${week} sur 12`}</h1></div>
   ${S.profile.level ? '' : `<div class="card"><h3>Mettons l'appli à votre niveau</h3><p class="soft" style="font-size:.92rem">Nouveau : vous pouvez démarrer plus loin dans le programme et adapter les exercices.</p>${levelForm(S.profile)}<button type="button" class="btn primary block mt" id="lv-save">Enregistrer</button></div>`}
   <div class="card hero">
     <div class="row"><span class="pill" style="background:#ffffff30;color:#fff">Phase ${ph.n} · ${ph.name}</span></div>
@@ -713,7 +762,7 @@ function viewSettings() {
     <label class="f" for="st-week">Semaine du programme</label>
     <select id="st-week">${Array.from({ length: 16 }, (_, i) => i + 1).map(w => `<option value="${w}" ${progWeek() === w ? 'selected' : ''}>Semaine ${w}${w > 12 ? ' (Élan)' : ''} · phase ${phaseOf(w).n} ${phaseOf(w).name}</option>`).join('')}</select>
     <button type="button" class="btn primary block mt" id="st-save">Enregistrer</button></div>
-  <div class="card"><h3>Sauvegarde</h3><p class="soft" style="font-size:.92rem">Vos données sont sur ce téléphone uniquement. Exportez-les de temps en temps (Fichiers, iCloud, e-mail).</p>
+  <div class="card"><h3>Sauvegarde</h3><p id="cloud" style="font-size:.95rem;font-weight:600"></p><p class="soft" style="font-size:.92rem">Une copie de secours en plus, de temps en temps, ne fait pas de mal (Fichiers, iCloud, e-mail).</p>
     <div class="row wrap mt"><button type="button" class="btn grow" id="st-export">⬇️ Exporter</button><label class="btn grow" for="st-import" style="cursor:pointer">⬆️ Restaurer</label><input type="file" id="st-import" accept=".json,application/json" hidden></div>
     <div id="st-out" hidden><p class="soft mt" style="font-size:.9rem">Si aucun fichier n'a été enregistré, copiez ce texte et gardez-le (note, e-mail à vous-même).</p><textarea id="st-json" readonly></textarea><button type="button" class="btn block mt" id="st-copy">Copier la sauvegarde</button></div>
     <details><summary>Restaurer en collant un texte</summary><textarea id="st-pasted" placeholder="Collez ici le texte de sauvegarde"></textarea><button type="button" class="btn block mt" id="st-paste">Restaurer</button></details></div>
@@ -802,9 +851,9 @@ async function finish() {
     if (e.feel) S.feel[e.id] = e.feel;
   });
   const minutes = Math.max(10, Math.round((Date.now() - c.startedAt) / 60000));
-  S.logs.push({ key: c.key, date: today(), week: c.week, phase: c.phase, gentle: c.gentle, feel: c.feel, note: c.note.trim(), minutes: Math.min(minutes, 120),
+  S.logs.push({ id: 'l' + Date.now().toString(36), at: Date.now(), key: c.key, date: today(), week: c.week, phase: c.phase, gentle: c.gentle, feel: c.feel, note: c.note.trim(), minutes: Math.min(minutes, 120),
     ex: c.ex.map(e => ({ id: e.id, kg: e.sets.filter(s => s.done && s.kg).map(s => s.kg).pop() || '', sets: e.sets.filter(s => s.done).length, feel: e.feel })), cardio: c.cardio.done });
-  S.current = null; openEx = null; save();
+  S.current = null; openEx = null; save(); cloudPushLog(S.logs[S.logs.length - 1]);
   const n = S.logs.length;
   const before = phaseOf(c.week), after = phaseOf(progWeek());
   view = 'home'; render(); window.scrollTo(0, 0);
@@ -827,18 +876,19 @@ function bindSettings() {
     $('#st-out').hidden = false; $('#st-json').value = JSON.stringify(S);
   };
   $('#st-copy').onclick = async () => { const t = $('#st-json'); try { await navigator.clipboard.writeText(t.value); toast('Copié : collez-le dans une note ou un e-mail'); } catch { t.select(); toast('Texte sélectionné : copiez-le'); } };
-  $('#st-paste').onclick = async () => { const txt = $('#st-pasted').value.trim(); if (!txt) return; try { const d = JSON.parse(txt); if (!d.profile || !Array.isArray(d.logs)) throw 0; if (await ask('Remplacer les données de ce téléphone par cette sauvegarde ?', 'Remplacer')) { S = { kg: {}, feel: {}, current: null, ...d }; save(); toast('Sauvegarde restaurée'); view = 'home'; render(); } } catch { toast('Ce texte n\'est pas une sauvegarde valide'); } };
+  $('#st-paste').onclick = async () => { const txt = $('#st-pasted').value.trim(); if (!txt) return; try { const d = JSON.parse(txt); if (!d.profile || !Array.isArray(d.logs)) throw 0; if (await ask('Remplacer les données de ce téléphone par cette sauvegarde ?', 'Remplacer')) { S = { kg: {}, feel: {}, current: null, ...d }; save(); S.logs.forEach(l => { logId(l); cloudPushLog(l); }); toast('Sauvegarde restaurée'); view = 'home'; render(); } } catch { toast('Ce texte n\'est pas une sauvegarde valide'); } };
   $('#st-import').onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
-    try { const d = JSON.parse(await f.text()); if (!d.profile || !Array.isArray(d.logs)) throw 0; if (await ask('Remplacer les données de ce téléphone par cette sauvegarde ?', 'Remplacer')) { S = { kg: {}, feel: {}, current: null, ...d }; save(); toast('Sauvegarde restaurée'); view = 'home'; render(); } }
+    try { const d = JSON.parse(await f.text()); if (!d.profile || !Array.isArray(d.logs)) throw 0; if (await ask('Remplacer les données de ce téléphone par cette sauvegarde ?', 'Remplacer')) { S = { kg: {}, feel: {}, current: null, ...d }; save(); S.logs.forEach(l => { logId(l); cloudPushLog(l); }); toast('Sauvegarde restaurée'); view = 'home'; render(); } }
     catch { toast('Ce fichier n\'est pas une sauvegarde valide'); }
   };
-  $('#st-reset').onclick = async () => { if (await ask('Effacer tout votre historique ? Pensez à exporter avant.', 'Effacer') && await ask('Vraiment tout effacer ?', 'Tout effacer')) { localStorage.removeItem(KEY); S = { profile: null, logs: [], kg: {}, feel: {}, current: null }; view = 'home'; render(); } };
+  $('#st-reset').onclick = async () => { if (await ask('Effacer tout votre historique ? Pensez à exporter avant.', 'Effacer') && await ask('Vraiment tout effacer ?', 'Tout effacer')) { const old = S.logs.slice(); try { localStorage.removeItem(KEY); } catch {} S = { profile: null, logs: [], kg: {}, feel: {}, current: null }; if (Cloud.col) { old.forEach(l => cloudQueue(() => Cloud.col.doc('log-' + logId(l)).delete())); cloudQueue(() => Cloud.col.doc('state').delete()); } view = 'home'; render(); } };
 }
 
 if (S.current) { view = 'session'; openEx = null; }
 render();
 FIG.start();
+cloudInit();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 document.addEventListener('visibilitychange', () => { if (!document.hidden && cardioRun) tickCardio(); });
 </script>
