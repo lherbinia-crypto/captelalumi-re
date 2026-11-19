@@ -541,6 +541,7 @@ function normalize(st) {
     for (const s of c.students) {
       s.files ||= [];
       if (s.nc && typeof s.nc === 'object') { for (const k of Object.keys(s.nc)) if (!s.nc[k] || !/^\d$/.test(k)) delete s.nc[k]; if (!Object.keys(s.nc).length) delete s.nc; } else delete s.nc;
+      if (s.ncWhy && typeof s.ncWhy === 'object') { for (const k of Object.keys(s.ncWhy)) if (!s.nc?.[k] || typeof s.ncWhy[k] !== 'string' || !s.ncWhy[k].trim()) delete s.ncWhy[k]; if (!Object.keys(s.ncWhy).length) delete s.ncWhy; } else delete s.ncWhy;
     }
   }
   return st;
@@ -577,7 +578,7 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', () => { if (saveTimer) flush(); });
 
-const APP_VERSION = '32';
+const APP_VERSION = '33';
 const cls = () => S.classes.find(c => c.id === S.ui.classId);
 // Ordre des classes : 1re puis 2e, par lettre (1C, 1D, 1F… 2A, 2B…), les groupes d'option à la fin
 const isOption = c => /option/i.test(c.name || '');
@@ -696,6 +697,22 @@ const studentOf = (c, sid) => c.students.find(s => s.id === sid);
 const stNC = (c, sid, i) => !!studentOf(c, sid)?.nc?.[i];
 const ncOf = (c, sid, i) => isNC(c, i) || stNC(c, sid, i);
 const stNcCell = '<span class="tag nc st" title="Élève non coté sur cette période">NC</span>';
+// Ce qui manque à l'élève sur une période : évaluations où il était absent, travaux non remis
+function missedInPeriod(c, sid, i) {
+  const out = [];
+  for (const col of periodCols(c, i)) {
+    const v = c.grades[col.id]?.[sid], abs = ['A', 'J'].includes(c.attendance[col.date]?.[sid]?.s);
+    const what = v === 'ABS' ? 'absent' : v === 'EXC' ? 'excusé' : col.type === 'check' && v === 'NO' ? 'non remis' : v == null && abs ? 'absent ce jour-là, pas de cote' : v == null && col.type === 'check' ? 'pas encore remis' : '';
+    if (what) out.push({ col, what });
+  }
+  return out;
+}
+const ncWhy = (c, sid, i) => studentOf(c, sid)?.ncWhy?.[i] || '';
+function setStudentNC(s, i, on, why) {
+  s.nc ||= {}; s.ncWhy ||= {};
+  if (on) { s.nc[i] = true; if (why?.trim()) s.ncWhy[i] = why.trim(); else delete s.ncWhy[i]; } else { delete s.nc[i]; delete s.ncWhy[i]; }
+  if (!Object.keys(s.nc).length) delete s.nc; if (!Object.keys(s.ncWhy).length) delete s.ncWhy;
+}
 // Absences (A ou J) d'un élève pendant une période
 function absInPeriod(c, sid, i) {
   const from = periodStart(i), to = S.settings.periods[i]?.end || '9999';
@@ -1187,8 +1204,9 @@ function viewStudent(c, s) {
         <div class="kpi"><b>${a.J || 0}</b><span>Justifiées</span></div>
         <div class="kpi"><b>${a.R || 0}</b><span>Retards</span></div>
       </div>
-      <div class="nc-box"><span class="small muted">Non coté (NC), par ex. trop d’absences :</span>${S.settings.periods.map((p, i) => { const ab = absInPeriod(c, s.id, i), cls = isNC(c, i) ? 'dis' : stNC(c, s.id, i) ? 'on' : '';
-        return `<label class="${cls}" title="${isNC(c, i) ? 'Période déjà NC pour toute la classe (' + esc(SEMESTERS[c.semester]) + ')' : ''}"><input type="checkbox" data-stnc="${i}" ${ncOf(c, s.id, i) ? 'checked' : ''} ${isNC(c, i) ? 'disabled' : ''}> ${esc(p.name)} NC${ab.A ? ` <span class="muted">· ${ab.A} abs. / ${ab.n} cours</span>` : ''}</label>`; }).join('')}</div>
+      <div class="nc-box"><span class="small muted">Non coté (NC) — absences, travaux pas remis… :</span>${S.settings.periods.map((p, i) => { const ab = absInPeriod(c, s.id, i), mi = missedInPeriod(c, s.id, i).length, on = stNC(c, s.id, i);
+        if (isNC(c, i)) return `<label class="dis" title="Période déjà NC pour toute la classe (${esc(SEMESTERS[c.semester])})">${esc(p.name)} : NC (classe)</label>`;
+        return `<label class="${on ? 'on' : ''}" role="button" tabindex="0" data-act="bull-nc" data-sid="${s.id}" data-p="${i}">${on ? '☑︎' : '☐'} ${esc(p.name)} NC${on && ncWhy(c, s.id, i) ? ` <span class="muted">· ${esc(ncWhy(c, s.id, i))}</span>` : `${ab.A ? ` <span class="muted">· ${ab.A} abs.</span>` : ''}${mi ? ` <span class="muted">· ${mi} travail${mi > 1 ? 'x' : ''} manqué${mi > 1 ? 's' : ''}</span>` : ''}`}</label>`; }).join('')}</div>
     </div>
     ${arCard(s)}
     <div class="grid2">
@@ -1848,7 +1866,7 @@ function drawStudent() {
 // ---------- Bulletins ----------
 function viewBulletins(c) {
   const P = S.settings.periods, bs = S.settings.bulletinScale, studs = sortStudents(c.students);
-  const tb = `<div class="toolbar"><span class="muted small">Note de période sur ${bs} = total des points de la période (points obtenus ÷ points possibles)${cpcOn(c) ? `, participation comprise (elle compte pour ${Number(c.cpc.points) || 20} points)` : ''}. L’année est la moyenne des périodes cotées${c.semester !== 'year' ? ` (${SEMESTERS[c.semester].toLowerCase()} : ${c.semester === 'S1' ? esc(P[2]?.name || '3e période') : esc(P[0]?.name || '1re période')} NC)` : ''}${P.some(p => Number(p.weight) !== 1) ? ' (pondérées : ' + P.map(p => '×' + fmtNum(Number(p.weight), 2)).join(', ') + ')' : ''}. Touchez la note d’un élève pour le mettre <b>NC</b> (non coté, par ex. trop d’absences). Dates et pondérations dans Réglages.</span>
+  const tb = `<div class="toolbar"><span class="muted small">Note de période sur ${bs} = total des points de la période (points obtenus ÷ points possibles)${cpcOn(c) ? `, participation comprise (elle compte pour ${Number(c.cpc.points) || 20} points)` : ''}. L’année est la moyenne des périodes cotées${c.semester !== 'year' ? ` (${SEMESTERS[c.semester].toLowerCase()} : ${c.semester === 'S1' ? esc(P[2]?.name || '3e période') : esc(P[0]?.name || '1re période')} NC)` : ''}${P.some(p => Number(p.weight) !== 1) ? ' (pondérées : ' + P.map(p => '×' + fmtNum(Number(p.weight), 2)).join(', ') + ')' : ''}. Touchez la note d’un élève pour le mettre <b>NC</b> (non coté : absences, travaux pas remis…). Dates et pondérations dans Réglages.</span>
     <span class="spacer"></span><button class="btn sm" data-act="export-csv">Exporter (CSV)</button><button class="btn sm" data-act="print">Imprimer</button></div>`;
   if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2></div>`;
   const cell = (p, sub = '') => `<td class="num ${pctClass(p)}"><b>${fmtOn(p, bs)}</b>${Number.isFinite(p) ? `<small class="muted"> /${bs}</small>` : ''}${sub}</td>`;
@@ -1859,7 +1877,7 @@ function viewBulletins(c) {
   const head = P.map((p, i) => { const r = `${start ? 'du ' + fmtShort(start) + ' ' : ''}au ${fmtShort(p.end)}`; start = p.end ? addDays(p.end, 1) : ''; return `<th class="num">${esc(p.name)}<div class="small muted" style="font-weight:400">${r} · ${isNC(c, i) ? 'non cotée' : periodCols(c, i).length + ' éval.'}</div></th>`; }).join('');
   const pcell = (p, i, sub, s) => isNC(c, i) ? `<td class="num">${ncCell}</td>`
     : !s ? cell(p, sub)
-    : stNC(c, s.id, i) ? `<td class="num pick" data-act="bull-nc" data-sid="${s.id}" data-p="${i}" title="Toucher pour modifier">${stNcCell}<div class="small muted">non coté${absInPeriod(c, s.id, i).A ? ' · ' + absInPeriod(c, s.id, i).A + ' abs.' : ''}</div></td>`
+    : stNC(c, s.id, i) ? `<td class="num pick" data-act="bull-nc" data-sid="${s.id}" data-p="${i}" title="Toucher pour modifier">${stNcCell}<div class="small muted">${ncWhy(c, s.id, i) ? esc(ncWhy(c, s.id, i)) : 'non coté' + (absInPeriod(c, s.id, i).A ? ' · ' + absInPeriod(c, s.id, i).A + ' abs.' : '')}</div></td>`
     : cell(p, sub).replace('<td class="num', `<td data-act="bull-nc" data-sid="${s.id}" data-p="${i}" title="Toucher pour mettre NC" class="pick num`);
   return tb + `<div class="tbl-scroll"><table class="plain bull"><thead><tr><th>Élève</th>${head}<th class="num">Année</th></tr></thead><tbody>
     ${rows.map(r => `<tr><td><button class="namebtn" style="border:0;background:none;padding:0" data-act="open-student" data-id="${r.s.id}">${avatar(r.s, 'sm')}${nameHTML(r.s)}</button></td>${r.per.map((p, i) => pcell(p, i, partSub(r.part[i], i, r.s), r.s)).join('')}${cell(r.year)}</tr>`).join('')}
@@ -2968,17 +2986,22 @@ const A = {
   'toggle-side': () => document.body.classList.toggle('side-open'),
   'bull-nc': el => {
     const c = cls(), s = studentOf(c, el.dataset.sid), i = +el.dataset.p, P = S.settings.periods; if (!s) return;
-    const on = stNC(c, s.id, i), ab = absInPeriod(c, s.id, i), r = periodPoints(c, s.id, i, true);
+    const done = msg => { save(); const y = $('#view').scrollTop; renderMain(); $('#view').scrollTop = y; toast(`${s.firstName || s.lastName} : ${P[i].name} ${msg}`); };
+    const on = stNC(c, s.id, i), ab = absInPeriod(c, s.id, i), mi = missedInPeriod(c, s.id, i);
+    const sugg = [ab.A ? `${ab.A} absence${ab.A > 1 ? 's' : ''}` : '', mi.length ? `absent / pas remis : ${mi.map(m => m.col.title).join(', ')}` : ''].filter(Boolean).join(' ; ');
     modal({
       title: `${studentName(s)} — ${P[i].name}`,
       body: `<p style="margin-top:0">${on ? `<b>Non coté (NC)</b> sur cette période.` : `Note actuelle : <b>${fmtOn(periodAvg(c, s.id, i), S.settings.bulletinScale)}/${S.settings.bulletinScale}</b>.`}</p>
-        <p class="small">${ab.n ? `${ab.A} absence(s) (justifiées comprises) sur ${ab.n} cours encodé(s) pendant cette période.` : 'Aucune présence encodée pendant cette période.'}</p>
+        <p class="small" style="margin-bottom:4px"><b>Absences :</b> ${ab.n ? `${ab.A} (justifiées comprises) sur ${ab.n} cours encodé(s) pendant cette période.` : 'aucune présence encodée pendant cette période.'}</p>
+        <div class="small"><b>Évaluations et travaux manqués :</b> ${mi.length ? `<ul style="margin:4px 0 8px;padding-left:18px">${mi.map(m => `<li>${esc(m.col.title)} <span class="muted">(${fmtShort(m.col.date)})</span> : ${esc(m.what)}</li>`).join('')}</ul>` : 'aucun.<br>'}</div>
+        <label class="field" style="margin-top:6px"><span>Motif du NC (pour vous, facultatif)</span><input class="inp" name="why" value="${esc(ncWhy(c, s.id, i))}" placeholder="${esc(sugg || 'Ex. absent lors des remises de travaux')}"></label>
+        ${sugg && !ncWhy(c, s.id, i) ? `<button type="button" class="btn sm" data-fillwhy="${esc(sugg)}" style="margin:-4px 0 8px">Reprendre : « ${esc(sugg.length > 70 ? sugg.slice(0, 70) + '…' : sugg)} »</button>` : ''}
+        <p class="small muted" style="margin-bottom:0">Vous décidez : quelques absences au mauvais moment (par ex. les jours où vous vérifiiez les travaux) suffisent si l’élève n’a pas pu être évalué.</p>
         <p class="small muted">Un élève NC n’a pas de note pour cette période (ni évaluations ni participation) : « NC » apparaît dans le bulletin, l’impression et l’export, et la période ne compte pas dans sa moyenne annuelle. Ses cotes restent enregistrées : en retirant le NC, sa note revient.</p>`,
-      actions: [{ label: 'Annuler' }, { label: on ? 'Retirer le NC' : 'Mettre NC', cls: 'primary', onClick: () => {
-        s.nc ||= {}; if (on) delete s.nc[i]; else s.nc[i] = true; if (!Object.keys(s.nc).length) delete s.nc;
-        save(); const y = $('#view').scrollTop; renderMain(); $('#view').scrollTop = y;
-        toast(`${s.firstName || s.lastName} : ${P[i].name} ${on ? 'de nouveau cotée' : 'NC (non coté)'}`);
-      } }]
+      onOpen: m => m.addEventListener('click', e => { const bt = e.target.closest('[data-fillwhy]'); if (bt) { $('[name=why]', m).value = bt.dataset.fillwhy; bt.remove(); } }),
+      actions: [{ label: 'Annuler' },
+        ...(on ? [{ label: 'Retirer le NC', onClick: () => { setStudentNC(s, i, false); done('de nouveau cotée'); } }] : []),
+        { label: on ? 'Enregistrer le motif' : 'Mettre NC', cls: 'primary', onClick: el => { setStudentNC(s, i, true, formData(el).why); done(on ? 'motif enregistré' : 'NC (non coté)'); } }]
     });
   },
   'search-go': el => {
