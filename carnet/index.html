@@ -578,7 +578,7 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', () => { if (saveTimer) flush(); });
 
-const APP_VERSION = '33';
+const APP_VERSION = '34';
 const cls = () => S.classes.find(c => c.id === S.ui.classId);
 // Ordre des classes : 1re puis 2e, par lettre (1C, 1D, 1F… 2A, 2B…), les groupes d'option à la fin
 const isOption = c => /option/i.test(c.name || '');
@@ -1748,6 +1748,48 @@ async function importAR() {
   });
 }
 
+// ---------- Clôturer une période et commencer la suivante à la date choisie ----------
+function closeBtn() {
+  const cur = periodOfDate(todayISO()), P = S.settings.periods;
+  return cur < P.length - 1 ? `<button class="btn sm" data-act="close-period">🔒 Clôturer ${esc(P[cur].name)}</button>` : '';
+}
+function closePeriod() {
+  const P = S.settings.periods, cur = periodOfDate(todayISO()), next = cur + 1, today = todayISO();
+  if (next >= P.length) return toast('C’est la dernière période de l’année');
+  const minStart = addDays(periodStart(cur) || '2000-01-01', 1), maxStart = P[next].end || '9999-12-31';
+  // ce qui changerait de période si elle commence à la date d (évaluations et cours entre d et l'ancienne fin)
+  const moved = d => {
+    let cols = 0, days = 0;
+    for (const c of S.classes.filter(k => !k.archived)) {
+      cols += c.columns.filter(col => !Number.isInteger(col.period) && col.date >= d && col.date <= (P[cur].end || '9999')).length;
+      days += lessonDates(c, cur).filter(x => x >= d).length;
+    }
+    return { cols, days };
+  };
+  const info = el => {
+    const d = $('[name=start]', el).value, out = $('#cp-info', el);
+    if (!d) { out.innerHTML = ''; return; }
+    if (d < minStart || d > maxStart) { out.innerHTML = `<span class="tag bad">Choisissez une date entre le ${fmtShort(minStart)} et le ${fmtShort(maxStart)}</span>`; return; }
+    const m = moved(d);
+    out.innerHTML = `<b>${esc(P[cur].name)}</b> se terminera le <b>${fmtDate(addDays(d, -1), { weekday: 'long', day: 'numeric', month: 'long' })}</b>, et <b>${esc(P[next].name)}</b> commencera le <b>${fmtDate(d, { weekday: 'long', day: 'numeric', month: 'long' })}</b>${d > today ? ' (dans le futur : la période en cours continue jusque-là)' : ''}.`
+      + (m.cols || m.days ? `<br><span class="small">${[m.cols ? `${m.cols} évaluation(s)` : '', m.days ? `${m.days} cours (participation, présences)` : ''].filter(Boolean).join(' et ')} daté(s) à partir de ce jour passeront dans ${esc(P[next].name)}.</span>` : '');
+  };
+  modal({
+    title: `Clôturer ${P[cur].name}`,
+    body: `<label class="field"><span>${esc(P[next].name)} commence le</span><input class="inp" type="date" name="start" value="${today >= minStart && today <= maxStart ? today : minStart}" min="${minStart}" max="${maxStart}"></label>
+      <div id="cp-info" class="small" style="margin:-4px 0 10px"></div>
+      <p class="small muted">S’applique à toutes vos classes. Les notes de ${esc(P[cur].name)} restent telles quelles ; la participation repart à ${S.settings.cpc.base}/${S.settings.cpc.max} dès le premier cours de ${esc(P[next].name)}. Vous pourrez toujours changer cette date dans Réglages ▸ Périodes de bulletin.</p>`,
+    onOpen: el => { $('[name=start]', el).addEventListener('input', () => info(el)); info(el); },
+    actions: [{ label: 'Annuler' }, { label: '🔒 Clôturer', cls: 'primary', onClick: el => {
+      const d = $('[name=start]', el).value;
+      if (!d || d < minStart || d > maxStart) { toast(`Choisissez une date entre le ${fmtShort(minStart)} et le ${fmtShort(maxStart)}`); return false; }
+      P[cur].end = addDays(d, -1);
+      save(); render();
+      toast(`${P[cur].name} clôturée le ${fmtShort(P[cur].end)} · ${P[next].name} à partir du ${fmtShort(d)}`);
+    } }]
+  });
+}
+
 // ---------- Impression du carnet de cotes ----------
 function printGrades() {
   const c0 = cls(), P = S.settings.periods, sp = selPeriod();
@@ -1867,7 +1909,7 @@ function drawStudent() {
 function viewBulletins(c) {
   const P = S.settings.periods, bs = S.settings.bulletinScale, studs = sortStudents(c.students);
   const tb = `<div class="toolbar"><span class="muted small">Note de période sur ${bs} = total des points de la période (points obtenus ÷ points possibles)${cpcOn(c) ? `, participation comprise (elle compte pour ${Number(c.cpc.points) || 20} points)` : ''}. L’année est la moyenne des périodes cotées${c.semester !== 'year' ? ` (${SEMESTERS[c.semester].toLowerCase()} : ${c.semester === 'S1' ? esc(P[2]?.name || '3e période') : esc(P[0]?.name || '1re période')} NC)` : ''}${P.some(p => Number(p.weight) !== 1) ? ' (pondérées : ' + P.map(p => '×' + fmtNum(Number(p.weight), 2)).join(', ') + ')' : ''}. Touchez la note d’un élève pour le mettre <b>NC</b> (non coté : absences, travaux pas remis…). Dates et pondérations dans Réglages.</span>
-    <span class="spacer"></span><button class="btn sm" data-act="export-csv">Exporter (CSV)</button><button class="btn sm" data-act="print">Imprimer</button></div>`;
+    <span class="spacer"></span>${closeBtn()}<button class="btn sm" data-act="export-csv">Exporter (CSV)</button><button class="btn sm" data-act="print">Imprimer</button></div>`;
   if (!studs.length) return tb + `<div class="empty"><h2>Pas encore d’élèves</h2></div>`;
   const cell = (p, sub = '') => `<td class="num ${pctClass(p)}"><b>${fmtOn(p, bs)}</b>${Number.isFinite(p) ? `<small class="muted"> /${bs}</small>` : ''}${sub}</td>`;
   const rows = studs.map(s => ({ s, per: P.map((p, i) => periodAvg(c, s.id, i)), part: P.map((p, i) => cpcOn(c) && partCounts(c, i) ? cpcNote(c, s.id, i) : null), year: annualAvg(c, s.id) }));
@@ -2885,6 +2927,7 @@ function viewSettings() {
       <label class="check"><input type="checkbox" data-setting="absZero" ${st.absZero ? 'checked' : ''}> Compter « abs » comme 0 dans les moyennes</label>
       <h3 class="section-h">Périodes de bulletin</h3>
       <label class="field"><span>Bulletins sur</span><select class="inp" data-setting="bulletinScale">${[10, 20, 100].map(n => `<option value="${n}" ${+st.bulletinScale === n ? 'selected' : ''}>/${n}</option>`).join('')}</select></label>
+      <div class="toolbar" style="margin:0 0 8px">${closeBtn()}<span class="small muted" style="align-self:center">${S.settings.periods.map((p, i) => `${esc(p.name)} : ${periodStart(i) ? 'du ' + fmtShort(periodStart(i)) + ' ' : ''}au ${p.end ? fmtShort(p.end) : '?'}${i === periodOfDate(todayISO()) ? ' (en cours)' : ''}`).join(' · ')}</span></div>
       ${st.periods.map((p, i) => `<div class="row3"><label class="field"><span>Nom</span><input class="inp" data-period="${i}" data-pf="name" value="${esc(p.name)}"></label>
         <label class="field"><span>Se termine le</span><input class="inp" type="date" data-period="${i}" data-pf="end" value="${esc(p.end)}"></label>
         <label class="field"><span>Poids dans l’année</span><input class="inp" inputmode="decimal" data-period="${i}" data-pf="weight" value="${esc(String(p.weight).replace('.', ','))}"></label></div>`).join('')}
@@ -3092,6 +3135,7 @@ const A = {
   'export-csv': exportCSV,
   'print': () => window.print(),
   'print-grades': printGrades,
+  'close-period': closePeriod,
   'att-shift': el => { S.ui.attDate = addDays(S.ui.attDate || todayISO(), +el.dataset.n, S.settings.skipWeekend); save(); renderMain(); },
   'att-today': () => { S.ui.attDate = todayISO(); save(); renderMain(); },
   'att-goto': el => { S.ui.attDate = el.dataset.d; save(); renderMain(); $('#view').scrollTop = 0; },
@@ -3200,7 +3244,7 @@ document.addEventListener('change', e => {
   if (t.dataset.period) {
     const p = S.settings.periods[+t.dataset.period], f = t.dataset.pf;
     p[f] = f === 'weight' ? (parseFloat(t.value.replace(',', '.')) >= 0 ? parseFloat(t.value.replace(',', '.')) : 1) : t.value.trim();
-    save(); return;
+    save(); if (f === 'end') { const y = $('#view').scrollTop; render(); $('#view').scrollTop = y; } return;
   }
   if (t.dataset.cpc) {
     const n = parseFloat(t.value.replace(',', '.'));
